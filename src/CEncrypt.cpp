@@ -87,12 +87,12 @@ CEncrypt::CEncrypt(CAbstractBlockIO &_bio) : bio(_bio)
     //gcry_md_hash_buffer(GCRY_MD_MD5, digest, argv[1], strlen(argv[1]));
 
     int8_t block[bio.blocksize];
-    bio.Read(0, block);
+    bio.Read(0, 1, block);
     TEncHeader *h = (TEncHeader*)block;
     if (strncmp(h->magic, "coverfs", 8) != 0)
     {
         CreateEnc(block);
-        bio.Write(0, block);
+        bio.Write(0, 1, block);
     }
 
     int32_t crc;

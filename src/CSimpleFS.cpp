@@ -501,6 +501,8 @@ void SimpleFilesystem::ZeroFragment(int64_t ofs, int64_t size)
     //printf("ZeroFragment ofs=%li size=%li\n", ofs, size);
     if (size == 0) return;
 
+    bio.CacheBlocks(ofs/bio.blocksize, size/bio.blocksize);
+
     for(int64_t j=0; j<size; j++)
     {
         int blockidx = ofs / bio.blocksize;
@@ -534,6 +536,8 @@ void SimpleFilesystem::WriteFragment(int64_t ofs, const int8_t *d, int64_t size)
     //printf("WriteFragment ofs=%li size=%li\n", ofs, size);
     if (size == 0) return;
 
+    bio.CacheBlocks(ofs/bio.blocksize, size/bio.blocksize);
+
     for(int64_t j=0; j<size; j++)
     {
         int blockidx = ofs / bio.blocksize;
@@ -564,6 +568,8 @@ void SimpleFilesystem::ReadFragment(int64_t ofs, int8_t *d, int64_t size)
     int8_t *buf = NULL;
     //printf("ReadFragment ofs=%li size=%li\n", ofs, size);
     if (size == 0) return;
+
+    bio.CacheBlocks(ofs/bio.blocksize, size/bio.blocksize);
 
     for(int64_t j=0; j<size; j++)
     {
@@ -625,7 +631,7 @@ void SimpleFilesystem::Write(INODE &node, const int8_t *d, int64_t ofs, int64_t 
     std::lock_guard<std::recursive_mutex> lock(node.GetMutex());
 
     if (node.size < ofs+size) Truncate(node, ofs+size, false);
-
+    
     int64_t fragmentofs = 0x0;
     for(unsigned int i=0; i<node.fragments.size(); i++)
     {

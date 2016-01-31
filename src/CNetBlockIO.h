@@ -16,8 +16,8 @@ class CNetBlockIO : public CAbstractBlockIO
 {
 public:
     CNetBlockIO(int _blocksize, const std::string &host, const std::string &port);
-    void Read(const int blockidx, int8_t* d);
-    void Write(const int blockidx, int8_t* d);
+    void Read(const int blockidx, const int n, int8_t* d);
+    void Write(const int blockidx, const int n, int8_t* d);
     size_t GetFilesize();
 
 private:

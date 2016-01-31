@@ -13,8 +13,8 @@ class CAbstractBlockIO
 {
 public:
     CAbstractBlockIO(int _blocksize);
-    virtual void Read(const int blockidx, int8_t* d) = 0;
-    virtual void Write(const int blockidx, int8_t* d) = 0;
+    virtual void Read(const int blockidx, const int n, int8_t* d) = 0;
+    virtual void Write(const int blockidx, const int n, int8_t* d) = 0;
     virtual size_t GetFilesize() = 0;
 
 public:

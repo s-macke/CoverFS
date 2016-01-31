@@ -42,11 +42,27 @@ CBLOCKPTR CCacheIO::GetBlock(const int blockidx)
         return cacheblock->second;
     }
     int8_t *buf = new int8_t[blocksize];
-    bio.Read(blockidx, buf);
+    bio.Read(blockidx, 1, buf);
     
     CBLOCKPTR block(new CBlock(bio, enc, blockidx, buf));
     cache[blockidx] = block;
     return block;
+}
+
+void CCacheIO::CacheBlocks(const int blockidx, const int n)
+{
+    /*
+    int8_t *buf = new int8_t[blocksize*n];
+    bio.Read(blockidx, n, buf);
+    for(int i=0; i<n; i++)
+    {
+        auto cacheblock = cache.find(blockidx+i);
+        if (cacheblock != cache.end()) continue;
+        CBLOCKPTR block(new CBlock(bio, enc, blockidx+i, &buf[i*blocksize]));
+        cache[blockidx+i] = block;
+    }
+    //delete[] buf;
+    */
 }
 
 size_t CCacheIO::GetFilesize()
@@ -65,7 +81,7 @@ void CCacheIO::Sync()
         if (block->mutex.try_lock())
         {
             //printf("Sync block %i\n", block->blockidx);                        
-            bio.Write(block->blockidx, block->buf);
+            bio.Write(block->blockidx, 1, block->buf);
             block->mutex.unlock();
             block->dirty = false;
         } /*else

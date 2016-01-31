@@ -104,13 +104,13 @@ size_t CNetBlockIO::GetFilesize()
     return filesize;
 }
 
-void CNetBlockIO::Read(const int blockidx, int8_t *d)
+void CNetBlockIO::Read(const int blockidx, const int n, int8_t *d)
 {
     COMMANDSTRUCT cmd;
     cmd.cmdlen = 3*8;
     cmd.cmd = READ;
     cmd.offset = blockidx*blocksize;
-    cmd.length = blocksize;
+    cmd.length = blocksize*n;
     mtx.lock();
     //printf("read block %i\n", blockidx);
     boost::asio::write(s, boost::asio::buffer(&cmd, cmd.cmdlen));
@@ -121,14 +121,14 @@ void CNetBlockIO::Read(const int blockidx, int8_t *d)
     memcpy(d, data+4, blocksize);
 }
 
-void CNetBlockIO::Write(const int blockidx, int8_t* d)
+void CNetBlockIO::Write(const int blockidx, const int n, int8_t* d)
 {
     int8_t buf[blocksize+3*8];
     COMMANDSTRUCT *cmd = (COMMANDSTRUCT*)buf;
     cmd->cmdlen = blocksize+3*8;
     cmd->cmd = WRITE;
     cmd->offset = blockidx*blocksize;
-    cmd->length = blocksize;
+    cmd->length = blocksize*n;
     memcpy(&buf[3*8], d, blocksize);
     mtx.lock();
     boost::asio::write(s, boost::asio::buffer(buf, blocksize+3*8));
