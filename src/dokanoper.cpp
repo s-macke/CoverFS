@@ -363,8 +363,10 @@ PDOKAN_FILE_INFO DokanFileInfo)
         {
             if ((INODETYPE)de.type == INODETYPE::free) return FOREACHENTRYRET::OK;
             WIN32_FIND_DATAW findData = {0};
-            findData.nFileSizeHigh = de.size >> 32;
-            findData.nFileSizeLow = de.size & 0xFFFFFFFF;
+            
+            INODEPTR node = fs->OpenNode(de.id);
+            findData.nFileSizeHigh = node->size >> 32;
+            findData.nFileSizeLow = node->size & 0xFFFFFFFF;
             
             if ((INODETYPE)de.type == INODETYPE::dir)
             {
@@ -543,8 +545,9 @@ int StartDokan(int argc, char *argv[], const char* mountpoint, SimpleFilesystem 
     //dokanOptions.Options |= DOKAN_OPTION_WRITE_PROTECT;
     //dokanOptions.Options |= DOKAN_OPTION_MOUNT_MANAGER;
     
-    LPCWSTR mountpoint = L"M:\\";
-    dokanOptions.MountPoint = mountpoint;
+    //LPCWSTR
+    auto mp = utf8_to_wstring(mountpoint);
+    dokanOptions.MountPoint = mp.data();
     
     dokanOperations.ZwCreateFile         = MirrorCreateFile;
     dokanOperations.GetFileInformation   = MirrorGetFileInformation;

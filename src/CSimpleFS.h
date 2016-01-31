@@ -48,6 +48,7 @@ class SimpleFilesystem
     friend class INODE;
 public:
     SimpleFilesystem(CCacheIO &_bio);
+    INODEPTR OpenNode(int id);
     INODEPTR OpenNode(const std::string &path);
     INODEPTR OpenNode(const std::vector<std::string> splitpath);
 
@@ -70,7 +71,6 @@ public:
     static const int32_t INVALIDID    = -4; // defines an invalid id like the parent dir of the root directory
 
 private:
-    INODEPTR OpenNode(int id);
     CDirectory OpenDir(int id);
 
     int CreateDirectory(CDirectory &dir, const std::string &name);
