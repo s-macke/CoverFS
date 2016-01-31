@@ -97,8 +97,9 @@ FAQ
 
 Why the name CoverFS?
 ---------------------
-  FS = Filesystem
-  Cover = to hide, to mask, to obfuscate, to cloud, covert, covered by clouds
+FS = Filesystem
+
+Cover = to hide, to mask, to obfuscate, to cloud, covert, covered by clouds
 
 
 Is it secure? 
