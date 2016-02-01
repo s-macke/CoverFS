@@ -15,31 +15,37 @@ typedef struct
     int32_t data;
 } COMMANDSTRUCT;
 
-int8_t* GetNextPacket(ssl_socket &sock)
-{
-    static int8_t packetbuf[4096*2];
-    static int32_t packetlen = 0;
 
-    int8_t data[8192];
+int GetNextPacket(ssl_socket &sock, int8_t *d)
+{
+    static int8_t data[8192];
+    static uint32_t dataofs = 0;
+    static size_t datalength = 0;
+
+    int32_t packetlen = 0;
+    int32_t len = -1;
+
     for (;;)
     {
-        boost::system::error_code error;
-        size_t length = sock.read_some(boost::asio::buffer(data, 8192), error);
-        if (error) break;
-        for(unsigned int i=0; i<length; i++)
+        if (dataofs == datalength)
         {
-            packetbuf[packetlen++] = data[i];
-            if (packetlen < 4) continue;
-            int32_t len = ((int32_t*)packetbuf)[0];
-            assert(len > 0);
-            if (len <= packetlen)
-            {
+            boost::system::error_code error;
+            datalength = sock.read_some(boost::asio::buffer(data, 8192), error);
+            if (error) break;
+            dataofs = 0;
+        }
+
+        d[packetlen++] = data[dataofs++];
+        if (len == packetlen) return len;
+
+        if ((len == -1) && (packetlen >= 4)) 
+        {
+                len = ((int32_t*)d)[0] - 4;
                 packetlen = 0;
-                return packetbuf;
-            }
+                assert(len > 0);
         }
     }
-    return NULL;
+    return 0;
 }
 
 bool verify_certificate(bool preverified, boost::asio::ssl::verify_context& ctx)
@@ -92,11 +98,10 @@ CNetBlockIO::CNetBlockIO(int _blocksize, const std::string &host, const std::str
     cmd.cmdlen = 8;
     cmd.cmd = SIZE;
     boost::asio::write(s, boost::asio::buffer(&cmd, cmd.cmdlen));
-    int8_t* data = GetNextPacket(s);
-    assert(data != NULL);
-    
-    filesize = ((int64_t*)&data[4])[0];
-    //printf("filesize: %li bytes\n", filesize);
+    int8_t data[8];
+    int len = GetNextPacket(s, data);
+    assert(len == 8);
+    filesize = ((int64_t*)&data[0])[0];
 }
 
 size_t CNetBlockIO::GetFilesize()
@@ -114,11 +119,9 @@ void CNetBlockIO::Read(const int blockidx, const int n, int8_t *d)
     mtx.lock();
     //printf("read block %i\n", blockidx);
     boost::asio::write(s, boost::asio::buffer(&cmd, cmd.cmdlen));
-    int8_t* data = GetNextPacket(s);
+    int len = GetNextPacket(s, d);
     mtx.unlock();
-    uint32_t* size = (uint32_t*)data;
-    assert(*size == blocksize+4);
-    memcpy(d, data+4, blocksize);
+    assert(len == (int32_t)blocksize*n);
 }
 
 void CNetBlockIO::Write(const int blockidx, const int n, int8_t* d)
