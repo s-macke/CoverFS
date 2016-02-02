@@ -3,6 +3,7 @@
 #include<string.h>
 #include<unistd.h>
 #include<fcntl.h>
+#include<assert.h>
 #include<sys/stat.h>
 
 #define MAXSIZE 0xFFFFF
@@ -11,7 +12,6 @@
 
 typedef struct
 {
-//	FILE *fp;
 	int fd;
 	char filename[256];
 	size_t size;
@@ -40,8 +40,6 @@ int main()
 	for(int i=0; i<10; i++)
 	{
 		sprintf(files[i].filename, "tests%i.dat", i);
-		//files[i].fp = fopen(files[i].filename, "wb+");
-		//files[i].fd = fileno(files[i].fp);
 		files[i].fd = open(files[i].filename, O_RDWR | O_CREAT | O_TRUNC);
 		files[i].size = 0;
 		memset(files[i].data, 0, MAXSIZE+1);
@@ -50,6 +48,7 @@ int main()
 	//while(1)
 	for(int iter=0; iter<2000; iter++)
 	{
+                ssize_t retsize;
 		int cmd = rand()%4;
 		int id = rand()%10;
 		int ofs = 0;
@@ -82,16 +81,16 @@ int main()
 				{
 					files[id].data[ofs+i] = rand();
 				}
-				pwrite(files[id].fd, &(files[id].data[ofs]), newsize, ofs);
+				retsize = pwrite(files[id].fd, &(files[id].data[ofs]), newsize, ofs);
+				assert(retsize == newsize);
 				if (ofs+newsize > files[id].size) files[id].size = ofs+newsize;
 			break;
 
 			case 2: // read
 				printf("%5i: read %i ofs=%i size=%i\n", iter, id, ofs, newsize);
 		                if (ofs+newsize > files[id].size) newsize = files[id].size - ofs - 1;
-				//fseek(files[id].fp, ofs, SEEK_SET);
-				//fread(data, newsize, 1, files[id].fp);
-				pread(files[id].fd, &data, newsize, ofs);
+				retsize = pread(files[id].fd, &data, newsize, ofs);
+				assert(retsize == newsize);
 				for(int i=0; i<newsize; i++)
 				{
 					if (data[i] != files[id].data[ofs+i])
