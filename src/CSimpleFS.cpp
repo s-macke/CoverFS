@@ -495,7 +495,6 @@ bool FindIntersect(const CFragmentOverlap &a, const CFragmentOverlap &b, CFragme
 
 void SimpleFilesystem::ZeroFragment(int64_t ofs, int64_t size)
 {
-    int currentblockidx = -1;
     CBLOCKPTR block;
     int8_t *buf = NULL;
     //printf("ZeroFragment ofs=%li size=%li\n", ofs, size);
@@ -508,27 +507,20 @@ void SimpleFilesystem::ZeroFragment(int64_t ofs, int64_t size)
     if ((ofs%bio.blocksize) != 0)          block = bio.GetBlock(firstblock);
     if (((ofs+size-1)%bio.blocksize) != 0) block = bio.GetBlock(lastblock);
 
-    for(int64_t j=0; j<size; j++)
+    int64_t dofs = 0;
+    for(int64_t j=firstblock; j<=lastblock; j++)
     {
-        int blockidx = ofs / bio.blocksize;
-        if (blockidx != currentblockidx)
-        {
-            if (currentblockidx != -1) 
-            {
-                block->ReleaseBuf();
-                block->Dirty();
-            }
-            currentblockidx = blockidx;
-
-            block = bio.GetBlock(currentblockidx, false);
-            buf = block->GetBuf();
-        }
-        buf[ofs & (bio.blocksize-1)] = 0x0;
-        ofs++;
+        block = bio.GetBlock(j);
+        buf = block->GetBuf();
+        int bsize = bio.blocksize - (ofs%bio.blocksize);
+        bsize = std::min((int64_t)bsize, size);
+        memset(&buf[ofs%bio.blocksize], 0, bsize);
+        ofs += bsize;
+        dofs += bsize;
+        size -= bsize;
+        block->ReleaseBuf();
+        block->Dirty();
     }
-    assert(currentblockidx != -1);
-    block->ReleaseBuf();
-    block->Dirty();    
     bio.Sync();
 }
 
@@ -536,7 +528,6 @@ void SimpleFilesystem::ZeroFragment(int64_t ofs, int64_t size)
 // Copy d to ofs in container
 void SimpleFilesystem::WriteFragment(int64_t ofs, const int8_t *d, int64_t size)
 {
-    int currentblockidx = -1;
     CBLOCKPTR block;
     int8_t *buf = NULL;
     //printf("WriteFragment ofs=%li size=%li\n", ofs, size);
@@ -549,57 +540,48 @@ void SimpleFilesystem::WriteFragment(int64_t ofs, const int8_t *d, int64_t size)
     if ((ofs%bio.blocksize) != 0) block = bio.GetBlock(firstblock);
     if (((ofs+size-1)%bio.blocksize) != 0) block = bio.GetBlock(lastblock);
 
-    for(int64_t j=0; j<size; j++)
+    int64_t dofs = 0;
+    for(int64_t j=firstblock; j<=lastblock; j++)
     {
-        int blockidx = ofs / bio.blocksize;
-        if (blockidx != currentblockidx)
-        {
-            if (currentblockidx != -1)
-            {
-                block->ReleaseBuf(); // we should release it, when we finished reading, but here it doesn't matter
-                block->Dirty();
-            }
-            currentblockidx = blockidx;
-            block = bio.GetBlock(currentblockidx);
-            buf = block->GetBuf();
-        }
-        buf[ofs & (bio.blocksize-1)] = d[j];
-        ofs++;
+        block = bio.GetBlock(j);
+        buf = block->GetBuf();
+        int bsize = bio.blocksize - (ofs%bio.blocksize);
+        bsize = std::min((int64_t)bsize, size);
+        memcpy(&buf[ofs%bio.blocksize], &d[dofs], bsize);
+        ofs += bsize;
+        dofs += bsize;
+        size -= bsize;
+        block->ReleaseBuf();
+        block->Dirty();    
     }
-    assert(currentblockidx != -1);
-    block->ReleaseBuf();
-    block->Dirty();
     bio.Sync();
 }
 
 void SimpleFilesystem::ReadFragment(int64_t ofs, int8_t *d, int64_t size)
 {
-    int currentblockidx = -1;
     CBLOCKPTR block;
     int8_t *buf = NULL;
     //printf("ReadFragment ofs=%li size=%li\n", ofs, size);
     if (size == 0) return;
 
-    bio.CacheBlocks(ofs/bio.blocksize, size/bio.blocksize);
+    int firstblock = ofs/bio.blocksize;
+    int lastblock = (ofs+size-1)/bio.blocksize;
 
-    for(int64_t j=0; j<size; j++)
+    bio.CacheBlocks(firstblock, lastblock-firstblock+1);
+
+    int64_t dofs = 0;
+    for(int64_t j=firstblock; j<=lastblock; j++)
     {
-        int blockidx = ofs / bio.blocksize;
-        if (blockidx != currentblockidx)
-        {
-            if (currentblockidx != -1) 
-            {
-                block->ReleaseBuf();
-            }
-            currentblockidx = blockidx;                        
-            block = bio.GetBlock(currentblockidx);
-            buf = block->GetBuf();
-        }
-        d[j] = buf[ofs & (bio.blocksize-1)];
-        ofs++;
+        block = bio.GetBlock(j);
+        buf = block->GetBuf();
+        int bsize = bio.blocksize - (ofs%bio.blocksize);
+        bsize = std::min((int64_t)bsize, size);
+        memcpy(&d[dofs], &buf[ofs%bio.blocksize], bsize);
+        ofs += bsize;
+        dofs += bsize;
+        size -= bsize;
+        block->ReleaseBuf();
     }
-    assert(currentblockidx != -1);
-    block->ReleaseBuf();
 }
 
 // -----------
