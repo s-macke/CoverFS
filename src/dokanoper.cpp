@@ -295,7 +295,7 @@ static NTSTATUS DOKAN_CALLBACK MirrorSetEndOfFile(
     try
     {
         INODEPTR node = fs->OpenFile(path);
-        node->Truncate(ByteOffset);
+        node->Truncate(ByteOffset, false);  // the content is undefined
     } catch(const int &err)
     {
         return errno_to_nstatus(err);

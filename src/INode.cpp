@@ -22,9 +22,9 @@ void INODE::Write(const int8_t *d, int64_t ofs, int64_t size)
     fs.Write(*this, d, ofs, size);
 }
 
-void INODE::Truncate(int64_t size)
+void INODE::Truncate(int64_t size, bool dozero=true)
 {
-    fs.Truncate(*this, size, true);
+    fs.Truncate(*this, size, dozero);
 }
 
 void INODE::Remove()
