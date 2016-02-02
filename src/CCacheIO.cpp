@@ -34,7 +34,7 @@ CCacheIO::CCacheIO(CAbstractBlockIO &_bio, CEncrypt &_enc) : bio(_bio), enc(_enc
     blocksize = bio.blocksize;
 }
 
-CBLOCKPTR CCacheIO::GetBlock(const int blockidx)
+CBLOCKPTR CCacheIO::GetBlock(const int blockidx, bool write)
 {
     auto cacheblock = cache.find(blockidx);
     if (cacheblock != cache.end())
@@ -42,27 +42,42 @@ CBLOCKPTR CCacheIO::GetBlock(const int blockidx)
         return cacheblock->second;
     }
     int8_t *buf = new int8_t[blocksize];
-    bio.Read(blockidx, 1, buf);
+    if (!write) bio.Read(blockidx, 1, buf);
     
     CBLOCKPTR block(new CBlock(bio, enc, blockidx, buf));
     cache[blockidx] = block;
     return block;
 }
 
-void CCacheIO::CacheBlocks(const int blockidx, const int n)
+
+void CCacheIO::BlockReadForce(const int blockidx, const int n)
 {
-    /*
+    if (n <= 0) return;
     int8_t *buf = new int8_t[blocksize*n];
     bio.Read(blockidx, n, buf);
+    for(int j=0; j<n; j++)
+    {
+        CBLOCKPTR block(new CBlock(bio, enc, blockidx+j, &buf[j*blocksize]));
+        cache[blockidx+j] = block;
+    }
+}
+
+void CCacheIO::CacheBlocks(const int blockidx, const int n)
+{
+    if (n <= 0) return;
+    int istart = 0;
     for(int i=0; i<n; i++)
     {
         auto cacheblock = cache.find(blockidx+i);
-        if (cacheblock != cache.end()) continue;
-        CBLOCKPTR block(new CBlock(bio, enc, blockidx+i, &buf[i*blocksize]));
-        cache[blockidx+i] = block;
+        if (cacheblock != cache.end())
+        {
+            int npart = i-istart;
+            istart = i+1;
+            BlockReadForce(blockidx+istart, npart);
+        }
     }
-    //delete[] buf;
-    */
+    int npart = n-istart;
+    BlockReadForce(blockidx+istart, npart);
 }
 
 size_t CCacheIO::GetFilesize()

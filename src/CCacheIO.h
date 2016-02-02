@@ -47,8 +47,11 @@ class CCacheIO
 {
 public:
     CCacheIO(CAbstractBlockIO &bio, CEncrypt &_enc);
-    CBLOCKPTR GetBlock(const int blockidx);
+    CBLOCKPTR GetBlock(const int blockidx, bool write=false);
+    CBLOCKPTR GetWriteBlock(const int blockidx);
     void CacheBlocks(const int blockidx, const int n);
+    void BlockReadForce(const int blockidx, const int n);
+
     size_t GetFilesize();
     void Sync();
     int blocksize;
