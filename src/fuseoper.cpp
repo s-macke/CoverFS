@@ -294,10 +294,10 @@ int StartFuse(int argc, char *argv[], const char* mountpoint, SimpleFilesystem &
     }
 */
 
-    //fuse_opt_add_arg(&args, "--help");
+    //fuse_opt_add_arg(&args, "-help");
+    fuse_opt_add_arg(&args, "-odirect_io");
     fuse_opt_add_arg(&args, "-obig_writes");
     fuse_opt_add_arg(&args, "-f");
-    //fuse_opt_add_arg(&args, "-olarge_read");
     fuse_opt_add_arg(&args, mountpoint);
 
     fs = &_fs;
