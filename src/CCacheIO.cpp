@@ -34,7 +34,7 @@ CCacheIO::CCacheIO(CAbstractBlockIO &_bio, CEncrypt &_enc) : bio(_bio), enc(_enc
     blocksize = bio.blocksize;
 }
 
-CBLOCKPTR CCacheIO::GetBlock(const int blockidx, bool write)
+CBLOCKPTR CCacheIO::GetBlock(const int blockidx, bool read)
 {
     auto cacheblock = cache.find(blockidx);
     if (cacheblock != cache.end())
@@ -42,7 +42,7 @@ CBLOCKPTR CCacheIO::GetBlock(const int blockidx, bool write)
         return cacheblock->second;
     }
     int8_t *buf = new int8_t[blocksize];
-    if (!write) bio.Read(blockidx, 1, buf);
+    if (read) bio.Read(blockidx, 1, buf);
     
     CBLOCKPTR block(new CBlock(bio, enc, blockidx, buf));
     cache[blockidx] = block;

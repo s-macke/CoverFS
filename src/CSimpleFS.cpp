@@ -10,10 +10,10 @@
 /*
 TODO:
     - readahead
-    - faster read
     - remove should check for shared_ptr number of pointers
-    - gcrypt ctr mode correctly used?
+    - gcrypt mode is not xts?
     - ReleaseBuf on destroy???
+    - Cache checking
 */
 
 // -------------------------------------------------------------
@@ -501,7 +501,12 @@ void SimpleFilesystem::ZeroFragment(int64_t ofs, int64_t size)
     //printf("ZeroFragment ofs=%li size=%li\n", ofs, size);
     if (size == 0) return;
 
-    bio.CacheBlocks(ofs/bio.blocksize, size/bio.blocksize);
+    int firstblock = ofs/bio.blocksize;
+    int lastblock = (ofs+size-1)/bio.blocksize;
+
+    // check which blocks we have to read
+    if ((ofs%bio.blocksize) != 0)          block = bio.GetBlock(firstblock);
+    if (((ofs+size-1)%bio.blocksize) != 0) block = bio.GetBlock(lastblock);
 
     for(int64_t j=0; j<size; j++)
     {
@@ -513,8 +518,9 @@ void SimpleFilesystem::ZeroFragment(int64_t ofs, int64_t size)
                 block->ReleaseBuf();
                 block->Dirty();
             }
-            currentblockidx = blockidx;                        
-            block = bio.GetBlock(currentblockidx);
+            currentblockidx = blockidx;
+
+            block = bio.GetBlock(currentblockidx, false);
             buf = block->GetBuf();
         }
         buf[ofs & (bio.blocksize-1)] = 0x0;
@@ -536,7 +542,12 @@ void SimpleFilesystem::WriteFragment(int64_t ofs, const int8_t *d, int64_t size)
     //printf("WriteFragment ofs=%li size=%li\n", ofs, size);
     if (size == 0) return;
 
-    bio.CacheBlocks(ofs/bio.blocksize, size/bio.blocksize);
+    int firstblock = ofs/bio.blocksize;
+    int lastblock = (ofs+size-1)/bio.blocksize;
+
+    // check which blocks we have to read
+    if ((ofs%bio.blocksize) != 0) block = bio.GetBlock(firstblock);
+    if (((ofs+size-1)%bio.blocksize) != 0) block = bio.GetBlock(lastblock);
 
     for(int64_t j=0; j<size; j++)
     {
