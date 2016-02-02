@@ -25,6 +25,8 @@ void PrintUsage(int argc, char *argv[])
     printf("Usage: %s [options] mountpoint\n", argv[0]);
     printf("Options:\n");
     printf("  --help              Print this help message\n");
+    printf("  --backend [backend] [backend] can be 'ram', 'file', or 'cvfsserer'\n");
+    printf("                      default: 'cvfsserver'\n");
     printf("  --host [hostname]   default: 'localhost'\n");
     printf("  --port [port]       default: '62000'\n");
     printf("  --info              Print information about filesystem fragments\n");
@@ -40,12 +42,14 @@ int main(int argc, char *argv[])
     char hostname[256];
     char mountpoint[256];
     char port[256];
+    char backend[256];
     bool check = false;
     bool info = false;
     bool rootdir = false;
 
     strncpy(hostname,   "localhost", 255);
     strncpy(port,       "62000",     255);
+    strncpy(backend,    "cvfsserver",  255);
     mountpoint[0] = 0;
 
     if (argc < 2)
@@ -61,6 +65,7 @@ int main(int argc, char *argv[])
             {"info",    no_argument,       0,  0 },
             {"rootdir", no_argument,       0,  0 },
             {"check",   no_argument,       0,  0 },
+            {"backend", required_argument, 0,  0 },
             {0,         0,                 0,  0 }
         };
 
@@ -94,6 +99,11 @@ int main(int argc, char *argv[])
                     check = true;
                     break;
 
+                case 6:
+                    strncpy(backend, optarg, 255);
+                    for (char *p=backend ; *p; ++p) *p = tolower(*p);
+                    break;
+
                 case 0: // helÃpp
                 default:
                     PrintUsage(argc, argv);
@@ -121,10 +131,27 @@ int main(int argc, char *argv[])
         }
     }
 
-    //CBlockIO bio(4096);
-    CNetBlockIO bio(4096, hostname, port);
-    CEncrypt enc(bio);
-    CCacheIO cbio(bio, enc);
+    CAbstractBlockIO *bio = NULL;
+    if (strcmp(backend, "ram") == 0)
+    {
+        bio = new CRAMBlockIO(4096);
+    } else
+    if (strncmp(backend, "file", 255) == 0)
+    {
+        fprintf(stderr, "Error: Backend 'file' not supported\n");
+        return EXIT_FAILURE;
+    } else
+    if (strncmp(backend, "cvfsserver", 255) == 0)
+    {
+        bio = new CNetBlockIO(4096, hostname, port);
+    } else
+    {
+        fprintf(stderr, "Error: Backend '%s' not found\n", backend);
+        return EXIT_FAILURE;
+    }
+
+    CEncrypt enc(*bio);
+    CCacheIO cbio(*bio, enc);
     SimpleFilesystem fs(cbio);
 
     if (info)

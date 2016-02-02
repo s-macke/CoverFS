@@ -1,28 +1,38 @@
 #include "CBlockIO.h"
+#include <string.h>
 
 CAbstractBlockIO::CAbstractBlockIO(int _blocksize) : blocksize(_blocksize) {}
 
 // -----------------------------------------------------------------
 
 
-CBlockIO::CBlockIO(int _blocksize) : CAbstractBlockIO(_blocksize)
+CRAMBlockIO::CRAMBlockIO(int _blocksize) : CAbstractBlockIO(_blocksize)
 {
-    filesize = 1024*1024*100;
-    data.assign(filesize, 0xFF);
+    data.assign(blocksize*3, 0xFF);
 }
 
-size_t CBlockIO::GetFilesize()
+size_t CRAMBlockIO::GetFilesize()
 {
-    return filesize;
+    return data.size();
 }
 
-void CBlockIO::Read(const int blockidx, int8_t *d)
+void CRAMBlockIO::Read(const int blockidx, const int n, int8_t *d)
 {
-    for(unsigned int i=0; i<blocksize; i++) d[i]  = data[blockidx*blocksize+i];
+    uint64_t newsize = (blockidx+n)*blocksize;
+    if (newsize > data.size())
+    {
+        data.resize((newsize*3)/2, 0xFF);
+    }
+    memcpy(d, &data[blockidx*blocksize], n*blocksize);
 }
 
-void CBlockIO::Write(const int blockidx, int8_t* d)
+void CRAMBlockIO::Write(const int blockidx, const int n, int8_t* d)
 {
-    for(unsigned int i=0; i<blocksize; i++) data[blockidx*blocksize+i] = d[i];
+    uint64_t newsize = (blockidx+n)*blocksize;
+    if (newsize > data.size())
+    {
+        data.resize((newsize*3)/2, 0xFF);
+    }
+    memcpy(&data[blockidx*blocksize], d, n*blocksize);
 }
 

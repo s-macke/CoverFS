@@ -22,16 +22,15 @@ public:
 };
 
 
-class CBlockIO : public CAbstractBlockIO
+class CRAMBlockIO : public CAbstractBlockIO
 {
 public:
-    CBlockIO(int _blocksize);
-    void Read(const int blockidx, int8_t* d);
-    void Write(const int blockidx, int8_t* d);
+    CRAMBlockIO(int _blocksize);
+    void Read(const int blockidx, const int n, int8_t* d);
+    void Write(const int blockidx, const int n, int8_t* d);
     size_t GetFilesize();
 
 private:
-    size_t filesize;
     std::vector<int8_t> data;
 };
 
