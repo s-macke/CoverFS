@@ -25,7 +25,7 @@ public:
 
     int64_t Read(int8_t *d, int64_t ofs, int64_t size);
     void Write(const int8_t *d, int64_t ofs, int64_t size);
-    void Truncate(int64_t size, bool dozero);
+    void Truncate(int64_t size, bool dozero=true);
     void Remove();
     void Print();
 

@@ -668,13 +668,15 @@ void SimpleFilesystem::PrintFS()
 		s.insert(id);
 	}
     }
-    printf("  number of inodes: %li\n", s.size());
-    printf("  stored bytes: %li\n", size);
-    printf("  container usage: %f %%\n", (double)size/(double)bio.GetFilesize()*100.);
+    printf("number of inodes: %li\n", s.size());
+    printf("stored bytes: %li\n", size);
+    printf("container usage: %f %%\n", (double)size/(double)bio.GetFilesize()*100.);
 
     // very very slow
     SortIDs();
-    //int frags[5] = {0};
+    printf("Fragmentation:\n");
+
+    int frags[8] = {0};
     for(auto f : s) 
     {
         int nfragments = 0;
@@ -682,13 +684,27 @@ void SimpleFilesystem::PrintFS()
         {
             if (fragments[i].id == f) nfragments++;
         }
-        printf("id=%4i fragments=%4i\n", f, nfragments);
-/*
-        if (fragments > 4) nfragments = 4;
-        assert(nfragnents != 0);
-        frags[nfragments]++;
-*/
+        int idx = 0;
+        if (nfragments > 20) idx = 7; else
+        if (nfragments > 10) idx = 6; else
+        if (nfragments > 5) idx = 5; else
+        if (nfragments > 4) idx = 4; else
+        if (nfragments > 3) idx = 3; else
+        if (nfragments > 2) idx = 2; else
+        if (nfragments > 1) idx = 1; else
+        if (nfragments > 0) idx = 0;
+        frags[idx]++;
     }
+
+    printf("  inodes with 1   fragment : %4i\n", frags[0]);
+    printf("  inodes with 2   fragments: %4i\n", frags[1]);
+    printf("  inodes with 3   fragments: %4i\n", frags[2]);
+    printf("  inodes with 4   fragments: %4i\n", frags[3]);
+    printf("  inodes with 5   fragments: %4i\n", frags[4]);
+    printf("  inodes with >5  fragments: %4i\n", frags[5]);
+    printf("  inodes with >10 fragments: %4i\n", frags[6]);
+    printf("  inodes with >20 fragments: %4i\n", frags[7]);
+
 }
 
 // -----------
