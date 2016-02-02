@@ -1,12 +1,12 @@
 CPP = g++
 
 #for Linux
-CFLAGS = -std=c++11 -Wall -g -D_FILE_OFFSET_BITS=64
+CFLAGS = -std=c++11 -Wall -O2 -D_FILE_OFFSET_BITS=64
 LFLAGS = -lfuse -lgcrypt -lboost_system -lssl -lcrypto -lpthread
 OBJS = main.o CBlockIO.o CSimpleFS.o CEncrypt.o CNetBlockIO.o CCacheIO.o CDirectory.o fuseoper.o INode.o
 
 # for windows
-#CFLAGS = -std=gnu++11 -Wall -g -D_FILE_OFFSET_BITS=64 -Iresources/dokan/include
+#CFLAGS = -std=gnu++11 -Wall -O2 -D_FILE_OFFSET_BITS=64 -Iresources/dokan/include
 #LFLAGS = -lgcrypt -lboost_system -lssl -lcrypto -lpthread resources/dokan/dokan.dll
 #OBJS = main.o CBlockIO.o CSimpleFS.o CEncrypt.o CNetBlockIO.o CCacheIO.o CDirectory.o dokanoper.o INode.o
 

@@ -101,7 +101,8 @@ CNetBlockIO::CNetBlockIO(int _blocksize, const std::string &host, const std::str
     int8_t data[8];
     int len = GetNextPacket(s, data);
     assert(len == 8);
-    filesize = ((int64_t*)&data[0])[0];
+    //filesize = *((int64_t*)data);
+    memcpy(&filesize, data, 8); // to prevent the aliasing warning
 }
 
 size_t CNetBlockIO::GetFilesize()

@@ -338,7 +338,7 @@ CExtFragmentDesc SimpleFilesystem::GetNextFreeFragment(INODE &node, int64_t maxs
     //printf("  found next free fragment: storeidx=%i\n", ebe.storeidx);
 
     // now search for a big hole
-    int idx1, idx2;
+    int idx1=0, idx2=0;
     for(unsigned int i=0; i<ofssort.size(); i++)
     {
         idx1 = ofssort[i+0];

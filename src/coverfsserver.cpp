@@ -38,7 +38,7 @@ void ParseCommand(char *commandbuf, ssl_socket &sock)
     {
     case COMMAND::read:
         {
-            printf("READ ofs=%li size=%li (block: %li)\n", cmd->offset, cmd->length, cmd->offset/4096);
+            //printf("READ ofs=%li size=%li (block: %li)\n", cmd->offset, cmd->length, cmd->offset/4096);
             fseek(fp, cmd->offset, SEEK_SET);
             int8_t *data = new int8_t[cmd->length+4];
             fread(&data[4], cmd->length, 1, fp);
@@ -48,14 +48,14 @@ void ParseCommand(char *commandbuf, ssl_socket &sock)
             break;
         }
     case COMMAND::write:
-        printf("WRITE ofs=%li size=%li (block: %li)\n", cmd->offset, cmd->length, cmd->offset/4096);
+        //printf("WRITE ofs=%li size=%li (block: %li)\n", cmd->offset, cmd->length, cmd->offset/4096);
         fseek(fp, cmd->offset, SEEK_SET);                        
         fwrite(&cmd->data, cmd->length, 1, fp);
         break;
 
     case COMMAND::size:
         {
-            printf("SIZE\n");
+            //printf("SIZE\n");
             fseek(fp, 0L, SEEK_END);
             filesize = ftell(fp);
             fseek(fp, 0L, SEEK_SET);
@@ -67,7 +67,6 @@ void ParseCommand(char *commandbuf, ssl_socket &sock)
         }
 
     default:
-        printf("UNKNOWN COMMANBD\n");
         fprintf(stderr, "ignore received command %i\n", cmd->cmd);
     }
 
@@ -82,7 +81,8 @@ void ParseStream(char *data, int length, ssl_socket &sock)
     {
         commandbuf[commandbuflen++] = data[i];
         if (commandbuflen < 4) continue;
-        int32_t len = ((int32_t*)commandbuf)[0];
+        int32_t len=0;
+        memcpy(&len, commandbuf, 4); // to prevent the aliasing warning
         if (len <= commandbuflen)
         {
             //printf("received command with len=%i\n", len);
