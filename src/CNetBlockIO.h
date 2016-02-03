@@ -12,6 +12,8 @@ typedef ssl::stream<tcp::socket> ssl_socket;
 
 #include <mutex>
 
+class CWriteRingBuffer;
+
 class CNetBlockIO : public CAbstractBlockIO
 {
 public:
@@ -23,10 +25,10 @@ public:
 private:
     boost::asio::io_service io_service;
     ssl::context ctx;
-    boost::asio::ssl::stream<boost::asio::ip::tcp::socket> s;
+    ssl_socket s;
     size_t filesize;
     std::mutex mtx;
+    CWriteRingBuffer *writerb;
 };
-
 
 #endif

@@ -3,12 +3,12 @@ CPP = g++
 #for Linux
 CFLAGS = -std=c++11 -Wall -O2 -D_FILE_OFFSET_BITS=64
 LFLAGS = -lfuse -lgcrypt -lboost_system -lssl -lcrypto -lpthread
-OBJS = main.o CBlockIO.o CSimpleFS.o CEncrypt.o CNetBlockIO.o CCacheIO.o CDirectory.o fuseoper.o INode.o
+OBJS = main.o CBlockIO.o CSimpleFS.o CEncrypt.o CNetBlockIO.o CCacheIO.o CDirectory.o fuseoper.o INode.o CWriteRingBuffer.o
 
 # for windows
 #CFLAGS = -std=gnu++11 -Wall -O2 -D_FILE_OFFSET_BITS=64 -Iresources/dokan/include
 #LFLAGS = -lgcrypt -lboost_system -lssl -lcrypto -lpthread resources/dokan/dokan.dll
-#OBJS = main.o CBlockIO.o CSimpleFS.o CEncrypt.o CNetBlockIO.o CCacheIO.o CDirectory.o dokanoper.o INode.o
+#OBJS = main.o CBlockIO.o CSimpleFS.o CEncrypt.o CNetBlockIO.o CCacheIO.o CDirectory.o dokanoper.o INode.o CWriteRingBuffer.o
 
 .PHONY: clean check
 
@@ -41,6 +41,9 @@ CSimpleFS.o: src/CSimpleFS.h src/CSimpleFS.cpp
 
 INode.o: src/INode.h src/INode.cpp
 	$(CPP) $(CFLAGS) -c src/INode.cpp
+
+CWriteRingBuffer.o: src/CWriteRingBuffer.h src/CWriteRingBuffer.cpp
+	$(CPP) $(CFLAGS) -c src/CWriteRingBuffer.cpp
 
 fuseoper.o: src/fuseoper.cpp
 	$(CPP) $(CFLAGS) -c src/fuseoper.cpp

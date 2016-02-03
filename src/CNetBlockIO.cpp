@@ -1,4 +1,5 @@
 #include"CNetBlockIO.h"
+#include"CWriteRingBuffer.h"
 
 #include<iostream>
 
@@ -67,7 +68,8 @@ bool verify_certificate(bool preverified, boost::asio::ssl::verify_context& ctx)
 }
 
 
-CNetBlockIO::CNetBlockIO(int _blocksize, const std::string &host, const std::string &port) : CAbstractBlockIO(_blocksize), ctx(io_service, ssl::context::sslv23), s(io_service, ctx)
+CNetBlockIO::CNetBlockIO(int _blocksize, const std::string &host, const std::string &port)
+: CAbstractBlockIO(_blocksize), ctx(io_service, ssl::context::sslv23), s(io_service, ctx)
 {
     filesize = 0;
     ctx.set_verify_mode(boost::asio::ssl::context::verify_peer);
@@ -103,6 +105,8 @@ CNetBlockIO::CNetBlockIO(int _blocksize, const std::string &host, const std::str
     assert(len == 8);
     //filesize = *((int64_t*)data);
     memcpy(&filesize, data, 8); // to prevent the aliasing warning
+
+    writerb = new CWriteRingBuffer(s);
 }
 
 size_t CNetBlockIO::GetFilesize()
@@ -119,7 +123,8 @@ void CNetBlockIO::Read(const int blockidx, const int n, int8_t *d)
     cmd.length = blocksize*n;
     mtx.lock();
     //printf("read block %i\n", blockidx);
-    boost::asio::write(s, boost::asio::buffer(&cmd, cmd.cmdlen));
+    //boost::asio::write(s, boost::asio::buffer(&cmd, cmd.cmdlen));
+    writerb->Push((int8_t*)&cmd, cmd.cmdlen);
     int len = GetNextPacket(s, d);
     mtx.unlock();
     assert(len == (int32_t)blocksize*n);
@@ -135,7 +140,8 @@ void CNetBlockIO::Write(const int blockidx, const int n, int8_t* d)
     cmd->length = blocksize*n;
     memcpy(&buf[3*8], d, blocksize);
     mtx.lock();
-    boost::asio::write(s, boost::asio::buffer(buf, blocksize+3*8));
+    //boost::asio::write(s, boost::asio::buffer(buf, blocksize+3*8));
+    writerb->Push(buf, blocksize+3*8);
     mtx.unlock();
 }
 
