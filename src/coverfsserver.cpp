@@ -207,7 +207,8 @@ int main(int argc, char *argv[])
             fprintf(stderr, "Error: Cannot create file\n");
             return 1;
         }
-        ftruncate(fileno(fp), 4096*3);
+        char data[4096*3] = {0};
+        fwrite(data, sizeof(data), 1, fp);        
         fclose(fp);
         fp = fopen(filename, "r+b");
         if (fp == NULL)
