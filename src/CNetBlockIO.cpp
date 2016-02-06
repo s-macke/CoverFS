@@ -17,9 +17,9 @@ typedef struct
 } COMMANDSTRUCT;
 
 
-int GetNextPacket(ssl_socket &sock, int8_t *d)
+int GetNextPacket(ssl_socket &sock, int8_t *d, int32_t dsize)
 {
-    static int8_t data[8192];
+    static int8_t data[4096*8];
     static uint32_t dataofs = 0;
     static size_t datalength = 0;
 
@@ -31,19 +31,21 @@ int GetNextPacket(ssl_socket &sock, int8_t *d)
         if (dataofs == datalength)
         {
             boost::system::error_code error;
-            datalength = sock.read_some(boost::asio::buffer(data, 8192), error);
+            datalength = sock.read_some(boost::asio::buffer(data, 4096*8), error);
             if (error) break;
             dataofs = 0;
+            //printf("read_some ready %i\n", datalength);
         }
-
         d[packetlen++] = data[dataofs++];
         if (len == packetlen) return len;
 
-        if ((len == -1) && (packetlen >= 4)) 
+        if ((len == -1) && (packetlen >= 4))
         {
-                len = ((int32_t*)d)[0] - 4;
-                packetlen = 0;
-                assert(len > 0);
+            len = ((int32_t*)d)[0] - 4;
+            packetlen = 0;
+            assert(len > 0);
+            if (len != dsize) printf("len=%i maxsize=%i\n", len, dsize);
+            assert(len <= dsize);
         }
     }
     return 0;
@@ -71,7 +73,6 @@ bool verify_certificate(bool preverified, boost::asio::ssl::verify_context& ctx)
 CNetBlockIO::CNetBlockIO(int _blocksize, const std::string &host, const std::string &port)
 : CAbstractBlockIO(_blocksize), ctx(io_service, ssl::context::sslv23), s(io_service, ctx)
 {
-    filesize = 0;
     ctx.set_verify_mode(boost::asio::ssl::context::verify_peer);
     ctx.load_verify_file("ssl/server.crt");
 
@@ -96,21 +97,23 @@ CNetBlockIO::CNetBlockIO(int _blocksize, const std::string &host, const std::str
     }
     s.handshake(boost::asio::ssl::stream_base::client);
 
-    COMMANDSTRUCT cmd;
-    cmd.cmdlen = 8;
-    cmd.cmd = SIZE;
-    boost::asio::write(s, boost::asio::buffer(&cmd, cmd.cmdlen));
-    int8_t data[8];
-    int len = GetNextPacket(s, data);
-    assert(len == 8);
-    //filesize = *((int64_t*)data);
-    memcpy(&filesize, data, 8); // to prevent the aliasing warning
-
     writerb = new CWriteRingBuffer(s);
 }
 
 size_t CNetBlockIO::GetFilesize()
 {
+    size_t filesize;
+    COMMANDSTRUCT cmd;
+    int8_t data[8];
+    cmd.cmdlen = 8;
+    cmd.cmd = SIZE;
+    mtx.lock();
+    writerb->Push((int8_t*)&cmd, cmd.cmdlen);
+    int len = GetNextPacket(s, data, 8);
+    mtx.unlock();
+    assert(len == 8);
+    memcpy(&filesize, data, sizeof(filesize)); // to prevent the aliasing warning
+
     return filesize;
 }
 
@@ -122,10 +125,8 @@ void CNetBlockIO::Read(const int blockidx, const int n, int8_t *d)
     cmd.offset = blockidx*blocksize;
     cmd.length = blocksize*n;
     mtx.lock();
-    //printf("read block %i\n", blockidx);
-    //boost::asio::write(s, boost::asio::buffer(&cmd, cmd.cmdlen));
     writerb->Push((int8_t*)&cmd, cmd.cmdlen);
-    int len = GetNextPacket(s, d);
+    int len = GetNextPacket(s, d, cmd.length);
     mtx.unlock();
     assert(len == (int32_t)blocksize*n);
 }
@@ -140,7 +141,6 @@ void CNetBlockIO::Write(const int blockidx, const int n, int8_t* d)
     cmd->length = blocksize*n;
     memcpy(&buf[3*8], d, blocksize);
     mtx.lock();
-    //boost::asio::write(s, boost::asio::buffer(buf, blocksize+3*8));
     writerb->Push(buf, blocksize+3*8);
     mtx.unlock();
 }

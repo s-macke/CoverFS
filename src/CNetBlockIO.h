@@ -26,7 +26,6 @@ private:
     boost::asio::io_service io_service;
     ssl::context ctx;
     ssl_socket s;
-    size_t filesize;
     std::mutex mtx;
     CWriteRingBuffer *writerb;
 };

@@ -18,7 +18,7 @@ void CWriteRingBuffer::Execute(CWriteRingBuffer *object)
         cond.wait_for(lock, std::chrono::milliseconds(500));
         unsigned int size = object->size.load();
         //if (size > 0) printf("write size=%i\n", size);
-        while(size >= 10)
+        while(size > 0)
         {
             int sendsize = std::min(bufsize-object->popidx, size);
             boost::asio::write(object->socket, boost::asio::buffer(&(object->buf[object->popidx]), sendsize));
@@ -34,8 +34,8 @@ void CWriteRingBuffer::Execute(CWriteRingBuffer *object)
 void CWriteRingBuffer::Push(int8_t *d, int n)
 {
     std::unique_lock<std::mutex> lock(pushblockcondmtx);
+    std::lock_guard<std::mutex> lockguard(pushmtx);
     //printf("Push %i bytes\n", n);
-
     for(int i=0; i<n; i++)
     {
         buf[pushidx] = d[i];

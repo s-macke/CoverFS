@@ -31,6 +31,7 @@ class CWriteRingBuffer
     std::mutex condmtx;
     std::condition_variable pushblockcond;
     std::mutex pushblockcondmtx;
+    std::mutex pushmtx;
     std::thread thread;
 };
 
