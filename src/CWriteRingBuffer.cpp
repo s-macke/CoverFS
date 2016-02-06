@@ -15,7 +15,7 @@ void CWriteRingBuffer::Execute(CWriteRingBuffer *object)
     unsigned int bufsize = object->buf.size();
     while(1)
     {
-        cond.wait_for(lock, std::chrono::milliseconds(500));
+        if (size == 0) cond.wait_for(lock, std::chrono::milliseconds(500));
         unsigned int size = object->size.load();
         //if (size > 0) printf("write size=%i\n", size);
         while(size > 0)
@@ -27,13 +27,13 @@ void CWriteRingBuffer::Execute(CWriteRingBuffer *object)
             object->size.fetch_sub(sendsize);
             if (object->popidx >= bufsize) object->popidx -= bufsize;
         }
-        pushblockcond.notify_one();
+        cond.notify_one();
     }
 }
 
 void CWriteRingBuffer::Push(int8_t *d, int n)
 {
-    std::unique_lock<std::mutex> lock(pushblockcondmtx);
+    std::unique_lock<std::mutex> lock(condmtx);
     std::lock_guard<std::mutex> lockguard(pushmtx);
     //printf("Push %i bytes\n", n);
     for(int i=0; i<n; i++)
@@ -50,7 +50,7 @@ void CWriteRingBuffer::Push(int8_t *d, int n)
             cond.notify_one();
             while(size.load() > buf.size()-2)
             {
-                pushblockcond.wait_for(lock, std::chrono::milliseconds(500));
+                cond.wait_for(lock, std::chrono::milliseconds(500));
             }
         }
     }
