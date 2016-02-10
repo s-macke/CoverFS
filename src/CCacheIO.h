@@ -60,6 +60,7 @@ private:
     CAbstractBlockIO &bio;
     CEncrypt &enc;
     std::map<int, CBLOCKPTR> cache;
+    std::mutex cachemtx;
 };
 
 #endif
