@@ -80,8 +80,8 @@ void SimpleFilesystem::CreateFS()
     CBLOCKPTR superblock = bio.GetBlock(1);
     int8_t* buf = superblock->GetBuf();
     strncpy((char*)buf, "CoverFS", 8);
-    superblock->ReleaseBuf();
     superblock->Dirty();
+    superblock->ReleaseBuf();
     bio.Sync();
 
     unsigned int nfragmentblocks = 5;
@@ -131,12 +131,13 @@ void SimpleFilesystem::CreateFS()
     }
 
     CDirectory dir = OpenDir("/");
-    dir.CreateDirectory("mydir");        
+    dir.CreateDirectory("mydir");
 
     dir.CreateFile("hello");
     INODEPTR node = OpenNode("hello");
     const char *s = "Hello world\n";
     node->Write((int8_t*)s, 0, strlen(s));
+
     printf("Filesystem created\n");
     printf("==================\n");
 }
@@ -147,8 +148,8 @@ void SimpleFilesystem::StoreFragment(int idx)
     CBLOCKPTR block = fragmentblocks[idx/nidsperblock];
     int8_t* buf = block->GetBuf();
     ((CFragmentDesc*)buf)[idx%nidsperblock] = fragments[idx];
-    block->ReleaseBuf();
     block->Dirty();
+    block->ReleaseBuf();
 }
 
 INODEPTR SimpleFilesystem::OpenNode(int id)
@@ -404,6 +405,7 @@ void SimpleFilesystem::Truncate(INODE &node, int64_t size, bool dozero)
 
     assert(node.id != INVALIDID);
     std::lock_guard<std::recursive_mutex> lock(node.GetMutex());
+    std::lock_guard<std::mutex> lock2(truncatemtx);
     if (size == node.size) return;
 
     if (size > node.size)
@@ -518,8 +520,8 @@ void SimpleFilesystem::ZeroFragment(int64_t ofs, int64_t size)
         ofs += bsize;
         dofs += bsize;
         size -= bsize;
-        block->ReleaseBuf();
         block->Dirty();
+        block->ReleaseBuf();
     }
     bio.Sync();
 }
@@ -551,8 +553,8 @@ void SimpleFilesystem::WriteFragment(int64_t ofs, const int8_t *d, int64_t size)
         ofs += bsize;
         dofs += bsize;
         size -= bsize;
-        block->ReleaseBuf();
         block->Dirty();    
+        block->ReleaseBuf();
     }
     bio.Sync();
 }
@@ -567,12 +569,15 @@ void SimpleFilesystem::ReadFragment(int64_t ofs, int8_t *d, int64_t size)
     int firstblock = ofs/bio.blocksize;
     int lastblock = (ofs+size-1)/bio.blocksize;
 
-    bio.CacheBlocks(firstblock, lastblock-firstblock+1);
+    //bio.CacheBlocks(firstblock, lastblock-firstblock+1);
 
     int64_t dofs = 0;
     for(int64_t j=firstblock; j<=lastblock; j++)
     {
+        //printf("GetBlock %i\n", j);
+
         block = bio.GetBlock(j);
+        //printf("GetBuf %i\n", j);
         buf = block->GetBuf();
         int bsize = bio.blocksize - (ofs%bio.blocksize);
         bsize = std::min((int64_t)bsize, size);
@@ -704,7 +709,6 @@ void SimpleFilesystem::PrintFS()
     printf("  inodes with >5  fragments: %4i\n", frags[5]);
     printf("  inodes with >10 fragments: %4i\n", frags[6]);
     printf("  inodes with >20 fragments: %4i\n", frags[7]);
-
 }
 
 // -----------

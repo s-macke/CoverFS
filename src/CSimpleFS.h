@@ -100,6 +100,7 @@ private:
     CCacheIO &bio;
 
     std::mutex inodetablemtx;
+    std::mutex truncatemtx;
     std::vector<CBLOCKPTR> fragmentblocks;
     std::vector<CFragmentDesc> fragments;
     std::vector<int> ofssort;
