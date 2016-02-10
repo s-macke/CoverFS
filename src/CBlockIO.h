@@ -3,6 +3,7 @@
 
 #include<vector>
 #include<memory>
+#include<mutex>
 #include<stdint.h>
 #include<stdlib.h>
 
@@ -32,6 +33,7 @@ public:
 
 private:
     std::vector<int8_t> data;
+    std::mutex mutex;
 };
 
 #endif
