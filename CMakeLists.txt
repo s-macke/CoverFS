@@ -49,9 +49,11 @@ include_directories(${Boost_INCLUDE_DIRS})
 
 add_executable(coverfsserver src/coverfsserver.cpp)
 add_executable(coverfs ${CPP_FILES})
+add_executable(checkfragment tests/checkfragment.cpp)
 
 target_link_libraries (coverfs ${Boost_SYSTEM_LIBRARY_RELEASE} Threads::Threads ssl crypto gcrypt ${FUSE_LIB})
 target_link_libraries (coverfsserver ${Boost_SYSTEM_LIBRARY_RELEASE} Threads::Threads ssl crypto)
+target_link_libraries (checkfragment Threads::Threads)
 
 
 add_custom_target(dist
