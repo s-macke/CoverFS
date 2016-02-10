@@ -154,6 +154,8 @@ void SimpleFilesystem::StoreFragment(int idx)
 
 INODEPTR SimpleFilesystem::OpenNode(int id)
 {
+    std::lock_guard<std::mutex> lock(inodescachemtx);
+
     auto it = inodes.find(id);
     if (it != inodes.end())
     {
@@ -246,6 +248,7 @@ INODEPTR SimpleFilesystem::OpenNode(const std::vector<std::string> splitpath)
     }
 
     node = OpenNode(e.id);
+    std::lock_guard<std::recursive_mutex> lock(node->GetMutex());
     node->parentid = dirid;
     node->type = (INODETYPE)e.type; // static cast?
     if (splitpath.empty()) 
@@ -569,7 +572,7 @@ void SimpleFilesystem::ReadFragment(int64_t ofs, int8_t *d, int64_t size)
     int firstblock = ofs/bio.blocksize;
     int lastblock = (ofs+size-1)/bio.blocksize;
 
-    //bio.CacheBlocks(firstblock, lastblock-firstblock+1);
+    bio.CacheBlocks(firstblock, lastblock-firstblock+1);
 
     int64_t dofs = 0;
     for(int64_t j=firstblock; j<=lastblock; j++)

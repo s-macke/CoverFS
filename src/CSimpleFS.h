@@ -101,6 +101,7 @@ private:
 
     std::mutex inodetablemtx;
     std::mutex truncatemtx;
+    std::mutex inodescachemtx;
     std::vector<CBLOCKPTR> fragmentblocks;
     std::vector<CFragmentDesc> fragments;
     std::vector<int> ofssort;
