@@ -7,26 +7,30 @@ This program offers an encrypted container, which can be accessed remotely.
 
 Features
    * The data is stored in a single file (container) database
-   * File access based on FUSE (file system in user space) 
    * Client side zero-knowledge encryption (CBC AES block encryption, PBKDF2 password hashing)
+   * Secure SSL connection
    * Windows and Linux support
+   * File access based on FUSE (Linux) or Dokan (Windows) (file system in user space) 
    * Several backends for block filesystem
      - remote storage (needs a program which runs on the server)
      - local file
      - RAM
    * In-memory encrypted data caching
-   * Random access
+   * Asynchronous reading and writing for maximum performance
+   * Full filesystem layout is loaded in the beginning to limit read and write access afterwards
+   * Random access of files
    * Automatic growing container (but no shrinking yet)
-   * Secure SSL connection
    * No local storage of files
 
 Limits
-   * At the moment very slow connection (no streaming)
+   * Filesystem still unstable
+   * At the moment slow connection
    * Only one user at a time
-   * This is V1.0. The filesystem might break, no check disk tool available yet
-   * No change of password after creation yet
-   * Fragmentation of filesystem
-   * No good testing environment yet
+   * No check disk tool available yet
+   * No XTS block encryption yet
+   * No change of password allowed after creation yet
+   * Background job for automatic defragmentation missing
+   * Several Posix features like dates are missing
 
 Build CoverFS
 =============
@@ -40,17 +44,18 @@ Dependencies:
    * make build system
    * cygwin build environment under Windows
 
-Type `make` to build the binaries.
+
+Create a build directory and run `cmake path/to/repository` to build the binaries or build directly in the repository by running `cmake .`. Afterwards run `make` to compile.
+
 
 Run CoverFS
 ===========
 
 On the server run `./coverfsserver [port]` where [port] is the port the server should listen to.
-On the client run `./coverfs [mountpoint]` where [mountpoint] folder which will contain the content of the filesystem.
-Type `--help` for more options.
+On the client run `./coverfs --host [host] [mountpoint]` where [mountpoint] folder which will contain the content of the filesystem and [host] is the name of the host where coverfsserver is executed.
+Type `--help` for more options. The standard port is 62000.
 
-The first time you run `coverfs` you are asked for a password for the new filesystem. 
-The filesystem is stored in the file `cfscontainer` on the server.
+The first time you run `coverfs` you are asked for a password for the new filesystem. The filesystem is stored in the file `cfscontainer` on the server.
 
 Optional but highly recommened:
 
@@ -74,9 +79,9 @@ Overall container layout:
 
 The tables contain a list of descriptors which define the content of certain fragments in the container.
 ```
-| inode id |  size  | block ofs in container | 
-|----------|--------|------------------------|
-| 4 byte   | 4 byte | 8 byte                 |
+| inode id |  size  | ofs in container | 
+|----------|--------|------------------|
+| 4 byte   | 4 byte | 8 byte           |
 ```
 
 So each descriptor can define the content up to a size of 4 GB.
@@ -88,8 +93,6 @@ The "basic layout table" contains only the descriptors of one fixed id (=-2) whi
    * inode id = -2 contains the layout tables of the whole filesystem
    * inode id = -3 defines the super block
    * inode id = -4 defines an invalid or unknown id like the parent dir of the root directory
-
-The id of the parent must always be either invalid (unknown) and point to a directory structure
 
 
 FAQ
