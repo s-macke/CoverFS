@@ -3,6 +3,7 @@
 
 #include "CBlockIO.h"
 
+#include <thread>
 #include <boost/asio.hpp>
 #include <boost/asio/ssl.hpp>
 
@@ -27,6 +28,7 @@ private:
     ssl::context ctx;
     ssl_socket s;
     std::mutex mtx;
+    std::thread iothread;
     CWriteRingBuffer *writerb;
 };
 

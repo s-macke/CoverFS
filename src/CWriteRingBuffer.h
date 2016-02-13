@@ -17,20 +17,23 @@ class CWriteRingBuffer
 {
     public:
     CWriteRingBuffer(ssl_socket &s);
-    void Execute(CWriteRingBuffer *object);
     void Push(int8_t *d, int n);
+    void AsyncWrite();
 
     ssl_socket &socket;
 
     std::vector<int8_t> buf;
     unsigned int pushidx;
     unsigned int popidx;
-    std::atomic_uint size;
+    std::atomic_uint bufsize;
 
     std::condition_variable cond;
     std::mutex condmtx;
+
+    std::atomic_flag write_in_progress = ATOMIC_FLAG_INIT;
+    std::mutex wpmutex;
+
     std::mutex pushmtx;
-    std::thread thread;
 };
 
 #endif

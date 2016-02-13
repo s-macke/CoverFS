@@ -34,7 +34,6 @@ int GetNextPacket(ssl_socket &sock, int8_t *d, int32_t dsize)
             datalength = sock.read_some(boost::asio::buffer(data, 4096*8), error);
             if (error) break;
             dataofs = 0;
-            //printf("read_some ready %i\n", datalength);
         }
         d[packetlen++] = data[dataofs++];
         if (len == packetlen) return len;
@@ -44,7 +43,6 @@ int GetNextPacket(ssl_socket &sock, int8_t *d, int32_t dsize)
             len = ((int32_t*)d)[0] - 4;
             packetlen = 0;
             assert(len > 0);
-            if (len != dsize) printf("len=%i maxsize=%i\n", len, dsize);
             assert(len <= dsize);
         }
     }
@@ -89,6 +87,7 @@ CNetBlockIO::CNetBlockIO(int _blocksize, const std::string &host, const std::str
         exit(1);
     }
     printf("Connect to %s\n", host.c_str());
+
     boost::asio::connect(s.lowest_layer(), iter, ec);
     if (ec)
     {
@@ -96,8 +95,12 @@ CNetBlockIO::CNetBlockIO(int _blocksize, const std::string &host, const std::str
         exit(1);
     }
     s.handshake(boost::asio::ssl::stream_base::client);
-
     writerb = new CWriteRingBuffer(s);
+
+    iothread = std::thread([&](){
+        boost::asio::io_service::work work(io_service);
+        io_service.run();
+    });
 }
 
 size_t CNetBlockIO::GetFilesize()
@@ -125,8 +128,9 @@ void CNetBlockIO::Read(const int blockidx, const int n, int8_t *d)
     cmd.offset = blockidx*blocksize;
     cmd.length = blocksize*n;
     mtx.lock();
+    //printf("read block %i\n", blockidx);
     writerb->Push((int8_t*)&cmd, cmd.cmdlen);
-    int len = GetNextPacket(s, d, cmd.length);
+    int len = GetNextPacket(s, d, blocksize*n);
     mtx.unlock();
     assert(len == (int32_t)blocksize*n);
 }
