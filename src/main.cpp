@@ -29,7 +29,8 @@ void PrintUsage(int argc, char *argv[])
     printf("                      default: 'cvfsserver'\n");
     printf("  --host [hostname]   default: 'localhost'\n");
     printf("  --port [port]       default: '62000'\n");
-    printf("  --info              Print information about filesystem fragments\n");
+    printf("  --info              Prints information about filesystem\n");
+    printf("  --fragments         Prints information about the fragments\n");
     printf("  --rootdir           Print root directory\n");
     printf("  --check             Check filesystem\n");
 }
@@ -45,6 +46,7 @@ int main(int argc, char *argv[])
     char backend[256];
     bool check = false;
     bool info = false;
+    bool showfragments = false;
     bool rootdir = false;
 
     strncpy(hostname,   "localhost", 255);
@@ -59,14 +61,15 @@ int main(int argc, char *argv[])
     }
 
     static struct option long_options[] = {
-            {"help",    no_argument,       0,  0 },
-            {"port",    required_argument, 0,  0 },
-            {"host",    required_argument, 0,  0 },
-            {"info",    no_argument,       0,  0 },
-            {"rootdir", no_argument,       0,  0 },
-            {"check",   no_argument,       0,  0 },
-            {"backend", required_argument, 0,  0 },
-            {0,         0,                 0,  0 }
+            {"help",      no_argument,       0,  0 },
+            {"port",      required_argument, 0,  0 },
+            {"host",      required_argument, 0,  0 },
+            {"info",      no_argument,       0,  0 },
+            {"fragments", no_argument,       0,  0 },
+            {"rootdir",   no_argument,       0,  0 },
+            {"check",     no_argument,       0,  0 },
+            {"backend",   required_argument, 0,  0 },
+            {0,           0,                 0,  0 }
         };
 
     while(1)
@@ -92,14 +95,18 @@ int main(int argc, char *argv[])
                     break;
 
                 case 4:
-                    rootdir = true;
+                    showfragments = true;
                     break;
 
                 case 5:
-                    check = true;
+                    rootdir = true;
                     break;
 
                 case 6:
+                    check = true;
+                    break;
+
+                case 7:
                     strncpy(backend, optarg, 255);
                     for (char *p=backend ; *p; ++p) *p = tolower(*p);
                     break;
@@ -119,7 +126,7 @@ int main(int argc, char *argv[])
         }
     }
 
-    if ((!check) && (!info) && (!rootdir))
+    if ((!check) && (!info) && (!showfragments) && (!rootdir))
     {
         if (optind < argc)
         {
@@ -161,6 +168,13 @@ int main(int argc, char *argv[])
         printf("==============================\n");
         fs.PrintFS();
     }
+    if (showfragments)
+    {
+        printf("==============================\n");
+        printf("========= FRAGMENTS ==========\n");
+        printf("==============================\n");
+        fs.PrintFragments();
+    }
     if (rootdir)
     {
         CDirectory dir = fs.OpenDir("/");
@@ -174,7 +188,7 @@ int main(int argc, char *argv[])
         fs.CheckFS();
     }
 
-if ((info) || (check) || (rootdir))
+if ((info) || (showfragments) || (check) || (rootdir))
 {
     return EXIT_SUCCESS;
 }

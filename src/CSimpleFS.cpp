@@ -294,6 +294,29 @@ INODEPTR SimpleFilesystem::OpenFile(const std::vector<std::string> splitpath)
     return node;
 }
 
+void SimpleFilesystem::GetRecursiveDirectories(std::map<int32_t, std::string> &direntries, int id, const std::string &path)
+{
+    std::string newpath;
+    CDirectory dir = OpenDir(id);
+    dir.ForEachEntry([&](DIRENTRY &de)
+    {
+        if ((INODETYPE)de.type == INODETYPE::free) return FOREACHENTRYRET::OK;
+        //printf("id=%6i: '%s/%s'\n", de.id, path.c_str(), de.name);
+        auto it = direntries.find(de.id);
+        if (it != direntries.end())
+        {
+            printf("Warning: Found two directory entries with the same id id=%i\n", de.id);
+        }
+        direntries[de.id] = path + "/" + de.name;
+        if ((INODETYPE)de.type == INODETYPE::dir)
+        {
+            newpath = path + "/" + de.name;
+            GetRecursiveDirectories(direntries, de.id, newpath);
+        }
+        return FOREACHENTRYRET::OK;
+    });
+}
+
 void SimpleFilesystem::CheckFS()
 {
     // check for overlap
@@ -316,6 +339,9 @@ void SimpleFilesystem::CheckFS()
             exit(1);
         }
     }
+    printf("Receive List of all directories\n");
+    std::map<int32_t, std::string> direntries;
+    GetRecursiveDirectories(direntries, 0, "");
 }
 
 CExtFragmentDesc SimpleFilesystem::GetNextFreeFragment(INODE &node, int64_t maxsize)
@@ -652,9 +678,11 @@ void SimpleFilesystem::Write(INODE &node, const int8_t *d, int64_t ofs, int64_t 
     bio.Sync();
 }
 
-void SimpleFilesystem::PrintFS()
+void SimpleFilesystem::PrintFragments()
 {
-    SortOffsets();
+    printf("Receive List of all directories\n");
+    std::map<int32_t, std::string> direntries;
+    GetRecursiveDirectories(direntries, 0, "");
 
     printf("Fragment List:\n");
     for(unsigned int i=0; i<ofssort.size(); i++)
@@ -662,8 +690,16 @@ void SimpleFilesystem::PrintFS()
         //int idx1 = ofssort[i];
         int idx1 = i;
         if (fragments[idx1].id == FREEID) continue;
-        printf("  fragment %4i id=%4i with ofsblock=%li size=%u\n", idx1, fragments[idx1].id, fragments[idx1].ofs, fragments[idx1].size);
+        printf("frag=%4i id=%4i ofs=%7li size=%10u '%s'\n", idx1, fragments[idx1].id, fragments[idx1].ofs, fragments[idx1].size, direntries[fragments[idx1].id].c_str());
     }
+
+
+}
+
+
+void SimpleFilesystem::PrintFS()
+{
+    SortOffsets();
 
     std::set<int32_t> s;
     int64_t size=0;
