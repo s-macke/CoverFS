@@ -19,10 +19,9 @@ extern "C" {
 #undef CreateFile
 
 static SimpleFilesystem *fs;
+static uint64_t handleid = 1;
 
 // -----------------------------------------------
-//#include <codecvt>
-//#include <locale>
 
 #include <boost/locale/encoding_utf.hpp>
 using boost::locale::conv::utf_to_utf;
@@ -60,14 +59,14 @@ NTSTATUS errno_to_nstatus(int err)
 // -----------------------------------------------
 
 static NTSTATUS DOKAN_CALLBACK
-MirrorCreateFile(LPCWSTR FileName, PDOKAN_IO_SECURITY_CONTEXT SecurityContext,
+Dokan_CreateFile(LPCWSTR FileName, PDOKAN_IO_SECURITY_CONTEXT SecurityContext,
 ACCESS_MASK DesiredAccess, ULONG FileAttributes,
 ULONG ShareAccess, ULONG CreateDisposition,
 ULONG CreateOptions, PDOKAN_FILE_INFO DokanFileInfo)
 {
     std::string path = wstring_to_utf8(FileName);
 
-    printf("\nCreateFile '%s' ", path.c_str());
+    printf("\nCreateFile '%s' (new handle id %lu) ", path.c_str(), handleid);
 
     if (path == "") return STATUS_OBJECT_NAME_NOT_FOUND;
     
@@ -128,17 +127,16 @@ ULONG CreateOptions, PDOKAN_FILE_INFO DokanFileInfo)
     {
         if (CreateDisposition == FILE_CREATE || CreateDisposition == FILE_OPEN_IF) 
         {			
-            printf("command: create directory\n");
+            //printf("command: create directory\n");
             
             std::vector<std::string> splitpath;
             splitpath = SplitPath(path);
-            
             
             if (splitpath.size() == 0)
             {
                 SetLastError(ERROR_ALREADY_EXISTS);
                 DokanFileInfo->IsDirectory = TRUE;
-                DokanFileInfo->Context = 0;
+                DokanFileInfo->Context = handleid++;
                 return STATUS_SUCCESS;
             }
             //assert(splitpath.size() >= 1);
@@ -148,7 +146,8 @@ ULONG CreateOptions, PDOKAN_FILE_INFO DokanFileInfo)
             try
             {
                 CDirectory dir = fs->OpenDir(splitpath);				
-                DokanFileInfo->Context = dir.CreateDirectory(filename);
+                dir.CreateDirectory(filename);
+                DokanFileInfo->Context = handleid++;
                 DokanFileInfo->IsDirectory = TRUE;
             } catch(const int &err) // or file already exist?
             {
@@ -161,11 +160,11 @@ ULONG CreateOptions, PDOKAN_FILE_INFO DokanFileInfo)
         {
             DokanFileInfo->IsDirectory = TRUE;
             
-            printf("command: open directory\n");
+            //printf("command: open directory\n");
             try
             {
                 INODEPTR node = fs->OpenNode(path.c_str());
-                DokanFileInfo->Context = node->id;
+                DokanFileInfo->Context = handleid++;                
             } catch(const int &err)
             {
                 return errno_to_nstatus(err);
@@ -176,7 +175,7 @@ ULONG CreateOptions, PDOKAN_FILE_INFO DokanFileInfo)
 
     if (CreateDisposition == FILE_CREATE || CreateDisposition == FILE_OPEN_IF) 
     {
-        printf("command: create file\n");
+        //printf("command: create file\n");
         
         std::vector<std::string> splitpath;
         splitpath = SplitPath(path);
@@ -186,7 +185,9 @@ ULONG CreateOptions, PDOKAN_FILE_INFO DokanFileInfo)
         try
         {
             CDirectory dir = fs->OpenDir(splitpath);
-            DokanFileInfo->Context = dir.CreateFile(filename);
+            dir.CreateFile(filename);
+            DokanFileInfo->Context = handleid++;
+
         } catch(const int &err) // or file already exist?
         {
             return errno_to_nstatus(err);
@@ -197,12 +198,12 @@ ULONG CreateOptions, PDOKAN_FILE_INFO DokanFileInfo)
         //return errno_to_ntstatus_error(impl->create_directory(FileName, DokanFileInfo));
     } else
     if (CreateDisposition == FILE_OPEN) 
-    {			
-        printf("command: open file\n");
+    {
+        //printf("command: open file\n");
         try
         {
             INODEPTR node = fs->OpenNode(path.c_str());
-            DokanFileInfo->Context = node->id;
+            DokanFileInfo->Context = handleid++;;
         } catch(const int &err)
         {
             return errno_to_nstatus(err);
@@ -215,12 +216,12 @@ ULONG CreateOptions, PDOKAN_FILE_INFO DokanFileInfo)
 
 // -----------------------------------------------
 
-static NTSTATUS DOKAN_CALLBACK MirrorGetFileInformation(
+static NTSTATUS DOKAN_CALLBACK Dokan_GetFileInformation(
 LPCWSTR FileName, LPBY_HANDLE_FILE_INFORMATION HandleFileInformation,
 PDOKAN_FILE_INFO DokanFileInfo) 
 {
     std::string path = wstring_to_utf8(FileName);
-    printf("GetFileInformation '%s'\n", path.c_str());
+    printf("GetFileInformation '%s' of handle %lli\n", path.c_str(), DokanFileInfo->Context);
 
     //memset(HandleFileInformation, 0, sizeof(struct BY_HANDLE_FILE_INFORMATION));	
     try
@@ -254,7 +255,7 @@ PDOKAN_FILE_INFO DokanFileInfo)
     return STATUS_SUCCESS;
 }
 
-static NTSTATUS DOKAN_CALLBACK MirrorSetFileAttributes(
+static NTSTATUS DOKAN_CALLBACK Dokan_SetFileAttributes(
 LPCWSTR FileName, DWORD FileAttributes, PDOKAN_FILE_INFO DokanFileInfo)
 {
     std::string path = wstring_to_utf8(FileName);
@@ -263,7 +264,7 @@ LPCWSTR FileName, DWORD FileAttributes, PDOKAN_FILE_INFO DokanFileInfo)
 }
 
 /*
-static NTSTATUS DOKAN_CALLBACK MirrorGetFileSecurity(
+static NTSTATUS DOKAN_CALLBACK Dokan_GetFileSecurity(
     LPCWSTR FileName, PSECURITY_INFORMATION SecurityInformation,
     PSECURITY_DESCRIPTOR SecurityDescriptor, ULONG BufferLength,
     PULONG LengthNeeded, PDOKAN_FILE_INFO DokanFileInfo)
@@ -275,7 +276,7 @@ static NTSTATUS DOKAN_CALLBACK MirrorGetFileSecurity(
 
 
 NTSTATUS DOKAN_CALLBACK
-MirrorFindStreams(LPCWSTR FileName, PFillFindStreamData FillFindStreamData,
+Dokan_FindStreams(LPCWSTR FileName, PFillFindStreamData FillFindStreamData,
                 PDOKAN_FILE_INFO DokanFileInfo)
 {
     std::string path = wstring_to_utf8(FileName);
@@ -286,12 +287,12 @@ MirrorFindStreams(LPCWSTR FileName, PFillFindStreamData FillFindStreamData,
 
 // -----------------------------------------------
 
-static NTSTATUS DOKAN_CALLBACK MirrorSetEndOfFile(
+static NTSTATUS DOKAN_CALLBACK Dokan_SetEndOfFile(
     LPCWSTR FileName, LONGLONG ByteOffset, PDOKAN_FILE_INFO DokanFileInfo)
 {
     std::string path = wstring_to_utf8(FileName);
     printf("SetEndOfFile '%s' size=%lli\n", path.c_str(), ByteOffset);   
-    
+
     try
     {
         INODEPTR node = fs->OpenFile(path);
@@ -300,13 +301,13 @@ static NTSTATUS DOKAN_CALLBACK MirrorSetEndOfFile(
     {
         return errno_to_nstatus(err);
     }    
-    
+
     return STATUS_SUCCESS;
 }
 
 // -----------------------------------------------
 
-static NTSTATUS DOKAN_CALLBACK MirrorReadFile(LPCWSTR FileName, LPVOID Buffer,
+static NTSTATUS DOKAN_CALLBACK Dokan_ReadFile(LPCWSTR FileName, LPVOID Buffer,
 DWORD BufferLength,
 LPDWORD ReadLength,
 LONGLONG Offset,
@@ -326,7 +327,7 @@ PDOKAN_FILE_INFO DokanFileInfo)
     return STATUS_SUCCESS;
 }
 
-static NTSTATUS DOKAN_CALLBACK MirrorWriteFile(LPCWSTR FileName, LPCVOID Buffer,
+static NTSTATUS DOKAN_CALLBACK Dokan_WriteFile(LPCWSTR FileName, LPCVOID Buffer,
 DWORD NumberOfBytesToWrite,
 LPDWORD NumberOfBytesWritten,
 LONGLONG Offset,
@@ -348,7 +349,7 @@ PDOKAN_FILE_INFO DokanFileInfo)
 
 
 static NTSTATUS DOKAN_CALLBACK
-MirrorFindFiles(LPCWSTR FileName,
+Dokan_FindFiles(LPCWSTR FileName,
 PFillFindData FillFindData, // function pointer
 PDOKAN_FILE_INFO DokanFileInfo) 
 {
@@ -393,7 +394,7 @@ PDOKAN_FILE_INFO DokanFileInfo)
 // -----------------------------------------------
 
 static NTSTATUS DOKAN_CALLBACK
-MirrorMoveFile(LPCWSTR FileName, // existing file name
+Dokan_MoveFile(LPCWSTR FileName, // existing file name
 LPCWSTR NewFileName, BOOL ReplaceIfExisting,
 PDOKAN_FILE_INFO DokanFileInfo)
 {
@@ -457,24 +458,44 @@ PDOKAN_FILE_INFO DokanFileInfo)
     return STATUS_SUCCESS;
 }
 
-
 // -----------------------------------------------
 
-static void DOKAN_CALLBACK MirrorCloseFile(LPCWSTR FileName,
+static void DOKAN_CALLBACK Dokan_CloseFile(LPCWSTR FileName,
 PDOKAN_FILE_INFO DokanFileInfo) 
 {
-    printf("CloseFile '%s'\n", wstring_to_utf8(FileName).c_str());
+    std::string path = wstring_to_utf8(FileName);
+    printf("CloseFile '%s' of handle %lli\n", path.c_str(), DokanFileInfo->Context);
+    if (DokanFileInfo->Context)
+    {
+        DokanFileInfo->Context = 0;
+    }
 }
 
-static void DOKAN_CALLBACK MirrorCleanup(LPCWSTR FileName,
+static void DOKAN_CALLBACK Dokan_Cleanup(LPCWSTR FileName,
 PDOKAN_FILE_INFO DokanFileInfo)
 {
-    printf("Cleanup '%s'\n", wstring_to_utf8(FileName).c_str());
+    std::string path = wstring_to_utf8(FileName);
+    printf("Cleanup '%s' of handle %lli\n", path.c_str(), DokanFileInfo->Context);
+
+    if (DokanFileInfo->Context == 0) return;
+    DokanFileInfo->Context = 0;
+    
+    if (!DokanFileInfo->DeleteOnClose) return;
+    printf("remove file\n");
+    try
+    {
+        INODEPTR node = fs->OpenNode(path);
+        node->Remove();
+    } catch(const int &err)
+    {
+        printf("Cannot remove file\n");
+        return;
+    }    
 }
 
 // -----------------------------------------------
 
-static NTSTATUS DOKAN_CALLBACK MirrorGetVolumeInformation(
+static NTSTATUS DOKAN_CALLBACK Dokan_GetVolumeInformation(
 LPWSTR VolumeNameBuffer, DWORD VolumeNameSize, LPDWORD VolumeSerialNumber,
 LPDWORD MaximumComponentLength, LPDWORD FileSystemFlags,
 LPWSTR FileSystemNameBuffer, DWORD FileSystemNameSize,
@@ -498,7 +519,7 @@ PDOKAN_FILE_INFO DokanFileInfo)
     return STATUS_SUCCESS;
 }
 /*
-static NTSTATUS DOKAN_CALLBACK MirrorLockFile(LPCWSTR FileName,
+static NTSTATUS DOKAN_CALLBACK Dokan_LockFile(LPCWSTR FileName,
                                             LONGLONG ByteOffset,
                                             LONGLONG Length,
                                             PDOKAN_FILE_INFO DokanFileInfo) 
@@ -509,7 +530,7 @@ static NTSTATUS DOKAN_CALLBACK MirrorLockFile(LPCWSTR FileName,
 */
 // -----------------------------------------------
 
-static NTSTATUS DOKAN_CALLBACK MirrorMounted(PDOKAN_FILE_INFO DokanFileInfo) 
+static NTSTATUS DOKAN_CALLBACK Dokan_Mounted(PDOKAN_FILE_INFO DokanFileInfo) 
 {
     UNREFERENCED_PARAMETER(DokanFileInfo);
 
@@ -517,7 +538,7 @@ static NTSTATUS DOKAN_CALLBACK MirrorMounted(PDOKAN_FILE_INFO DokanFileInfo)
     return STATUS_SUCCESS;
 }
 
-static NTSTATUS DOKAN_CALLBACK MirrorUnmounted(PDOKAN_FILE_INFO DokanFileInfo)
+static NTSTATUS DOKAN_CALLBACK Dokan_Unmounted(PDOKAN_FILE_INFO DokanFileInfo)
 {
     UNREFERENCED_PARAMETER(DokanFileInfo);
 
@@ -536,8 +557,8 @@ int StartDokan(int argc, char *argv[], const char* mountpoint, SimpleFilesystem 
     
     dokanOptions.Version = DOKAN_VERSION;
     dokanOptions.ThreadCount = 1; // use default = 0 is default
-    dokanOptions.Options |= DOKAN_OPTION_DEBUG;
-    dokanOptions.Options |= DOKAN_OPTION_STDERR;
+    //dokanOptions.Options |= DOKAN_OPTION_DEBUG;
+    //dokanOptions.Options |= DOKAN_OPTION_STDERR;
     //dokanOptions.Options |= DOKAN_OPTION_ALT_STREAM;
     
     //dokanOptions.Options |= DOKAN_OPTION_NETWORK;
@@ -549,23 +570,23 @@ int StartDokan(int argc, char *argv[], const char* mountpoint, SimpleFilesystem 
     auto mp = utf8_to_wstring(mountpoint);
     dokanOptions.MountPoint = mp.data();
     
-    dokanOperations.ZwCreateFile         = MirrorCreateFile;
-    dokanOperations.GetFileInformation   = MirrorGetFileInformation;
-    dokanOperations.SetFileAttributes    = MirrorSetFileAttributes;;
-    dokanOperations.SetEndOfFile         = MirrorSetEndOfFile;
-    dokanOperations.ReadFile             = MirrorReadFile;
-    dokanOperations.WriteFile            = MirrorWriteFile;
-    dokanOperations.CloseFile            = MirrorCloseFile;
-    dokanOperations.Cleanup              = MirrorCleanup;
-    dokanOperations.Mounted              = MirrorMounted;
-    dokanOperations.Unmounted            = MirrorUnmounted;
-    dokanOperations.GetVolumeInformation = MirrorGetVolumeInformation;
-    dokanOperations.FindFiles            = MirrorFindFiles;
-    dokanOperations.MoveFile             = MirrorMoveFile;
+    dokanOperations.ZwCreateFile         = Dokan_CreateFile;
+    dokanOperations.GetFileInformation   = Dokan_GetFileInformation;
+    dokanOperations.SetFileAttributes    = Dokan_SetFileAttributes;;
+    dokanOperations.SetEndOfFile         = Dokan_SetEndOfFile;
+    dokanOperations.ReadFile             = Dokan_ReadFile;
+    dokanOperations.WriteFile            = Dokan_WriteFile;
+    dokanOperations.CloseFile            = Dokan_CloseFile;
+    dokanOperations.Cleanup              = Dokan_Cleanup;
+    dokanOperations.Mounted              = Dokan_Mounted;
+    dokanOperations.Unmounted            = Dokan_Unmounted;
+    dokanOperations.GetVolumeInformation = Dokan_GetVolumeInformation;
+    dokanOperations.FindFiles            = Dokan_FindFiles;
+    dokanOperations.MoveFile             = Dokan_MoveFile;
     dokanOperations.GetDiskFreeSpace     = NULL;
-    //dokanOperations.FindStreams        = MirrorFindStreams;
-    //dokanOperations.GetFileSecurity    = MirrorGetFileSecurity;
-    //dokanOperations.LockFile           = MirrorLockFile;
+    //dokanOperations.FindStreams        = Dokan_FindStreams;
+    //dokanOperations.GetFileSecurity    = Dokan_GetFileSecurity;
+    //dokanOperations.LockFile           = Dokan_LockFile;
     dokanOperations.FindFilesWithPattern = NULL;
     
     
