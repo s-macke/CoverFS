@@ -18,6 +18,12 @@ TODO:
 
 // -------------------------------------------------------------
 
+typedef struct
+{
+    char magic[8];
+    int32_t version;
+} SUPER;
+
 SimpleFilesystem::SimpleFilesystem(CCacheIO &_bio) : bio(_bio), nodeinvalid(new INODE(*this))
 {
     nodeinvalid->id = INVALIDID;
@@ -31,10 +37,10 @@ SimpleFilesystem::SimpleFilesystem(CCacheIO &_bio) : bio(_bio), nodeinvalid(new 
     printf("  blocksize: %i\n", bio.blocksize);
 
     CBLOCKPTR superblock = bio.GetBlock(1);
-    int8_t* buf = superblock->GetBuf();
-    if (strncmp((char*)buf, "CoverFS", 7) == 0)
+    SUPER* super = (SUPER*)superblock->GetBuf();
+    if (strncmp(super->magic, "CoverFS", 7) == 0)
     {
-        printf("superblock %s valid\n", buf);
+        printf("filesystem %s V%i.%i\n", super->magic, super->version>>16, super->version|0xFFFF);
         superblock->ReleaseBuf();
 
         unsigned int nfragmentblocks = 5;
@@ -78,8 +84,10 @@ void SimpleFilesystem::CreateFS()
     printf("  Write superblock\n");
 
     CBLOCKPTR superblock = bio.GetBlock(1);
-    int8_t* buf = superblock->GetBuf();
-    strncpy((char*)buf, "CoverFS", 8);
+    SUPER* super = (SUPER*)superblock->GetBuf();
+    memset(super, 0, sizeof(SUPER));
+    strncpy(super->magic, "CoverFS", 8);
+    super->version = (1<<16) | 0;
     superblock->Dirty();
     superblock->ReleaseBuf();
     bio.Sync();
