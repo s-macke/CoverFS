@@ -48,7 +48,6 @@ static int fuse_getattr(const char *path, struct stat *stbuf)
         return -err;
     }
 
-
     return 0;
 }
 
@@ -122,7 +121,7 @@ static int fuse_open(const char *path, struct fuse_file_info *fi)
     /*
         if ((fi->flags & 3) != O_RDONLY)
                 return -EACCES;
-*/
+    */
     return 0;
 }
 
@@ -284,23 +283,19 @@ static int fuse_statfs(const char *path, struct statvfs *buf)
 }
 
 
+
+
 int StartFuse(int argc, char *argv[], const char* mountpoint, SimpleFilesystem &_fs)
 {
+    fs = &_fs;
+
     struct fuse_args args = FUSE_ARGS_INIT(0, NULL);
 
-/*
-    for (int i=0; i<argc; i++) {
-        fuse_opt_add_arg(&args, argv[i]);
-    }
-*/
-
-    //fuse_opt_add_arg(&args, "-help");
     fuse_opt_add_arg(&args, "-odirect_io");
     fuse_opt_add_arg(&args, "-obig_writes");
+    fuse_opt_add_arg(&args, "-oasync_read");
     fuse_opt_add_arg(&args, "-f");
     fuse_opt_add_arg(&args, mountpoint);
-
-    fs = &_fs;
 
     struct fuse_operations fuse_oper;
     memset(&fuse_oper, 0, sizeof(struct fuse_operations));
@@ -321,9 +316,6 @@ int StartFuse(int argc, char *argv[], const char* mountpoint, SimpleFilesystem &
     fuse_oper.statfs      = fuse_statfs;
     fuse_oper.utimens     = fuse_utimens;
 
-#if !defined(_WIN32) && !defined(_WIN64) && !defined(__CYGWIN__)
-#endif
-    
     return fuse_main(args.argc, args.argv, &fuse_oper, NULL);
 }
 
