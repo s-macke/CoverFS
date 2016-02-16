@@ -2,13 +2,12 @@
 
 // -----------------------------------------------------------------
 
-CBlock::CBlock(CAbstractBlockIO &_bio, CEncrypt &_enc, int _blockidx, int8_t *_buf) : dirty(false), blockidx(_blockidx), bio(_bio), enc(_enc), buf(_buf) 
+CBlock::CBlock(CAbstractBlockIO &_bio, CEncrypt &_enc, int _blockidx, int8_t *_buf) : dirty(false), blockidx(_blockidx), bio(_bio), enc(_enc), buf(_buf), count(0)
 {
 }
 
 void CBlock::Dirty()
 {
-    // TODO: assert if mutex is locked. Cannot do, because std::mutex doesn't provide such a function 
     dirty = true;
 }
 
@@ -17,6 +16,7 @@ void CBlock::Dirty()
 int8_t* CBlock::GetBuf()
 {
     mutex.lock();
+    count++;
     enc.Decrypt(blockidx, buf);
     return buf;
 }

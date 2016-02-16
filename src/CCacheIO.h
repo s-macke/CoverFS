@@ -39,6 +39,7 @@ private:
     CAbstractBlockIO &bio;
     CEncrypt &enc;
     int8_t *buf;
+    uint32_t count;
 };
 
 using CBLOCKPTR = std::shared_ptr<CBlock>;
