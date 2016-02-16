@@ -228,6 +228,7 @@ PDOKAN_FILE_INFO DokanFileInfo)
     {
         INODEPTR node = fs->OpenNode(path.c_str());
         //printf("open succesful\n");
+        node->Lock();
         HandleFileInformation->nFileSizeLow = node->size&0xFFFFFFFF;
         HandleFileInformation->nFileSizeHigh = node->size >> 32;
         HandleFileInformation->nNumberOfLinks = 1;
@@ -246,7 +247,7 @@ PDOKAN_FILE_INFO DokanFileInfo)
         {
             HandleFileInformation->dwFileAttributes = FILE_ATTRIBUTE_NORMAL;                        
         }
-
+        node->Unlock()
     } catch(const int &err)
     {
         return errno_to_nstatus(err);
@@ -366,9 +367,9 @@ PDOKAN_FILE_INFO DokanFileInfo)
             WIN32_FIND_DATAW findData = {0};
             
             INODEPTR node = fs->OpenNode(de.id);
+            node->Lock();
             findData.nFileSizeHigh = node->size >> 32;
             findData.nFileSizeLow = node->size & 0xFFFFFFFF;
-            
             if ((INODETYPE)de.type == INODETYPE::dir)
             {
                 findData.dwFileAttributes = FILE_ATTRIBUTE_DIRECTORY | FILE_ATTRIBUTE_NOT_CONTENT_INDEXED;
@@ -376,6 +377,7 @@ PDOKAN_FILE_INFO DokanFileInfo)
             {
                 findData.dwFileAttributes = FILE_ATTRIBUTE_NORMAL;                        
             }
+            node->Unlock();
             std::wstring name = utf8_to_wstring(de.name);
             wcsncpy(findData.cFileName, name.data(), 96+32);						
             FillFindData(&findData, DokanFileInfo);

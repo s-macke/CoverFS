@@ -33,6 +33,7 @@ static int fuse_getattr(const char *path, struct stat *stbuf)
     try
     {
         INODEPTR node = fs->OpenNode(path);
+        node->Lock();
         stbuf->st_size = node->size;
         stbuf->st_blocks = node->size/512;
         stbuf->st_nlink = 1;
@@ -43,6 +44,8 @@ static int fuse_getattr(const char *path, struct stat *stbuf)
         {
             stbuf->st_mode = S_IFREG | 0666;
         }
+        node->Unlock();
+
     } catch(const int &err)
     {
         return -err;
