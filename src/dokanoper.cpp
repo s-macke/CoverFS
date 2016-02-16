@@ -247,7 +247,7 @@ PDOKAN_FILE_INFO DokanFileInfo)
         {
             HandleFileInformation->dwFileAttributes = FILE_ATTRIBUTE_NORMAL;                        
         }
-        node->Unlock()
+        node->Unlock();
     } catch(const int &err)
     {
         return errno_to_nstatus(err);
@@ -297,7 +297,8 @@ static NTSTATUS DOKAN_CALLBACK Dokan_SetEndOfFile(
     try
     {
         INODEPTR node = fs->OpenFile(path);
-        node->Truncate(ByteOffset, false);  // the content is undefined
+        node->Truncate(ByteOffset, false);  // the content is undefined according to spec
+        //node->Truncate(ByteOffset);
     } catch(const int &err)
     {
         return errno_to_nstatus(err);
@@ -558,7 +559,7 @@ int StartDokan(int argc, char *argv[], const char* mountpoint, SimpleFilesystem 
     DOKAN_OPTIONS dokanOptions = {0};
     
     dokanOptions.Version = DOKAN_VERSION;
-    dokanOptions.ThreadCount = 1; // use default = 0 is default
+    dokanOptions.ThreadCount = 0; // use default = 0 is default
     //dokanOptions.Options |= DOKAN_OPTION_DEBUG;
     //dokanOptions.Options |= DOKAN_OPTION_STDERR;
     //dokanOptions.Options |= DOKAN_OPTION_ALT_STREAM;
