@@ -31,15 +31,6 @@ class CFragmentDesc
     uint64_t ofs; // in blocks
 };
 
-// this stores addtionally the index where the entry is stored
-class CExtFragmentDesc
-{
-    public:
-    CExtFragmentDesc(int _storeidx, const CFragmentDesc &_be) : storeidx(_storeidx), be(_be) {};
-    int storeidx;
-    CFragmentDesc be;
-};
-
 // ----------------------------------------------------------
 
 class SimpleFilesystem
@@ -86,23 +77,23 @@ private:
     void WriteFragment(int64_t ofs, const int8_t *d, int64_t size);
     void ZeroFragment(int64_t ofs, const int64_t size);
 
-    void StoreFragment(int idx);
+    void GrowNode(INODE &node, int64_t size);
+    void ShrinkNode(INODE &node, int64_t size);
 
     int ReserveNewFragment();
-    CExtFragmentDesc GetNextFreeFragment(INODE &node, int64_t maxsize);
+    int ReserveNextFreeFragment(INODE &node, int64_t maxsize);
+    void FreeAllFragments(INODE &node);
+
+    void StoreFragment(int idx);
 
     void SortOffsets();
     void SortIDs();
 
-    void FreeAllFragments(INODE &node);
-
     int CreateNode(CDirectory &dir, const std::string &name, INODETYPE t);
-
 
     CCacheIO &bio;
 
-    std::mutex inodetablemtx;
-    std::mutex truncatemtx;
+    std::mutex fragmentsmtx;
     std::mutex inodescachemtx;
     std::vector<CBLOCKPTR> fragmentblocks;
     std::vector<CFragmentDesc> fragments;

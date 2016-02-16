@@ -9,14 +9,37 @@
 
 /*
 TODO:
+    - faster sorted offset list
+    - better locks in cache
     - readahead
     - remove should check for shared_ptr number of pointers
     - gcrypt mode is not xts?
     - ReleaseBuf on destroy???
-    - Cache checking
+    - limit Cache size
 */
 
 // -------------------------------------------------------------
+
+
+class CFragmentOverlap
+{
+    public:
+    CFragmentOverlap(int64_t _ofs=0, int64_t _size=0) : ofs(_ofs), size(_size) {}
+    int64_t ofs;
+    int64_t size;
+};
+
+bool FindIntersect(const CFragmentOverlap &a, const CFragmentOverlap &b, CFragmentOverlap &i)
+{
+    if (a.ofs > b.ofs) i.ofs = a.ofs; else i.ofs = b.ofs;
+    if (a.ofs+a.size > b.ofs+b.size) i.size = b.ofs+b.size-i.ofs; else i.size = a.ofs+a.size-i.ofs;
+    if (i.size <= 0) return false;
+    return true;
+}
+
+// -------------------------------------------------------------
+
+
 
 typedef struct
 {
@@ -183,7 +206,7 @@ INODEPTR SimpleFilesystem::OpenNode(int id)
     {
         node->type = INODETYPE::dir;
     }
-
+    fragmentsmtx.lock();
     for(unsigned int i=0; i<fragments.size(); i++)
     {
         if (fragments[i].id != id) continue;
@@ -191,6 +214,7 @@ INODEPTR SimpleFilesystem::OpenNode(int id)
         node->size += fragments[i].size;
         node->fragments.push_back(i);
     }
+    fragmentsmtx.unlock();
     assert(node->fragments.size() > 0);
     inodes[id] = node;
     //printf("Open File with id=%i blocks=%zu\n", id, node->blocks.size());
@@ -332,12 +356,12 @@ void SimpleFilesystem::CheckFS()
 
     printf("Check for overlap\n");
     int idx1, idx2;
-    for(unsigned int i=0; i<ofssort.size(); i++)
+    for(unsigned int i=0; i<ofssort.size()-1; i++)
     {
         idx1 = ofssort[i+0];
         idx2 = ofssort[i+1];
 
-        int nextofs = fragments[idx1].GetNextFreeOfs(bio.blocksize); 
+        int nextofs = fragments[idx1].GetNextFreeOfs(bio.blocksize);
         if (fragments[idx2].size == 0) break;
         if (fragments[idx2].id == FREEID) break;
         int64_t hole = (fragments[idx2].ofs  - nextofs)*bio.blocksize;
@@ -352,38 +376,36 @@ void SimpleFilesystem::CheckFS()
     GetRecursiveDirectories(direntries, 0, "");
 }
 
-CExtFragmentDesc SimpleFilesystem::GetNextFreeFragment(INODE &node, int64_t maxsize)
+int SimpleFilesystem::ReserveNextFreeFragment(INODE &node, int64_t maxsize)
 {
-    CExtFragmentDesc ebe(-1, CFragmentDesc(FREEID, 0, 0));
     assert(node.fragments.size() != 0);
 
     int lastidx = node.fragments.back();
 
-    std::lock_guard<std::mutex> lock(inodetablemtx);
+    //std::lock_guard<std::mutex> lock(fragmentsmtx); // locked elsewhere
 
-    // first find free id
-    ebe.storeidx = -1;
+    int storeidx = -1;
+    // first find a free id
     for(unsigned int i=lastidx+1; i<fragments.size(); i++)
     {
         if (fragments[i].id != FREEID) continue;
-        ebe.storeidx = i;
+        storeidx = i;
         break;
     }
-    assert(ebe.storeidx != -1); // TODO: change list size in this case
+    assert(storeidx != -1); // TODO: change list size in this case
 
-    ebe.be.id = node.id;
 
-    //printf("  found next free fragment: storeidx=%i\n", ebe.storeidx);
+    //printf("  found next free fragment: storeidx=%i\n", storeidx);
 
     // now search for a big hole
     int idx1=0, idx2=0;
-    for(unsigned int i=0; i<ofssort.size(); i++)
+    for(unsigned int i=0; i<ofssort.size()-1; i++)
     {
         idx1 = ofssort[i+0];
         idx2 = ofssort[i+1];
 
         //printf("  analyze fragment %i with ofsblock=%li size=%u of id=%i\n", idx1, fragments[idx1].ofs, fragments[idx1].size, fragments[idx1].id);
-        int nextofs = fragments[idx1].GetNextFreeOfs(bio.blocksize); 
+        int64_t nextofs = fragments[idx1].GetNextFreeOfs(bio.blocksize);
         if (fragments[idx2].size == 0) break;
         if (fragments[idx2].id == FREEID) break;
 
@@ -393,21 +415,23 @@ CExtFragmentDesc SimpleFilesystem::GetNextFreeFragment(INODE &node, int64_t maxs
         // prevent fragmentation
         if ((hole > 0x100000) || (hole > maxsize/4))
         {
-            ebe.be.size = hole;
-            ebe.be.ofs = nextofs;
-            return ebe;
+            fragments[storeidx].id = node.id;
+            fragments[storeidx].size = std::min<int64_t>({maxsize, hole, 0xFFFFFFFFL});
+            fragments[storeidx].ofs = nextofs;
+            return storeidx;
         }
     }
 
     // No hole found, so put it at the end
     //printf("no hole found\n");
-    ebe.be.size = 0xFFFFFFFF;
+    fragments[storeidx].id = node.id;
+    fragments[storeidx].size = std::min<int64_t>(maxsize, 0xFFFFFFFFL);
     if (fragments[idx1].size == 0)
-        ebe.be.ofs = fragments[idx1].ofs;
+        fragments[storeidx].ofs = fragments[idx1].ofs;
     else
-        ebe.be.ofs = fragments[idx1].ofs + (fragments[idx1].size-1)/bio.blocksize + 1;
-    //printf("new ofsblock %li\n", ebe.be.ofs);
-    return ebe;
+        fragments[storeidx].ofs = fragments[idx1].ofs + (fragments[idx1].size-1)/bio.blocksize + 1;
+
+    return storeidx;
 }
 
 void SimpleFilesystem::SortOffsets()
@@ -436,101 +460,107 @@ void SimpleFilesystem::SortIDs()
     });
 }
 
+void SimpleFilesystem::GrowNode(INODE &node, int64_t size)
+{
+    std::lock_guard<std::mutex> lock(fragmentsmtx);
+    while(node.size < size)
+    {
+        int storeidx = ReserveNextFreeFragment(node, size-node.size);
+        assert(node.fragments.back() != storeidx);
+        CFragmentDesc &fd = fragments[storeidx];
+
+        uint64_t nextofs = fragments[node.fragments.back()].GetNextFreeOfs(bio.blocksize);
+        if (fragments[node.fragments.back()].size == 0) // empty fragment can be overwritten
+        {
+            storeidx = node.fragments.back();
+            fragments[storeidx] = fd;
+            fd.id = FREEID;
+        } else
+        if (nextofs == fd.ofs) // merge
+        {
+            storeidx = node.fragments.back();
+
+            if (node.size+(int64_t)fd.size > 0xFFFFFFFFL)
+            {
+                exit(1);
+                // TODO: check for 4GB bouondary
+            }
+            fragments[storeidx].size += fd.size;
+            fd.id = FREEID;
+        } else
+        {
+            node.fragments.push_back(storeidx);
+        }
+
+        node.size += fd.size;
+        StoreFragment(storeidx);
+        SortOffsets();
+    }
+
+}
+
+
+void SimpleFilesystem::ShrinkNode(INODE &node, int64_t size)
+{
+    std::lock_guard<std::mutex> lock(fragmentsmtx); // not interfere with sorted offset list
+    while(node.size > 0)
+    {
+        int lastidx = node.fragments.back();
+        CFragmentDesc &r = fragments[lastidx];
+        node.size -= r.size;
+        r.size = std::max(size-node.size, 0L);
+        node.size += r.size;
+
+        if ((r.size == 0) && (node.size != 0)) // don't remove last element
+        {
+            r.id = FREEID;
+            StoreFragment(lastidx);
+            node.fragments.pop_back();
+        } else
+        {
+            StoreFragment(lastidx);
+            break;
+        }
+    }
+    SortOffsets();
+}
+
 void SimpleFilesystem::Truncate(INODE &node, int64_t size, bool dozero)
 {
     //printf("Truncate of id=%i to:%li from:%li\n", node.id, size, node.size);
-
-    assert(node.id != INVALIDID);
     std::lock_guard<std::recursive_mutex> lock(node.GetMutex());
-    std::lock_guard<std::mutex> lock2(truncatemtx);
+    assert(node.id != INVALIDID);
     if (size == node.size) return;
 
     if (size > node.size)
     {
-        while(node.size < size)
+        int64_t ofs = node.size;
+        GrowNode(node, size);
+        if (!dozero) return;
+
+        int64_t fragmentofs = 0x0;
+        for(unsigned int i=0; i<node.fragments.size(); i++)
         {
-            CExtFragmentDesc ebe = GetNextFreeFragment(node, size-node.size);
-            ebe.be.id = node.id;
-            ebe.be.size = std::min( size-node.size, (int64_t)ebe.be.size);
-            if (dozero)
-                ZeroFragment(ebe.be.ofs*bio.blocksize, ebe.be.size);
-            uint64_t nextofs = fragments[node.fragments.back()].GetNextFreeOfs(bio.blocksize);
-
-            if (fragments[node.fragments.back()].size == 0) // empty fragmentn can be overwritten
+            int idx = node.fragments[i];
+	    CFragmentOverlap intersect;
+            if (FindIntersect(CFragmentOverlap(fragmentofs, fragments[idx].size), CFragmentOverlap(ofs, size-ofs), intersect))
             {
-                ebe.storeidx = node.fragments.back();
-                fragments[ebe.storeidx] = ebe.be;
-            } else
-            if (nextofs == ebe.be.ofs) // merge
-            { // merge
-                ebe.storeidx = node.fragments.back();
-
-                if (dozero)
+                assert(intersect.ofs >= ofs);
+                assert(intersect.ofs >= fragmentofs);
                 ZeroFragment(
-                    fragments[ebe.storeidx].ofs*bio.blocksize+fragments[ebe.storeidx].size, 
-                    nextofs*bio.blocksize - (fragments[ebe.storeidx].ofs*bio.blocksize + fragments[ebe.storeidx].size)
-                );
-                if (node.size+(int64_t)ebe.be.size > 0xFFFFFFFF)
-                {
-                    exit(1);
-                    // TODO: check for 4GB bouondary
-                }
-                fragments[ebe.storeidx].size += ebe.be.size;
-            } else
-            {
-                fragments[ebe.storeidx] = ebe.be;
-                node.fragments.push_back(ebe.storeidx);
+                    fragments[idx].ofs*bio.blocksize + (intersect.ofs - fragmentofs),
+                    intersect.size);
             }
-            node.size += ebe.be.size;
-            StoreFragment(ebe.storeidx);
-            SortOffsets();
+            fragmentofs += fragments[idx].size;
         }
+
     } else
     if (size < node.size)
     {
-        while(node.size > 0)
-        {
-            int lastidx = node.fragments.back();
-            CFragmentDesc &r = fragments[lastidx];
-            node.size -= r.size;
-            r.size = std::max(size-node.size, 0L);
-            node.size += r.size;
-
-            if ((r.size == 0) && (node.size != 0)) // don't remove last element
-            {
-                r.id = FREEID;
-                StoreFragment(lastidx);
-                node.fragments.pop_back();
-            } else
-            {
-                StoreFragment(lastidx);
-                break;
-            }        
-        }
-        SortOffsets();
+        ShrinkNode(node, size);
     }
     bio.Sync();
 }
-
-// ------------
-
-class CFragmentOverlap
-{
-    public:
-    CFragmentOverlap(int64_t _ofs=0, int64_t _size=0) : ofs(_ofs), size(_size) {}
-    int64_t ofs;
-    int64_t size;
-};
-
-bool FindIntersect(const CFragmentOverlap &a, const CFragmentOverlap &b, CFragmentOverlap &i)
-{
-    if (a.ofs > b.ofs) i.ofs = a.ofs; else i.ofs = b.ofs;
-    if (a.ofs+a.size > b.ofs+b.size) i.size = b.ofs+b.size-i.ofs; else i.size = a.ofs+a.size-i.ofs;
-    if (i.size <= 0) return false;
-    return true;
-}
-
-// -----------
 
 void SimpleFilesystem::ZeroFragment(int64_t ofs, int64_t size)
 {
@@ -647,8 +677,8 @@ int64_t SimpleFilesystem::Read(INODE &node, int8_t *d, int64_t ofs, int64_t size
             assert(intersect.ofs >= ofs);
             assert(intersect.ofs >= fragmentofs);
             ReadFragment(
-                fragments[idx].ofs*bio.blocksize + (intersect.ofs - fragmentofs), 
-                &d[intersect.ofs-ofs], 
+                fragments[idx].ofs*bio.blocksize + (intersect.ofs - fragmentofs),
+                &d[intersect.ofs-ofs],
                 intersect.size);
             s += intersect.size;
         }
@@ -677,8 +707,8 @@ void SimpleFilesystem::Write(INODE &node, const int8_t *d, int64_t ofs, int64_t 
             assert(intersect.ofs >= ofs);
             assert(intersect.ofs >= fragmentofs);
             WriteFragment(
-                fragments[idx].ofs*bio.blocksize + (intersect.ofs - fragmentofs), 
-                &d[intersect.ofs-ofs], 
+                fragments[idx].ofs*bio.blocksize + (intersect.ofs - fragmentofs),
+                &d[intersect.ofs-ofs],
                 intersect.size);
         }
         fragmentofs += fragments[idx].size;
@@ -783,7 +813,7 @@ void SimpleFilesystem::Rename(INODEPTR &node, CDirectory &newdir, const std::str
 
 int SimpleFilesystem::ReserveNewFragment()
 {
-    std::lock_guard<std::mutex> lock(inodetablemtx);
+    std::lock_guard<std::mutex> lock(fragmentsmtx);
 
     int idmax = -1;
     for(unsigned int i=0; i<fragments.size(); i++)
@@ -798,10 +828,10 @@ int SimpleFilesystem::ReserveNewFragment()
         if (fragments[i].id != FREEID) continue;
         fragments[i] = CFragmentDesc(id, 0, 0);
         StoreFragment(i);
-        SortOffsets();
+        // SortOffsets(); // Sorting is not necessary, because a FREEID and ofs=0 are treated the same way
         return id;
     }
-    fprintf(stderr, "Error: No free blocks available\n");
+    fprintf(stderr, "Error: No free fragments available\n");
     exit(1);
     return id;
 }
@@ -839,6 +869,7 @@ int SimpleFilesystem::CreateDirectory(CDirectory &dir, const std::string &name)
 
 void SimpleFilesystem::FreeAllFragments(INODE &node)
 {
+    std::lock_guard<std::mutex> lock(fragmentsmtx);
     for(unsigned int i=0; i<node.fragments.size(); i++)
     {
         fragments[node.fragments[i]].id = FREEID;
@@ -866,6 +897,8 @@ void SimpleFilesystem::StatFS(struct statvfs *buf)
     buf->f_blocks  = bio.GetFilesize()/bio.blocksize;
     buf->f_namemax = 64+31;
     buf->f_bfree   = 0;
+
+    std::lock_guard<std::mutex> lock(fragmentsmtx);
 
     std::set<int32_t> s;
     for(unsigned int i=0; i<fragments.size(); i++)
