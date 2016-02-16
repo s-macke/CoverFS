@@ -22,8 +22,8 @@ typedef struct
 } FSTRUCT;
 
 FSTRUCT files[10];
-int niter = 2000;
-int nfiles = 10;
+unsigned int niter = 2000;
+unsigned int nfiles = 10;
 
 // ----------------------
 
@@ -42,7 +42,7 @@ void Execute(int tid)
     ssize_t retsize;
 
     //printf("thread %i:\n", tid);
-    for(int iter=0; iter<niter; iter++)
+    for(unsigned int iter=0; iter<niter; iter++)
     {
         int cmd = rand()%4;
         int id = rand()%10;
@@ -60,13 +60,14 @@ void Execute(int tid)
             newsize = rand() & MAXSIZE;
             printf("tid %1i %5i: Truncate %i size=%i\n", tid, iter, id, newsize);
             if (newsize > files[id].size)
+            if (newsize > files[id].size)
             {
                 memset(&(files[id].data[ files[id].size ]), 0, newsize-files[id].size);
             }
             files[id].size = newsize;
             if (ftruncate(files[id].fd, files[id].size) != 0)
             {
-                printf("Error during truncate\n");
+                perror("Error during truncate");
                 exit(1);
             }
              break;
@@ -77,7 +78,18 @@ void Execute(int tid)
             {
                 files[id].data[ofs+i] = rand();
             }
-            retsize = pwrite(files[id].fd, &(files[id].data[ofs]), newsize, ofs);
+
+            retsize = 0;
+            do
+            {
+                ssize_t ret = pwrite(files[id].fd, &(files[id].data[ofs+retsize]), newsize-retsize, ofs);
+                if (ret < 0)
+                {
+                    perror("Error during write");
+                    exit(1);
+                }
+                retsize += ret;
+            } while(retsize < newsize);
             assert(retsize == newsize);
             if (ofs+newsize > files[id].size) files[id].size = ofs+newsize;
             break;
@@ -86,12 +98,17 @@ void Execute(int tid)
             printf("tid %1i %5i: read %i ofs=%i size=%i\n", tid, iter, id, ofs, newsize);
             if (ofs+newsize > files[id].size) newsize = files[id].size - ofs - 1;
             if (newsize < 0) newsize = 0;
-            retsize = pread(files[id].fd, data, newsize, ofs);
-            if (retsize < 0)
+            retsize = 0;
+            do
             {
-                perror("Error: ");
-                exit(1);
-            }
+                ssize_t ret = pread(files[id].fd, &data[retsize], newsize-retsize, ofs);
+                if (ret < 0)
+                {
+                    perror("Error during read");
+                    exit(1);
+                }
+                retsize += ret;
+            } while(retsize < newsize);
             assert(retsize == newsize);
             for(int i=0; i<newsize; i++)
             {
@@ -132,10 +149,15 @@ int main(int argc, char *argv[])
     printf("number of iterations per thread: %i\n", niter);
     printf("number of files %i\n", nfiles);
 
-    for(unsigned int i=0; i<10; i++)
+    for(unsigned int i=0; i<nfiles; i++)
     {
         sprintf(files[i].filename, "tests%i.dat", i);
-        files[i].fd = open(files[i].filename, O_RDWR | O_CREAT | O_TRUNC);
+        files[i].fd = open(files[i].filename, O_RDWR | O_CREAT | O_TRUNC, S_IRWXU);
+        if (files[i].fd == -1)
+        {
+            perror("Error during open");
+            exit(1);
+        }
         files[i].size = 0;
         memset(files[i].data, 0, MAXSIZE+1);
     }
@@ -152,7 +174,7 @@ int main(int argc, char *argv[])
         t[i].join();
     }
 
-    for(int i=0; i<10; i++)
+    for(unsigned int i=0; i<nfiles; i++)
     {
         close(files[i].fd);
     }
