@@ -17,8 +17,8 @@ public:
 
 private:
     CAbstractBlockIO &bio;
-    gcry_cipher_hd_t hdblock;
-    std::mutex mtx;    
+    gcry_cipher_hd_t hdblock[4]; // for multi-threading support we need several cipher handles
+    std::mutex mutex[4];
 };
 
 

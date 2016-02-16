@@ -2,6 +2,7 @@
 #include <string.h>
 #include <gcrypt.h>
 #include <unistd.h>
+GCRY_THREAD_OPTION_PTHREAD_IMPL;
 
 #include "CEncrypt.h"
 
@@ -78,13 +79,13 @@ CEncrypt::CEncrypt(CAbstractBlockIO &_bio) : bio(_bio)
 {
     assert(sizeof(TEncHeader) == 4+8+4+32+(128+32+32+32+4)*4);
     assert(bio.blocksize >= 1024);
+    gpg_error_t ret;
 
+    ret = gcry_control (GCRYCTL_SET_THREAD_CBS, &gcry_threads_pthread);
     gcry_check_version (NULL);
-    assert(gcry_md_get_algo_dlen (GCRY_MD_CRC32) == 4);
+    gcry_control (GCRYCTL_INITIALIZATION_FINISHED, 0);
 
-    //printf("length %i\n", digest_length);
-    //gcry_error_t gcry_md_open (gcry_md_hd_t *hd, int algo, unsigned int flags)
-    //gcry_md_hash_buffer(GCRY_MD_MD5, digest, argv[1], strlen(argv[1]));
+    assert(gcry_md_get_algo_dlen (GCRY_MD_CRC32) == 4);
 
     int8_t block[bio.blocksize];
     bio.Read(0, 1, block);
@@ -104,7 +105,6 @@ CEncrypt::CEncrypt(CAbstractBlockIO &_bio) : bio(_bio)
     uint8_t passkey[32];
     PassToHash("Password: ", h->salt, passkey, h->user[0].hashreps); 
 
-    gpg_error_t ret;
     gcry_cipher_hd_t hd;
     ret =  gcry_cipher_open(&hd, GCRY_CIPHER_AES256, GCRY_CIPHER_MODE_ECB, 0);
     assert(ret == 0);
@@ -124,45 +124,65 @@ CEncrypt::CEncrypt(CAbstractBlockIO &_bio) : bio(_bio)
     assert(ret == 0);
     gcry_cipher_close(hd);
 
-    ret =  gcry_cipher_open(&hdblock, GCRY_CIPHER_AES256, GCRY_CIPHER_MODE_CBC, 0);
-    //ret =  gcry_cipher_open(&hdblock, GCRY_CIPHER_AES256, GCRY_CIPHER_MODE_CTR, 0);
-    assert(ret == 0);
-    ret = gcry_cipher_setkey(hdblock, key, 32);
-    assert(ret == 0);
+    for(int i=0; i<4; i++)
+    {
+        ret =  gcry_cipher_open(&hdblock[i], GCRY_CIPHER_AES256, GCRY_CIPHER_MODE_CBC, 0);
+        assert(ret == 0);
+        ret = gcry_cipher_setkey(hdblock[i], key, 32);
+        assert(ret == 0);
+    }
 
-    for(int i=0; i<32; i++) key[i] = 0x0;
+    memset(key, 0, 32);
+    memset(block, 0, bio.blocksize);
 }
 
 void CEncrypt::Decrypt(const int blockidx, int8_t *d)
 {
-    //return;
     //printf("Decrypt blockidx %i\n", blockidx);
     int32_t iv[4];
-    iv[0] = blockidx; iv[1] = 0; iv[2] = 0; iv[3] = 0;
-    std::lock_guard<std::mutex> lock(mtx);
-    
-    if (blockidx != 0)
+    iv[0] = blockidx; iv[1] = 0; iv[2] = 0; iv[3] = 0; // I know this is bad
+
+    if (blockidx == 0) return;
+
+    for(int i=0; i<4; i++)
     {
-        gcry_cipher_setiv (hdblock, iv, 16);
-        //gcry_cipher_setctr (hdblock, iv, 16);
-        gpg_error_t ret = gcry_cipher_decrypt(hdblock, d, bio.blocksize, NULL, 0);
+        if (!mutex[i].try_lock()) continue;
+        gcry_cipher_setiv (hdblock[i], iv, 16);
+        gpg_error_t ret = gcry_cipher_decrypt(hdblock[i], d, bio.blocksize, NULL, 0);
         assert(ret == 0);
+        mutex[i].unlock();
+        return;
     }
+
+    // all cipher handles are locked. Wait ...
+    mutex[0].lock();
+    gcry_cipher_setiv (hdblock[0], iv, 16);
+    gpg_error_t ret = gcry_cipher_decrypt(hdblock[0], d, bio.blocksize, NULL, 0);
+    assert(ret == 0);
+    mutex[0].unlock();
 }
 
 void CEncrypt::Encrypt(const int blockidx, int8_t* d)
 {
-    //return;
     //printf("Encrypt blockidx %i\n", blockidx);
     int32_t iv[4];
-    iv[0] = blockidx; iv[1] = 0; iv[2] = 0; iv[3] = 0;
-    std::lock_guard<std::mutex> lock(mtx);
+    iv[0] = blockidx; iv[1] = 0; iv[2] = 0; iv[3] = 0; // I know, this is bad
+    if (blockidx == 0) return;
 
-    if (blockidx != 0)
+    for(int i=0; i<4; i++)
     {
-        gcry_cipher_setiv (hdblock, iv, 16);
-        //gcry_cipher_setctr (hdblock, iv, 16);
-        gpg_error_t ret = gcry_cipher_encrypt(hdblock, d, bio.blocksize, 0, 0);
+        if (!mutex[i].try_lock()) continue;
+        gcry_cipher_setiv (hdblock[i], iv, 16);
+        gpg_error_t ret = gcry_cipher_encrypt(hdblock[i], d, bio.blocksize, 0, 0);
         assert(ret == 0);
+        mutex[i].unlock();
+        return;
     }
+
+    // all cipher handles are locked. Wait ...
+    mutex[1].lock();
+    gcry_cipher_setiv (hdblock[1], iv, 16);
+    gpg_error_t ret = gcry_cipher_encrypt(hdblock[1], d, bio.blocksize, 0, 0);
+    assert(ret == 0);
+    mutex[1].unlock();
 }
