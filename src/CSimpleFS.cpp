@@ -271,7 +271,6 @@ INODEPTR SimpleFilesystem::OpenNode(const std::vector<std::string> splitpath)
     {
         dirid = e.id;
         node = OpenNode(dirid);
-        std::lock_guard<std::recursive_mutex> lock(node->GetMutex()); // not the best solution
         CDirectory(node, *this).Find(splitpath[i], e);
         if (e.id == INVALIDID) 
         {
@@ -281,7 +280,7 @@ INODEPTR SimpleFilesystem::OpenNode(const std::vector<std::string> splitpath)
     }
 
     node = OpenNode(e.id);
-    std::lock_guard<std::recursive_mutex> lock(node->GetMutex());
+    std::lock_guard<std::mutex> lock(node->GetMutex());
     node->parentid = dirid;
     node->type = (INODETYPE)e.type; // static cast?
     if (splitpath.empty()) 
@@ -537,7 +536,6 @@ void SimpleFilesystem::ShrinkNode(INODE &node, int64_t size)
 void SimpleFilesystem::Truncate(INODE &node, int64_t size, bool dozero)
 {
     //printf("Truncate of id=%i to:%li from:%li\n", node.id, size, node.size);
-    std::lock_guard<std::recursive_mutex> lock(node.GetMutex());
     assert(node.id != INVALIDID);
     if (size == node.size) return;
 
@@ -674,7 +672,6 @@ int64_t SimpleFilesystem::Read(INODE &node, int8_t *d, int64_t ofs, int64_t size
 
     if (size == 0) return size;
 
-    std::lock_guard<std::recursive_mutex> lock(node.GetMutex());
     int64_t fragmentofs = 0x0;
     for(unsigned int i=0; i<node.fragments.size(); i++)
     {
@@ -702,7 +699,6 @@ void SimpleFilesystem::Write(INODE &node, const int8_t *d, int64_t ofs, int64_t 
     if (size == 0) return;
 
     //printf("write node.id=%i node.size=%li write_ofs=%li write_size=%li\n", node.id, node.size, ofs, size);
-    std::lock_guard<std::recursive_mutex> lock(node.GetMutex());
 
     if (node.size < ofs+size) Truncate(node, ofs+size, false);
     
@@ -803,9 +799,7 @@ void SimpleFilesystem::Rename(INODEPTR &node, CDirectory &newdir, const std::str
 {
     DIRENTRY e(filename);
     CDirectory olddir = OpenDir(node->parentid);
-    std::lock_guard<std::recursive_mutex> lock(olddir.dirnode->GetMutex());
-    olddir.Find(node->name, e);
-    olddir.RemoveEntry(node->name);
+    olddir.RemoveEntry(node->name, e);
     strncpy(e.name, filename.c_str(), 64+32);
     /*        
     // check if file already exist and remove it        
@@ -892,11 +886,11 @@ void SimpleFilesystem::FreeAllFragments(INODE &node)
 void SimpleFilesystem::Remove(INODE &node)
 {
     //maybe, we have to check the shared_ptr here
+    DIRENTRY e("");
     CDirectory dir = OpenDir(node.parentid);
-    std::lock_guard<std::recursive_mutex> lock(dir.dirnode->GetMutex());
     FreeAllFragments(node);
-    dir.RemoveEntry(node.name);
-    std::lock_guard<std::mutex> lock2(inodescachemtx);
+    dir.RemoveEntry(node.name, e);
+    std::lock_guard<std::mutex> lock(inodescachemtx);
     inodes.erase(node.id); // remove from map
 }
 

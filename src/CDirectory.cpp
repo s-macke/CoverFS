@@ -1,25 +1,29 @@
 #include "CDirectory.h"
 
 
-// CDirectory allows also invalid nodes, but they will fail if the methods are called
-
 CDirectory::CDirectory(INODEPTR node, SimpleFilesystem &_fs) : dirnode(node), fs(_fs) 
 {
     blocksize = fs.bio.blocksize;
+    std::lock_guard<std::mutex> lock(dirnode->GetMutex());
     if (node->type != INODETYPE::dir) throw ENOTDIR;
 }
 
-
 void CDirectory::ForEachEntry(std::function<FOREACHENTRYRET(DIRENTRY &de)> f)
 {
-    int8_t buf[blocksize];
-    std::lock_guard<std::recursive_mutex> lock(dirnode->GetMutex()); // that should be enough
+    std::lock_guard<std::mutex> lock(dirnode->GetMutex());
+    ForEachEntryNonBlocking(f);
+}
 
-    for(unsigned int i=0; i<dirnode->size/blocksize; i++)
+void CDirectory::ForEachEntryNonBlocking(std::function<FOREACHENTRYRET(DIRENTRY &de)> f)
+{
+    int8_t buf[blocksize];
+    uint64_t ofs = 0;
+    int64_t size = 0;
+    do
     {
-        int64_t size = dirnode->Read(buf, i*blocksize, blocksize);
-        assert(size == blocksize);
-        int ndirperblock = blocksize/sizeof(DIRENTRY);
+        size = dirnode->ReadInternal(buf, ofs, blocksize);
+        assert((size==blocksize) || (size == 0));
+        int ndirperblock = size/sizeof(DIRENTRY);
         DIRENTRY *de = (DIRENTRY*)buf;
         for(int j=0; j<ndirperblock; j++)
         {
@@ -27,19 +31,20 @@ void CDirectory::ForEachEntry(std::function<FOREACHENTRYRET(DIRENTRY &de)> f)
             if (ret == FOREACHENTRYRET::QUIT) return;
             if (ret == FOREACHENTRYRET::WRITEANDQUIT)
             {
-                dirnode->Write(buf, i*blocksize, blocksize);
+                dirnode->WriteInternal(buf, ofs, blocksize);
                 return;
             }
             de++;
         }
-    }
+        ofs += size;
+    } while(size == blocksize);
 }
+
 
 void CDirectory::Create()
 {
     int8_t buf[blocksize];
     memset(buf, 0xFF, blocksize);
-    //dirnode->size = 0; // Some kind of tiny hack to update the file size in the parent dir, but Ok here
     dirnode->Write(buf, 0, blocksize);
 }
 
@@ -63,8 +68,8 @@ void CDirectory::AddEntry(const DIRENTRY &denew)
 {
     //printf("AddDirEntry %s size=%li type=%i\n", denew.name, denew.size, denew.type);
     bool written = false;
-    std::lock_guard<std::recursive_mutex> lock(dirnode->GetMutex());
-    ForEachEntry([&](DIRENTRY &de)
+    std::lock_guard<std::mutex> lock(dirnode->GetMutex());
+    ForEachEntryNonBlocking([&](DIRENTRY &de)
     {
         if ((INODETYPE)de.type == INODETYPE::free)
         {
@@ -80,17 +85,19 @@ void CDirectory::AddEntry(const DIRENTRY &denew)
     memset(buf, 0xFF, blocksize);
     DIRENTRY *de = (DIRENTRY*)buf;
     memcpy(de, &denew, sizeof(DIRENTRY));
-    dirnode->Write(buf, dirnode->size, blocksize);
+    dirnode->WriteInternal(buf, dirnode->size, blocksize);
 }
 
-void CDirectory::RemoveEntry(const std::string &name)
+void CDirectory::RemoveEntry(const std::string &name, DIRENTRY &e)
 {
+    e.id = fs.INVALIDID;
     //printf("RemoveDirEntry '%s' in dir '%s' and dirid %i\n", name.c_str(), dirnode->name.c_str(), dirnode->id);
     ForEachEntry([&](DIRENTRY &de)
     {
         if ((INODETYPE)de.type == INODETYPE::free) return FOREACHENTRYRET::OK;
         if (strncmp(de.name, name.c_str(), 64+32) == 0)
         {
+            memcpy(&e, &de, sizeof(DIRENTRY));
             de.type = (int32_t)INODETYPE::free;
             return FOREACHENTRYRET::WRITEANDQUIT;
         }

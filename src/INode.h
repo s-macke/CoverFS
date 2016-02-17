@@ -11,6 +11,8 @@ enum class INODETYPE : int32_t {unknown=0, dir=1, file=2, free=-1};
 
 class INODE
 {
+    friend class CDirectory;
+
 public:
     int32_t id;
     int32_t parentid;
@@ -19,7 +21,7 @@ public:
     std::string name;
     std::vector<int> fragments;
     INODE(SimpleFilesystem &_fs) : id(-4), parentid(-4), size(0), type(INODETYPE::unknown), fs(_fs) {}
-    std::recursive_mutex& GetMutex() { return mtx; } // for lock_guard
+    std::mutex& GetMutex() { return mtx; } // for lock_guard
     void Lock();
     void Unlock();
 
@@ -30,8 +32,14 @@ public:
     void Print();
 
 private:
-    std::recursive_mutex mtx;
+
+    // non-blocking read and write
+    int64_t ReadInternal(int8_t *d, int64_t ofs, int64_t size);
+    void WriteInternal(const int8_t *d, int64_t ofs, int64_t size);
+
+    std::mutex mtx;
     SimpleFilesystem &fs;
+
 };
 using INODEPTR = std::shared_ptr<INODE>;
 

@@ -34,10 +34,11 @@ public:
     int GetID() {return dirnode->id;}
     void Create();
     void ForEachEntry(std::function<FOREACHENTRYRET(DIRENTRY &de)> f);
+    void ForEachEntryNonBlocking(std::function<FOREACHENTRYRET(DIRENTRY &de)> f);
     int CreateDirectory(const std::string &name);
     int CreateFile(const std::string &name);
     void AddEntry(const DIRENTRY &de);
-    void RemoveEntry(const std::string &name);
+    void RemoveEntry(const std::string &name, DIRENTRY &e);
     void Find(const std::string &s, DIRENTRY &e);
     bool IsEmpty();
     void List();
