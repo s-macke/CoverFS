@@ -6,9 +6,7 @@
 CDirectory::CDirectory(INODEPTR node, SimpleFilesystem &_fs) : dirnode(node), fs(_fs) 
 {
     blocksize = fs.bio.blocksize;
-    //if (node->id == fs.INVALIDID) throw ENOENT;
     if (node->type != INODETYPE::dir) throw ENOTDIR;
-    //dirnode->size = dirnode->blocks.size()*fs.bio.blocksize; // Hack
 }
 
 

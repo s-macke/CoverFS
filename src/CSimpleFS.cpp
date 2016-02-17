@@ -271,6 +271,7 @@ INODEPTR SimpleFilesystem::OpenNode(const std::vector<std::string> splitpath)
     {
         dirid = e.id;
         node = OpenNode(dirid);
+        std::lock_guard<std::recursive_mutex> lock(node->GetMutex()); // not the best solution
         CDirectory(node, *this).Find(splitpath[i], e);
         if (e.id == INVALIDID) 
         {
@@ -294,7 +295,7 @@ INODEPTR SimpleFilesystem::OpenNode(const std::vector<std::string> splitpath)
 CDirectory SimpleFilesystem::OpenDir(int id)
 {
     INODEPTR node = OpenNode(id);
-    if (node->type != INODETYPE::dir) throw ENOENT;
+    // The check whether this is a directory is done in the constructor
     return CDirectory(node, *this);
 }
 
@@ -895,6 +896,7 @@ void SimpleFilesystem::Remove(INODE &node)
     std::lock_guard<std::recursive_mutex> lock(dir.dirnode->GetMutex());
     FreeAllFragments(node);
     dir.RemoveEntry(node.name);
+    std::lock_guard<std::mutex> lock2(inodescachemtx);
     inodes.erase(node.id); // remove from map
 }
 
