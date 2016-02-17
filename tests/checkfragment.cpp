@@ -21,9 +21,10 @@ typedef struct
     char data[MAXSIZE+2];
 } FSTRUCT;
 
-FSTRUCT files[10];
+FSTRUCT *files;
 unsigned int niter = 2000;
 unsigned int nfiles = 10;
+unsigned int nthreads = 10;
 
 // ----------------------
 
@@ -44,8 +45,8 @@ void Execute(int tid)
     //printf("thread %i:\n", tid);
     for(unsigned int iter=0; iter<niter; iter++)
     {
-        int cmd = rand()%4;
-        int id = rand()%10;
+        int cmd = rand()%7;
+        int id = rand()%nfiles;
         int ofs = 0;
         files[id].mtx.lock();
         if (files[id].size > 0) ofs = rand() % files[id].size;
@@ -128,7 +129,66 @@ void Execute(int tid)
                 exit(1);
             }
             break;
-        }
+
+        case 4: // rename
+            printf("tid %1i %5i: rename %i\n", tid, iter, id);
+            {
+                char newfilename[256];
+                sprintf(newfilename, "tests%02i_%03i.dat", id, rand()%999);
+
+                if (rename(files[id].filename, newfilename) != 0)
+                {
+                    if (errno == EEXIST) break;
+                    perror("Error during rename");
+                    exit(1);
+                }
+                strncpy(files[id].filename, newfilename, 256);
+
+            }
+            break;
+
+        case 5: // close&open
+            printf("tid %1i %5i: close&open %i\n", tid, iter, id);
+            {
+                if (close(files[id].fd) != 0)
+                {
+                    perror("Error during close");
+                    exit(1);
+                }
+                files[id].fd = open(files[id].filename, O_RDWR, S_IRWXU);
+                if (files[id].fd == -1)
+                {
+                    perror("Error during open");
+                    exit(1);
+                }
+            }
+            break;
+
+        case 6: // create&remove
+            printf("tid %1i %5i: create&remove %i\n", tid, iter, id);
+            {
+                char newfilename[256];
+                sprintf(newfilename, "tests%02i_check.dat", id);
+                int fd = open(newfilename, O_RDWR | O_CREAT | O_TRUNC, S_IRWXU);
+                if (fd == -1)
+                {
+                    perror("Error during open");
+                    exit(1);
+                }
+                if (close(fd) != 0)
+                {
+                    perror("Error during close");
+                    exit(1);
+                }
+                if (unlink(newfilename) != 0)
+                {
+                    perror("Error during unlink");
+                    exit(1);
+                }
+            }
+            break;
+
+        } // switch
 
         files[id].mtx.unlock();
     }
@@ -137,21 +197,23 @@ void Execute(int tid)
 
 int main(int argc, char *argv[])
 {
-    unsigned int nthreads = 10;
-    if (argc != 3)
+    if (argc != 4)
     {
-        printf("Usage: %s nthreads niter\n", argv[0]);
+        printf("Usage: %s nfiles nthreads niter\n", argv[0]);
         return 1;
     }
-    nthreads = atoi(argv[1]);
-    niter = atoi(argv[2]);
+    nfiles = atoi(argv[1]);
+    nthreads = atoi(argv[2]);
+    niter = atoi(argv[3]);
+
+    printf("number of files %i\n", nfiles);
     printf("number of threads: %i\n", nthreads);
     printf("number of iterations per thread: %i\n", niter);
-    printf("number of files %i\n", nfiles);
 
+    files = new FSTRUCT[nfiles];
     for(unsigned int i=0; i<nfiles; i++)
     {
-        sprintf(files[i].filename, "tests%i.dat", i);
+        sprintf(files[i].filename, "tests%02i_%03i.dat", i, 0);
         files[i].fd = open(files[i].filename, O_RDWR | O_CREAT | O_TRUNC, S_IRWXU);
         if (files[i].fd == -1)
         {
