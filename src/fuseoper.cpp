@@ -89,11 +89,10 @@ static int fuse_truncate(const char *path, off_t size)
 static int fuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t offset, struct fuse_file_info *fi)
 {
     (void) offset;
-    (void) fi;
     printf("readdir '%s'\n", path);
     try
     {
-        CDirectory dir = fs->OpenDir(path);
+        CDirectory dir = fs->OpenDir(fi->fh);
         filler(buf, ".", NULL, 0);
         filler(buf, "..", NULL, 0);
 
@@ -117,6 +116,7 @@ static int fuse_open(const char *path, struct fuse_file_info *fi)
     try
     {
         INODEPTR node = fs->OpenFile(path);
+        fi->fh = node->id;
     } catch(const int &err)
     {
         return -err;
@@ -131,10 +131,9 @@ static int fuse_open(const char *path, struct fuse_file_info *fi)
 static int fuse_read(const char *path, char *buf, size_t size, off_t offset, struct fuse_file_info *fi)
 {
     printf("read '%s' ofs=%li size=%li\n", path, offset, size);
-    (void) fi;
     try
     {
-        INODEPTR node = fs->OpenFile(path);
+        INODEPTR node = fs->OpenFile(fi->fh);
         size = node->Read((int8_t*)buf, offset, size);
     } catch(const int &err)
     {
@@ -148,10 +147,9 @@ static int fuse_write(const char *path, const char *buf, size_t size, off_t offs
 {
     printf("write '%s' ofs=%li size=%li\n", path, offset, size);
 
-    (void) fi;
     try
     {
-        INODEPTR node = fs->OpenFile(path);
+        INODEPTR node = fs->OpenFile(fi->fh);
         node->Write((int8_t*)buf, offset, size);
     } catch(const int &err)
     {
@@ -225,7 +223,7 @@ static int fuse_create(const char *path, mode_t mode, struct fuse_file_info *fi)
     try
     {
         CDirectory dir = fs->OpenDir(splitpath);
-        dir.CreateFile(filename);
+        fi->fh = dir.CreateFile(filename);
     } catch(const int &err)
     {
         return -err;
@@ -318,6 +316,7 @@ int StartFuse(int argc, char *argv[], const char* mountpoint, SimpleFilesystem &
     fuse_oper.chown       = fuse_chown;
     fuse_oper.statfs      = fuse_statfs;
     fuse_oper.utimens     = fuse_utimens;
+    //fuse_oper.flag_nullpath_ok = 1;
 
     return fuse_main(args.argc, args.argv, &fuse_oper, NULL);
 }

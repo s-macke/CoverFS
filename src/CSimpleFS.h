@@ -43,8 +43,10 @@ public:
     INODEPTR OpenNode(const std::string &path);
     INODEPTR OpenNode(const std::vector<std::string> splitpath);
 
+    CDirectory OpenDir(int id);
     CDirectory OpenDir(const std::string &path);
     CDirectory OpenDir(const std::vector<std::string> splitpath);
+    INODEPTR OpenFile(int id);
     INODEPTR OpenFile(const std::string &path);
     INODEPTR OpenFile(const std::vector<std::string> splitpath);
 
@@ -64,7 +66,6 @@ public:
     static const int32_t INVALIDID    = -4; // defines an invalid id like the parent dir of the root directory
 
 private:
-    CDirectory OpenDir(int id);
 
     int CreateDirectory(CDirectory &dir, const std::string &name);
     int CreateFile(CDirectory &dir, const std::string &name);

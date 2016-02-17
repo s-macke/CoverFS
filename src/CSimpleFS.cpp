@@ -294,7 +294,7 @@ INODEPTR SimpleFilesystem::OpenNode(const std::vector<std::string> splitpath)
 CDirectory SimpleFilesystem::OpenDir(int id)
 {
     INODEPTR node = OpenNode(id);
-    node->type = INODETYPE::dir; // if opened this way, we have to assume, that this is indeed a dir.
+    if (node->type != INODETYPE::dir) throw ENOENT;
     return CDirectory(node, *this);
 }
 
@@ -308,6 +308,14 @@ CDirectory SimpleFilesystem::OpenDir(const std::vector<std::string> splitpath)
 {
     INODEPTR node = OpenNode(splitpath);
     return CDirectory(node, *this);
+}
+
+INODEPTR SimpleFilesystem::OpenFile(int id)
+{
+    INODEPTR node = OpenNode(id);
+    if (node->type != INODETYPE::file) throw ENOENT;
+    if (node->id == INVALIDID) throw ENOENT;
+    return node;
 }
 
 INODEPTR SimpleFilesystem::OpenFile(const std::string &path)
