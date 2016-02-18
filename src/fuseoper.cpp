@@ -86,6 +86,20 @@ static int fuse_truncate(const char *path, off_t size)
     return 0;
 }
 
+static int fuse_opendir(const char *path, struct fuse_file_info *fi)
+{
+    printf("opendir '%s'\n", path);
+    try
+    {
+        CDirectory dir = fs->OpenDir(path);
+        fi->fh = dir.dirnode->id;
+    } catch(const int &err)
+    {
+        return -err;
+    }
+    return 0;
+}
+
 static int fuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t offset, struct fuse_file_info *fi)
 {
     (void) offset;
@@ -301,6 +315,7 @@ int StartFuse(int argc, char *argv[], const char* mountpoint, SimpleFilesystem &
     struct fuse_operations fuse_oper;
     memset(&fuse_oper, 0, sizeof(struct fuse_operations));
     fuse_oper.getattr     = fuse_getattr;
+    fuse_oper.opendir     = fuse_opendir;
     fuse_oper.readdir     = fuse_readdir;
     fuse_oper.open        = fuse_open;
     fuse_oper.read        = fuse_read;
