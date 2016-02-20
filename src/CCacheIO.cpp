@@ -1,23 +1,29 @@
 #include "CCacheIO.h"
+#include <atomic>
+#include <chrono>
 
 // -----------------------------------------------------------------
 
-CBlock::CBlock(CAbstractBlockIO &_bio, CEncrypt &_enc, int _blockidx, int8_t *_buf) : dirty(false), blockidx(_blockidx), bio(_bio), enc(_enc), buf(_buf), count(0)
-{
-}
+CBlock::CBlock(CCacheIO &_cio, CEncrypt &_enc, int _blockidx, int8_t *_buf) : nextdirtyidx(-1), blockidx(_blockidx), cio(_cio), enc(_enc), buf(_buf), count(0)
+{}
 
-void CBlock::Dirty()
-{
-    dirty = true;
-}
 
-// TODO: maybe provide an extra class with special read and write access [] and lock_guards and so on.
-
-int8_t* CBlock::GetBuf()
+int8_t* CBlock::GetBufRead()
 {
     mutex.lock();
     count++;
     enc.Decrypt(blockidx, buf);
+    return buf;
+}
+
+int8_t* CBlock::GetBufReadWrite()
+{
+    int8_t* buf = GetBufRead();
+    if (nextdirtyidx == -1)
+    {
+        nextdirtyidx = cio.lastdirtyidx.exchange(blockidx, std::memory_order_relaxed);
+        cio.ndirty++;
+    }
     return buf;
 }
 
@@ -29,9 +35,10 @@ void CBlock::ReleaseBuf()
 
 // -----------------------------------------------------------------
 
-CCacheIO::CCacheIO(CAbstractBlockIO &_bio, CEncrypt &_enc) : bio(_bio), enc(_enc)
+CCacheIO::CCacheIO(CAbstractBlockIO &_bio, CEncrypt &_enc) : bio(_bio), enc(_enc), ndirty(0), lastdirtyidx(-1)
 {
     blocksize = bio.blocksize;
+    syncthread = std::thread(&CCacheIO::Async_Sync, this);
 }
 
 CBLOCKPTR CCacheIO::GetBlock(const int blockidx, bool read)
@@ -44,7 +51,7 @@ CBLOCKPTR CCacheIO::GetBlock(const int blockidx, bool read)
         return cacheblock->second;
     }
     int8_t *buf = new int8_t[blocksize];
-    CBLOCKPTR block(new CBlock(bio, enc, blockidx, buf));
+    CBLOCKPTR block(new CBlock(*this, enc, blockidx, buf));
     cache[blockidx] = block;
     block->mutex.lock(); // don't use GetBuf because of the encryption
     cachemtx.unlock();
@@ -61,7 +68,7 @@ void CCacheIO::BlockReadForce(const int blockidx, const int n)
     bio.Read(blockidx, n, buf);
     for(int j=0; j<n; j++)
     {
-        CBLOCKPTR block(new CBlock(bio, enc, blockidx+j, &buf[j*blocksize]));
+        CBLOCKPTR block(new CBlock(*this, enc, blockidx+j, &buf[j*blocksize]));
         cache[blockidx+j] = block;
     }
 }
@@ -91,21 +98,36 @@ size_t CCacheIO::GetFilesize()
     return bio.GetFilesize();
 }
 
-void CCacheIO::Sync()
+bool CCacheIO::Async_Sync()
 {
-    cachemtx.lock();
-    for(auto it = cache.begin(); it != cache.end(); ++it) 
+    std::unique_lock<std::mutex> lock(async_sync_mutex);
+    for(;;)
     {
-        CBLOCKPTR block = it->second;
-        if (block->mutex.try_lock())
+        while (ndirty.load() == 0)
         {
-            if (block->dirty) // Bad solution for dirty flag, but otherwise valgrind complains. Use a list instead of flag
-            {
-                bio.Write(block->blockidx, 1, block->buf);
-                block->dirty = false;
-            }
+            async_sync_cond.wait(lock);
+        }
+
+
+        int nextblockidx = lastdirtyidx.exchange(-1, std::memory_order_relaxed);
+        while(nextblockidx != -1)
+        {
+            cachemtx.lock();
+            CBLOCKPTR block = cache.find(nextblockidx)->second;
+            cachemtx.unlock();
+            block->mutex.lock(); // TODO trylock and put back on the list
+            nextblockidx = block->nextdirtyidx;
+            bio.Write(block->blockidx, 1, block->buf);
+            block->nextdirtyidx = -1;
+            ndirty--;
             block->mutex.unlock();
         }
     }
-    cachemtx.unlock();
+}
+
+
+void CCacheIO::Sync()
+{
+    std::unique_lock<std::mutex> lock(async_sync_mutex);
+    async_sync_cond.notify_one();
 }

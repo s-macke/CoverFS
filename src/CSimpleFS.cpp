@@ -60,7 +60,7 @@ SimpleFilesystem::SimpleFilesystem(CCacheIO &_bio) : bio(_bio), nodeinvalid(new 
     printf("  blocksize: %i\n", bio.blocksize);
 
     CBLOCKPTR superblock = bio.GetBlock(1);
-    SUPER* super = (SUPER*)superblock->GetBuf();
+    SUPER* super = (SUPER*)superblock->GetBufRead();
     if (strncmp(super->magic, "CoverFS", 7) == 0)
     {
         printf("filesystem %s V%i.%i\n", super->magic, super->version>>16, super->version|0xFFFF);
@@ -84,7 +84,7 @@ SimpleFilesystem::SimpleFilesystem(CCacheIO &_bio) : bio(_bio), nodeinvalid(new 
         {
             int nidsperblock = bio.blocksize / 16;
             CBLOCKPTR block = fragmentblocks[i];
-            int8_t* buf = block->GetBuf();
+            int8_t* buf = block->GetBufRead();
             memcpy(&fragments[i*nidsperblock], buf, sizeof(CFragmentDesc)*nidsperblock);
             block->ReleaseBuf();
         
@@ -107,11 +107,10 @@ void SimpleFilesystem::CreateFS()
     printf("  Write superblock\n");
 
     CBLOCKPTR superblock = bio.GetBlock(1);
-    SUPER* super = (SUPER*)superblock->GetBuf();
+    SUPER* super = (SUPER*)superblock->GetBufReadWrite();
     memset(super, 0, sizeof(SUPER));
     strncpy(super->magic, "CoverFS", 8);
     super->version = (1<<16) | 0;
-    superblock->Dirty();
     superblock->ReleaseBuf();
     bio.Sync();
 
@@ -177,9 +176,8 @@ void SimpleFilesystem::StoreFragment(int idx)
 {
     int nidsperblock = bio.blocksize / 16;
     CBLOCKPTR block = fragmentblocks[idx/nidsperblock];
-    int8_t* buf = block->GetBuf();
+    int8_t* buf = block->GetBufReadWrite();
     ((CFragmentDesc*)buf)[idx%nidsperblock] = fragments[idx];
-    block->Dirty();
     block->ReleaseBuf();
 }
 
@@ -587,14 +585,13 @@ void SimpleFilesystem::ZeroFragment(int64_t ofs, int64_t size)
     for(int64_t j=firstblock; j<=lastblock; j++)
     {
         block = bio.GetBlock(j);
-        buf = block->GetBuf();
+        buf = block->GetBufReadWrite();
         int bsize = bio.blocksize - (ofs%bio.blocksize);
         bsize = std::min((int64_t)bsize, size);
         memset(&buf[ofs%bio.blocksize], 0, bsize);
         ofs += bsize;
         dofs += bsize;
         size -= bsize;
-        block->Dirty();
         block->ReleaseBuf();
     }
     bio.Sync();
@@ -620,14 +617,13 @@ void SimpleFilesystem::WriteFragment(int64_t ofs, const int8_t *d, int64_t size)
     for(int64_t j=firstblock; j<=lastblock; j++)
     {
         block = bio.GetBlock(j);
-        buf = block->GetBuf();
+        buf = block->GetBufReadWrite();
         int bsize = bio.blocksize - (ofs%bio.blocksize);
         bsize = std::min((int64_t)bsize, size);
         memcpy(&buf[ofs%bio.blocksize], &d[dofs], bsize);
         ofs += bsize;
         dofs += bsize;
         size -= bsize;
-        block->Dirty();    
         block->ReleaseBuf();
     }
     bio.Sync();
@@ -652,7 +648,7 @@ void SimpleFilesystem::ReadFragment(int64_t ofs, int8_t *d, int64_t size)
 
         block = bio.GetBlock(j);
         //printf("GetBuf %i\n", j);
-        buf = block->GetBuf();
+        buf = block->GetBufRead();
         int bsize = bio.blocksize - (ofs%bio.blocksize);
         bsize = std::min((int64_t)bsize, size);
         memcpy(&d[dofs], &buf[ofs%bio.blocksize], bsize);

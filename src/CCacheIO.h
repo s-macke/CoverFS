@@ -4,39 +4,30 @@
 #include <map>
 #include <vector>
 #include <mutex>
+#include <atomic>
+#include <thread>
+#include <condition_variable>
 
 #include "CBlockIO.h"
 #include "CEncrypt.h"
 
-// TODO: Use this structure for GetBuf and maybe do something with the dirty flag
-class CBlockBuffer
-{
-public:
-    CBlockBuffer(int8_t *_buf, std::mutex &mutex) : lock(mutex), buf(_buf) {};
-
-    int8_t& operator[](std::size_t idx) { return buf[idx]; };
-    const int8_t& operator[](std::size_t idx) const { return buf[idx]; };
-
-private:
-    std::lock_guard<std::mutex> lock;
-    int8_t *buf;
-};
+class CCacheIO;
 
 class CBlock
 {
     friend class CCacheIO;
 public:
-    CBlock(CAbstractBlockIO &_bio, CEncrypt &_enc, int _blockidx, int8_t *_buf); 
-    int8_t* GetBuf();
+    CBlock(CCacheIO &_bio, CEncrypt &_enc, int _blockidx, int8_t *_buf); 
+    int8_t* GetBufRead();
+    int8_t* GetBufReadWrite();
     void ReleaseBuf();
 
-    void Dirty();
-    bool dirty;
-    int blockidx;
 
 private:
+    int nextdirtyidx;
+    int blockidx;
     std::mutex mutex;
-    CAbstractBlockIO &bio;
+    CCacheIO &cio;
     CEncrypt &enc;
     int8_t *buf;
     uint32_t count;
@@ -46,6 +37,8 @@ using CBLOCKPTR = std::shared_ptr<CBlock>;
 
 class CCacheIO
 {
+    friend class CBlock;
+
 public:
     CCacheIO(CAbstractBlockIO &bio, CEncrypt &_enc);
     CBLOCKPTR GetBlock(const int blockidx, bool read=true);
@@ -58,10 +51,18 @@ public:
     int blocksize;
 
 private:
+    bool Async_Sync();
+
     CAbstractBlockIO &bio;
     CEncrypt &enc;
     std::map<int, CBLOCKPTR> cache;
     std::mutex cachemtx;
+    std::atomic<int> ndirty;
+    std::atomic<int> lastdirtyidx;
+
+    std::thread syncthread;
+    std::mutex async_sync_mutex;
+    std::condition_variable async_sync_cond;
 };
 
 #endif
