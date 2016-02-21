@@ -48,20 +48,22 @@ CCacheIO::~CCacheIO()
     assert(ndirty.load() == 0);
 
     cachemtx.lock();
-    for(auto iter = cache.begin(); iter != cache.end(); ++iter)
+    for(auto iter = cache.begin(); iter != cache.end();)
     {
         CBLOCKPTR block = iter->second;
         if (block.use_count() != 2)
         {
             printf("Warning: Block %i still in use\n", block->blockidx);
+            iter++;
             continue;
         }
         if (!block->mutex.try_lock())
         {
             printf("Error: Locking block %i failed\n", block->blockidx);
+            iter++;
             continue;
         }
-        cache.erase(iter);
+        iter = cache.erase(iter);
         delete[] block->buf;
         block->mutex.unlock();
     }
