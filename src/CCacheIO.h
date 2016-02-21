@@ -44,7 +44,6 @@ public:
     CBLOCKPTR GetBlock(const int blockidx, bool read=true);
     CBLOCKPTR GetWriteBlock(const int blockidx);
     void CacheBlocks(const int blockidx, const int n);
-    void BlockReadForce(const int blockidx, const int n);
 
     size_t GetFilesize();
     void Sync();
@@ -52,6 +51,7 @@ public:
 
 private:
     bool Async_Sync();
+    void BlockReadForce(const int blockidx, const int n);
 
     CAbstractBlockIO &bio;
     CEncrypt &enc;

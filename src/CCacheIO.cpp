@@ -1,6 +1,5 @@
 #include "CCacheIO.h"
-#include <atomic>
-#include <chrono>
+#include <assert.h>
 
 // -----------------------------------------------------------------
 
@@ -53,7 +52,7 @@ CBLOCKPTR CCacheIO::GetBlock(const int blockidx, bool read)
     int8_t *buf = new int8_t[blocksize];
     CBLOCKPTR block(new CBlock(*this, enc, blockidx, buf));
     cache[blockidx] = block;
-    block->mutex.lock(); // don't use GetBuf because of the encryption
+    block->mutex.lock();
     cachemtx.unlock();
     if (read) bio.Read(blockidx, 1, buf);
     block->mutex.unlock();
@@ -66,17 +65,24 @@ void CCacheIO::BlockReadForce(const int blockidx, const int n)
     if (n <= 0) return;
     int8_t *buf = new int8_t[blocksize*n];
     bio.Read(blockidx, n, buf);
-    for(int j=0; j<n; j++)
+    cachemtx.lock();
+    for(int i=0; i<n; i++)
     {
-        CBLOCKPTR block(new CBlock(*this, enc, blockidx+j, &buf[j*blocksize]));
-        cache[blockidx+j] = block;
+        auto cacheblock = cache.find(blockidx+i);
+        assert(cacheblock != cache.end()); // block created in CacheBlocks
+        CBLOCKPTR block = cacheblock->second;
+        memcpy(block->buf, &buf[i*blocksize], blocksize);
+        block->mutex.unlock();
     }
+    cachemtx.unlock();
+    delete[] buf;
+
 }
 
 void CCacheIO::CacheBlocks(const int blockidx, const int n)
 {
     if (n <= 0) return;
-    cachemtx.lock(); // Solution too easy. We might want to to aquire the blocks and block them via the mutex before we read the content
+    cachemtx.lock();
     int istart = 0;
     for(int i=0; i<n; i++)
     {
@@ -85,12 +91,20 @@ void CCacheIO::CacheBlocks(const int blockidx, const int n)
         {
             int npart = i-istart;
             istart = i+1;
+            cachemtx.unlock();
             BlockReadForce(blockidx+istart, npart);
+            cachemtx.lock();
+        } else
+        {
+            int8_t *buf = new int8_t[blocksize];
+            CBLOCKPTR block(new CBlock(*this, enc, blockidx+i, buf));
+            cache[blockidx+i] = block;
+            block->mutex.lock();
         }
     }
     int npart = n-istart;
-    BlockReadForce(blockidx+istart, npart);
     cachemtx.unlock();
+    BlockReadForce(blockidx+istart, npart);
 }
 
 size_t CCacheIO::GetFilesize()
@@ -114,8 +128,8 @@ bool CCacheIO::Async_Sync()
         {
             cachemtx.lock();
             CBLOCKPTR block = cache.find(nextblockidx)->second;
-            cachemtx.unlock();
             block->mutex.lock(); // TODO trylock and put back on the list
+            cachemtx.unlock();
             nextblockidx = block->nextdirtyidx;
             bio.Write(block->blockidx, 1, block->buf);
             block->nextdirtyidx = -1;
