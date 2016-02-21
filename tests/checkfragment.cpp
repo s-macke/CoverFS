@@ -26,6 +26,14 @@ unsigned int niter = 2000;
 unsigned int nfiles = 10;
 unsigned int nthreads = 10;
 
+unsigned int g_seed = 0x0;
+
+inline int fastrand()
+{
+  g_seed = (214013*g_seed+2531011);
+  return (g_seed>>16)&0x7FFF;
+}
+
 // ----------------------
 
 size_t fsize(int fd) 
@@ -71,13 +79,13 @@ void Execute(int tid)
                 perror("Error during truncate");
                 exit(1);
             }
-             break;
+            break;
 
         case 1: // write
             printf("tid %1i %5i: write %i ofs=%i size=%i\n", tid, iter, id, ofs, newsize);
             for(int i=0; i<newsize; i++)
             {
-                files[id].data[ofs+i] = rand();
+                files[id].data[ofs+i] = fastrand();
             }
 
             retsize = 0;
@@ -209,6 +217,10 @@ int main(int argc, char *argv[])
     printf("number of files %i\n", nfiles);
     printf("number of threads: %i\n", nthreads);
     printf("number of iterations per thread: %i\n", niter);
+
+    srand (time(NULL));
+    g_seed = time(NULL);
+
 
     files = new FSTRUCT[nfiles];
     for(unsigned int i=0; i<nfiles; i++)
