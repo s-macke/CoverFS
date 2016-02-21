@@ -264,7 +264,6 @@ static int fuse_access(const char *path, int mask)
 
 static int fuse_rename(const char *oldpath, const char *newpath)
 {
-    printf("rename '%s' to '%s'\n", oldpath, newpath);
     Debug(Debug::INFO) << "create '" << oldpath << "' to '" << newpath << "'\n";
 
     std::vector<std::string> splitpath;
