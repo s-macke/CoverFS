@@ -21,6 +21,7 @@ set(CPP_FILES
     src/CSimpleFS.cpp
     src/CWriteRingBuffer.cpp
     src/INode.cpp
+    src/debug.cpp
     src/main.cpp
 )
 

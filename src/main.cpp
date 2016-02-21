@@ -3,6 +3,7 @@
 #include<unistd.h>
 #include<getopt.h>
 
+#include"debug.h"
 #include"CBlockIO.h"
 #include"CNetBlockIO.h"
 
@@ -33,8 +34,17 @@ void PrintUsage(int argc, char *argv[])
     printf("  --fragments         Prints information about the fragments\n");
     printf("  --rootdir           Print root directory\n");
     printf("  --check             Check filesystem\n");
+    printf("  --debug             Debug output\n");
 }
 
+
+// -----------------------------------------------------------------
+
+static void catch_function(int signo)
+{
+    puts("Terminate Signal received");
+    exit(EXIT_SUCCESS);
+}
 
 // -----------------------------------------------------------------
 
@@ -69,6 +79,7 @@ int main(int argc, char *argv[])
             {"rootdir",   no_argument,       0,  0 },
             {"check",     no_argument,       0,  0 },
             {"backend",   required_argument, 0,  0 },
+            {"debug",     no_argument,       0,  0 },
             {0,           0,                 0,  0 }
         };
 
@@ -109,6 +120,10 @@ int main(int argc, char *argv[])
                 case 7:
                     strncpy(backend, optarg, 255);
                     for (char *p=backend ; *p; ++p) *p = tolower(*p);
+                    break;
+
+                case 8:
+                    Debug().Set(Debug::INFO);
                     break;
 
                 case 0: // hel√pp
@@ -193,6 +208,11 @@ if ((info) || (showfragments) || (check) || (rootdir))
     return EXIT_SUCCESS;
 }
 
+if (signal(SIGINT, catch_function) == SIG_ERR)
+{
+    fputs("An error occurred while setting a signal handler.\n", stderr);
+    return EXIT_FAILURE;
+}
 
 #if !defined(_WIN32) && !defined(_WIN64) && !defined(__CYGWIN__)
     return StartFuse(argc, argv, mountpoint, fs);
