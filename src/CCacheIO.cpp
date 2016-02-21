@@ -34,10 +34,42 @@ void CBlock::ReleaseBuf()
 
 // -----------------------------------------------------------------
 
-CCacheIO::CCacheIO(CAbstractBlockIO &_bio, CEncrypt &_enc) : bio(_bio), enc(_enc), ndirty(0), lastdirtyidx(-1)
+CCacheIO::CCacheIO(CAbstractBlockIO &_bio, CEncrypt &_enc) : bio(_bio), enc(_enc), ndirty(0), lastdirtyidx(-1), terminatesyncthread(false)
 {
     blocksize = bio.blocksize;
     syncthread = std::thread(&CCacheIO::Async_Sync, this);
+}
+
+CCacheIO::~CCacheIO()
+{
+    terminatesyncthread.store(true);
+    Sync();
+    syncthread.join();
+    assert(ndirty.load() == 0);
+
+    cachemtx.lock();
+    for(auto iter = cache.begin(); iter != cache.end(); ++iter)
+    {
+        CBLOCKPTR block = iter->second;
+        if (block.use_count() != 2)
+        {
+            printf("Warning: Block %i still in use\n", block->blockidx);
+            continue;
+        }
+        if (!block->mutex.try_lock())
+        {
+            printf("Error: Locking block %i failed\n", block->blockidx);
+            continue;
+        }
+        cache.erase(iter);
+        delete[] block->buf;
+        block->mutex.unlock();
+    }
+    if (!cache.empty())
+    {
+        printf("Warning: Cache not empty\n");
+    }
+    cachemtx.unlock();
 }
 
 CBLOCKPTR CCacheIO::GetBlock(const int blockidx, bool read)
@@ -112,16 +144,16 @@ size_t CCacheIO::GetFilesize()
     return bio.GetFilesize();
 }
 
-bool CCacheIO::Async_Sync()
+void CCacheIO::Async_Sync()
 {
     std::unique_lock<std::mutex> lock(async_sync_mutex);
     for(;;)
     {
         while (ndirty.load() == 0)
         {
+            if (terminatesyncthread.load()) return;
             async_sync_cond.wait(lock);
         }
-
 
         int nextblockidx = lastdirtyidx.exchange(-1, std::memory_order_relaxed);
         while(nextblockidx != -1)

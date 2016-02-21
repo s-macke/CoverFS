@@ -41,6 +41,8 @@ class CCacheIO
 
 public:
     CCacheIO(CAbstractBlockIO &bio, CEncrypt &_enc);
+    ~CCacheIO();
+
     CBLOCKPTR GetBlock(const int blockidx, bool read=true);
     CBLOCKPTR GetWriteBlock(const int blockidx);
     void CacheBlocks(const int blockidx, const int n);
@@ -50,7 +52,7 @@ public:
     int blocksize;
 
 private:
-    bool Async_Sync();
+    void Async_Sync();
     void BlockReadForce(const int blockidx, const int n);
 
     CAbstractBlockIO &bio;
@@ -61,6 +63,7 @@ private:
     std::atomic<int> lastdirtyidx;
 
     std::thread syncthread;
+    std::atomic<bool> terminatesyncthread;
     std::mutex async_sync_mutex;
     std::condition_variable async_sync_cond;
 };
