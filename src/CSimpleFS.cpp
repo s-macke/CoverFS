@@ -335,24 +335,34 @@ INODEPTR SimpleFilesystem::OpenFile(const std::vector<std::string> splitpath)
 void SimpleFilesystem::GetRecursiveDirectories(std::map<int32_t, std::string> &direntries, int id, const std::string &path)
 {
     std::string newpath;
-    CDirectory dir = OpenDir(id);
-    dir.ForEachEntry([&](DIRENTRY &de)
+    try
     {
-        if ((INODETYPE)de.type == INODETYPE::free) return FOREACHENTRYRET::OK;
-        //printf("id=%6i: '%s/%s'\n", de.id, path.c_str(), de.name);
-        auto it = direntries.find(de.id);
-        if (it != direntries.end())
+        INODEPTR node = OpenNode(id);
+        node->type = INODETYPE::dir; // if opened with the id, the type might not be set
+        CDirectory dir = CDirectory(node, *this);
+
+        dir.ForEachEntry([&](DIRENTRY &de)
         {
-            printf("Warning: Found two directory entries with the same id id=%i\n", de.id);
-        }
-        direntries[de.id] = path + "/" + de.name;
-        if ((INODETYPE)de.type == INODETYPE::dir)
-        {
-            newpath = path + "/" + de.name;
-            GetRecursiveDirectories(direntries, de.id, newpath);
-        }
-        return FOREACHENTRYRET::OK;
-    });
+            if ((INODETYPE)de.type == INODETYPE::free) return FOREACHENTRYRET::OK;
+            //printf("id=%6i: '%s/%s'\n", de.id, path.c_str(), de.name);
+            auto it = direntries.find(de.id);
+            if (it != direntries.end())
+            {
+                printf("Warning: Found two directory entries with the same id id=%i\n", de.id);
+            }
+            direntries[de.id] = path + "/" + de.name;
+            if ((INODETYPE)de.type == INODETYPE::dir)
+            {
+                newpath = path + "/" + de.name;
+                GetRecursiveDirectories(direntries, de.id, newpath);
+            }
+            return FOREACHENTRYRET::OK;
+        });
+    }
+    catch(const int &err)
+    {
+        printf("Error: Cannot open dir '%s' with id=%i. Errno: %s\n", path.c_str(), id, strerror(err));
+    }
 }
 
 void SimpleFilesystem::CheckFS()
