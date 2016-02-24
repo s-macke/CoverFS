@@ -30,6 +30,7 @@ void PrintUsage(int argc, char *argv[])
     printf("                      default: 'cvfsserver'\n");
     printf("  --host [hostname]   default: 'localhost'\n");
     printf("  --port [port]       default: '62000'\n");
+    printf("  --cryptcache        crypt cache in RAM\n");
     printf("  --info              Prints information about filesystem\n");
     printf("  --fragments         Prints information about the fragments\n");
     printf("  --rootdir           Print root directory\n");
@@ -58,6 +59,7 @@ int main(int argc, char *argv[])
     bool info = false;
     bool showfragments = false;
     bool rootdir = false;
+    bool cryptcache = false;
 
     strncpy(hostname,   "localhost", 255);
     strncpy(port,       "62000",     255);
@@ -71,16 +73,17 @@ int main(int argc, char *argv[])
     }
 
     static struct option long_options[] = {
-            {"help",      no_argument,       0,  0 },
-            {"port",      required_argument, 0,  0 },
-            {"host",      required_argument, 0,  0 },
-            {"info",      no_argument,       0,  0 },
-            {"fragments", no_argument,       0,  0 },
-            {"rootdir",   no_argument,       0,  0 },
-            {"check",     no_argument,       0,  0 },
-            {"backend",   required_argument, 0,  0 },
-            {"debug",     no_argument,       0,  0 },
-            {0,           0,                 0,  0 }
+            {"help",       no_argument,       0,  0 },
+            {"port",       required_argument, 0,  0 },
+            {"host",       required_argument, 0,  0 },
+            {"info",       no_argument,       0,  0 },
+            {"fragments",  no_argument,       0,  0 },
+            {"rootdir",    no_argument,       0,  0 },
+            {"check",      no_argument,       0,  0 },
+            {"backend",    required_argument, 0,  0 },
+            {"debug",      no_argument,       0,  0 },
+            {"cryptcache", no_argument,       0,  0 },
+            {0,            0,                 0,  0 }
         };
 
     while(1)
@@ -126,7 +129,11 @@ int main(int argc, char *argv[])
                     Debug().Set(Debug::INFO);
                     break;
 
-                case 0: // hel√pp
+                case 9:
+                    cryptcache = true;
+                    break;
+
+                case 0: // help
                 default:
                     PrintUsage(argc, argv);
                     return EXIT_FAILURE;
@@ -173,7 +180,7 @@ int main(int argc, char *argv[])
     }
 
     CEncrypt enc(*bio);
-    CCacheIO cbio(*bio, enc);
+    CCacheIO cbio(*bio, enc, cryptcache);
     SimpleFilesystem fs(cbio);
 
     if (info)

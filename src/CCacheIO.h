@@ -40,7 +40,7 @@ class CCacheIO
     friend class CBlock;
 
 public:
-    CCacheIO(CAbstractBlockIO &bio, CEncrypt &_enc);
+    CCacheIO(CAbstractBlockIO &bio, CEncrypt &_enc, bool _cryptcache);
     ~CCacheIO();
 
     CBLOCKPTR GetBlock(const int blockidx, bool read=true);
@@ -66,6 +66,8 @@ private:
     std::atomic<bool> terminatesyncthread;
     std::mutex async_sync_mutex;
     std::condition_variable async_sync_cond;
+
+    bool cryptcache;
 };
 
 #endif

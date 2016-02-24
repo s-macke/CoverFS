@@ -11,7 +11,8 @@ int8_t* CBlock::GetBufRead()
 {
     mutex.lock();
     count++;
-    enc.Decrypt(blockidx, buf);
+    if (cio.cryptcache)
+        enc.Decrypt(blockidx, buf);
     return buf;
 }
 
@@ -28,13 +29,14 @@ int8_t* CBlock::GetBufReadWrite()
 
 void CBlock::ReleaseBuf()
 {
-    enc.Encrypt(blockidx, buf);
+    if (cio.cryptcache)
+        enc.Encrypt(blockidx, buf);
     mutex.unlock();
 }
 
 // -----------------------------------------------------------------
 
-CCacheIO::CCacheIO(CAbstractBlockIO &_bio, CEncrypt &_enc) : bio(_bio), enc(_enc), ndirty(0), lastdirtyidx(-1), terminatesyncthread(false)
+CCacheIO::CCacheIO(CAbstractBlockIO &_bio, CEncrypt &_enc, bool _cryptcache) : bio(_bio), enc(_enc), ndirty(0), lastdirtyidx(-1), terminatesyncthread(false), cryptcache(_cryptcache)
 {
     blocksize = bio.blocksize;
     syncthread = std::thread(&CCacheIO::Async_Sync, this);
@@ -88,7 +90,12 @@ CBLOCKPTR CCacheIO::GetBlock(const int blockidx, bool read)
     cache[blockidx] = block;
     block->mutex.lock();
     cachemtx.unlock();
-    if (read) bio.Read(blockidx, 1, buf);
+    if (read)
+    {
+        bio.Read(blockidx, 1, buf);
+        if (!cryptcache)
+            enc.Decrypt(blockidx, buf);
+    }
     block->mutex.unlock();
 
     return block;
@@ -106,6 +113,8 @@ void CCacheIO::BlockReadForce(const int blockidx, const int n)
         assert(cacheblock != cache.end()); // block created in CacheBlocks
         CBLOCKPTR block = cacheblock->second;
         memcpy(block->buf, &buf[i*blocksize], blocksize);
+        if (!cryptcache)
+            enc.Decrypt(blockidx+i, block->buf);
         block->mutex.unlock();
     }
     cachemtx.unlock();
@@ -124,10 +133,10 @@ void CCacheIO::CacheBlocks(const int blockidx, const int n)
         if (cacheblock != cache.end())
         {
             int npart = i-istart;
-            istart = i+1;
             cachemtx.unlock();
             BlockReadForce(blockidx+istart, npart);
             cachemtx.lock();
+            istart = i+1;
         } else
         {
             int8_t *buf = new int8_t[blocksize];
@@ -165,7 +174,11 @@ void CCacheIO::Async_Sync()
             block->mutex.lock(); // TODO trylock and put back on the list
             cachemtx.unlock();
             nextblockidx = block->nextdirtyidx;
+            if (!cryptcache)
+                enc.Encrypt(block->blockidx, block->buf);
             bio.Write(block->blockidx, 1, block->buf);
+            if (!cryptcache)
+                enc.Decrypt(block->blockidx, block->buf);
             block->nextdirtyidx = -1;
             ndirty--;
             block->mutex.unlock();
