@@ -904,19 +904,25 @@ void SimpleFilesystem::StatFS(struct statvfs *buf)
 {
     buf->f_bsize   = bio.blocksize;
     buf->f_frsize  = bio.blocksize;
-    buf->f_blocks  = bio.GetFilesize()/bio.blocksize;
     buf->f_namemax = 64+31;
-    buf->f_bfree   = 0;
+
+    int64_t totalsize = bio.GetFilesize() + (100L * 0x40000000L); // add always 100GB
+    buf->f_blocks  = totalsize/bio.blocksize;
 
     std::lock_guard<std::mutex> lock(fragmentsmtx);
 
     std::set<int32_t> s;
+    int64_t size=0;
     for(unsigned int i=0; i<fragments.size(); i++)
     {
         int32_t id = fragments[i].id;
-        if (id == FREEID) buf->f_bfree += (fragments[i].size-1)/bio.blocksize+1;
-        if (id >= 0) s.insert(id);
+        if (id >= 0)
+	{
+		size += fragments[i].size/bio.blocksize+1;
+		s.insert(id);
+	}
     }
-    buf->f_bavail  = buf->f_bfree;
-    buf->f_files   = s.size();
+    buf->f_bfree  = totalsize / bio.blocksize - size;
+    buf->f_bavail = totalsize / bio.blocksize - size;
+    buf->f_files  = s.size();
 }
