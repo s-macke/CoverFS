@@ -562,7 +562,7 @@ void SimpleFilesystem::Truncate(INODE &node, int64_t size, bool dozero)
             {
                 assert(intersect.ofs >= ofs);
                 assert(intersect.ofs >= fragmentofs);
-                ZeroFragment(
+                bio.Zero(
                     fragments[idx].ofs*bio.blocksize + (intersect.ofs - fragmentofs),
                     intersect.size);
             }
@@ -575,98 +575,6 @@ void SimpleFilesystem::Truncate(INODE &node, int64_t size, bool dozero)
         ShrinkNode(node, size);
     }
     bio.Sync();
-}
-
-void SimpleFilesystem::ZeroFragment(int64_t ofs, int64_t size)
-{
-    CBLOCKPTR block;
-    int8_t *buf = NULL;
-    //printf("ZeroFragment ofs=%li size=%li\n", ofs, size);
-    if (size == 0) return;
-
-    int firstblock = ofs/bio.blocksize;
-    int lastblock = (ofs+size-1)/bio.blocksize;
-
-    // check which blocks we have to read
-    if ((ofs%bio.blocksize) != 0)          block = bio.GetBlock(firstblock);
-    if (((ofs+size-1)%bio.blocksize) != 0) block = bio.GetBlock(lastblock);
-
-    int64_t dofs = 0;
-    for(int64_t j=firstblock; j<=lastblock; j++)
-    {
-        block = bio.GetBlock(j);
-        buf = block->GetBufReadWrite();
-        int bsize = bio.blocksize - (ofs%bio.blocksize);
-        bsize = std::min((int64_t)bsize, size);
-        memset(&buf[ofs%bio.blocksize], 0, bsize);
-        ofs += bsize;
-        dofs += bsize;
-        size -= bsize;
-        block->ReleaseBuf();
-    }
-    bio.Sync();
-}
-
-
-// Copy d to ofs in container
-void SimpleFilesystem::WriteFragment(int64_t ofs, const int8_t *d, int64_t size)
-{
-    CBLOCKPTR block;
-    int8_t *buf = NULL;
-    //printf("WriteFragment ofs=%li size=%li\n", ofs, size);
-    if (size == 0) return;
-
-    int firstblock = ofs/bio.blocksize;
-    int lastblock = (ofs+size-1)/bio.blocksize;
-
-    // check which blocks we have to read
-    if ((ofs%bio.blocksize) != 0) block = bio.GetBlock(firstblock);
-    if (((ofs+size-1)%bio.blocksize) != 0) block = bio.GetBlock(lastblock);
-
-    int64_t dofs = 0;
-    for(int64_t j=firstblock; j<=lastblock; j++)
-    {
-        block = bio.GetBlock(j);
-        buf = block->GetBufReadWrite();
-        int bsize = bio.blocksize - (ofs%bio.blocksize);
-        bsize = std::min((int64_t)bsize, size);
-        memcpy(&buf[ofs%bio.blocksize], &d[dofs], bsize);
-        ofs += bsize;
-        dofs += bsize;
-        size -= bsize;
-        block->ReleaseBuf();
-    }
-    bio.Sync();
-}
-
-void SimpleFilesystem::ReadFragment(int64_t ofs, int8_t *d, int64_t size)
-{
-    CBLOCKPTR block;
-    int8_t *buf = NULL;
-    //printf("ReadFragment ofs=%li size=%li\n", ofs, size);
-    if (size == 0) return;
-
-    int firstblock = ofs/bio.blocksize;
-    int lastblock = (ofs+size-1)/bio.blocksize;
-
-    bio.CacheBlocks(firstblock, lastblock-firstblock+1);
-
-    int64_t dofs = 0;
-    for(int64_t j=firstblock; j<=lastblock; j++)
-    {
-        //printf("GetBlock %i\n", j);
-
-        block = bio.GetBlock(j);
-        //printf("GetBuf %i\n", j);
-        buf = block->GetBufRead();
-        int bsize = bio.blocksize - (ofs%bio.blocksize);
-        bsize = std::min((int64_t)bsize, size);
-        memcpy(&d[dofs], &buf[ofs%bio.blocksize], bsize);
-        ofs += bsize;
-        dofs += bsize;
-        size -= bsize;
-        block->ReleaseBuf();
-    }
 }
 
 // -----------
@@ -688,10 +596,10 @@ int64_t SimpleFilesystem::Read(INODE &node, int8_t *d, int64_t ofs, int64_t size
         {
             assert(intersect.ofs >= ofs);
             assert(intersect.ofs >= fragmentofs);
-            ReadFragment(
+            bio.Read(
                 fragments[idx].ofs*bio.blocksize + (intersect.ofs - fragmentofs),
-                &d[intersect.ofs-ofs],
-                intersect.size);
+                intersect.size,
+                &d[intersect.ofs-ofs]);
             s += intersect.size;
         }
         fragmentofs += fragments[idx].size;
@@ -717,10 +625,10 @@ void SimpleFilesystem::Write(INODE &node, const int8_t *d, int64_t ofs, int64_t 
         {
             assert(intersect.ofs >= ofs);
             assert(intersect.ofs >= fragmentofs);
-            WriteFragment(
+            bio.Write(
                 fragments[idx].ofs*bio.blocksize + (intersect.ofs - fragmentofs),
-                &d[intersect.ofs-ofs],
-                intersect.size);
+                intersect.size,
+                &d[intersect.ofs-ofs]);
         }
         fragmentofs += fragments[idx].size;
     }

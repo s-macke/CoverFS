@@ -74,9 +74,6 @@ private:
     void Write(INODE &node, const int8_t *d, int64_t ofs, int64_t size);
     void Truncate(INODE &node, int64_t size, bool dozero);
     void Remove(INODE &node);
-    void ReadFragment(int64_t ofs, int8_t *d, int64_t size);
-    void WriteFragment(int64_t ofs, const int8_t *d, int64_t size);
-    void ZeroFragment(int64_t ofs, const int64_t size);
 
     void GrowNode(INODE &node, int64_t size);
     void ShrinkNode(INODE &node, int64_t size);

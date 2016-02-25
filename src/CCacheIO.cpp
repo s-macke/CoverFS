@@ -119,7 +119,6 @@ void CCacheIO::BlockReadForce(const int blockidx, const int n)
     }
     cachemtx.unlock();
     delete[] buf;
-
 }
 
 void CCacheIO::CacheBlocks(const int blockidx, const int n)
@@ -191,4 +190,96 @@ void CCacheIO::Sync()
 {
     std::unique_lock<std::mutex> lock(async_sync_mutex);
     async_sync_cond.notify_one();
+}
+
+// -----------------------------------------------------------------
+
+void CCacheIO::Read(int64_t ofs, int64_t size, int8_t *d)
+{
+    CBLOCKPTR block;
+    int8_t *buf = NULL;
+    //printf("ReadFragment ofs=%li size=%li\n", ofs, size);
+    if (size == 0) return;
+
+    int firstblock = ofs/blocksize;
+    int lastblock = (ofs+size-1)/blocksize;
+
+    CacheBlocks(firstblock, lastblock-firstblock+1);
+
+    int64_t dofs = 0;
+    for(int64_t j=firstblock; j<=lastblock; j++)
+    {
+        //printf("GetBlock %i\n", j);
+
+        block = GetBlock(j);
+        //printf("GetBuf %i\n", j);
+        buf = block->GetBufRead();
+        int bsize = blocksize - (ofs%blocksize);
+        bsize = std::min((int64_t)bsize, size);
+        memcpy(&d[dofs], &buf[ofs%blocksize], bsize);
+        ofs += bsize;
+        dofs += bsize;
+        size -= bsize;
+        block->ReleaseBuf();
+    }
+}
+
+void CCacheIO::Write(int64_t ofs, int64_t size, const int8_t *d)
+{
+    CBLOCKPTR block;
+    int8_t *buf = NULL;
+    //printf("WriteFragment ofs=%li size=%li\n", ofs, size);
+    if (size == 0) return;
+
+    int firstblock = ofs/blocksize;
+    int lastblock = (ofs+size-1)/blocksize;
+
+    // check which blocks we have to read
+    if ((ofs%blocksize) != 0) block = GetBlock(firstblock);
+    if (((ofs+size-1)%blocksize) != 0) block = GetBlock(lastblock);
+
+    int64_t dofs = 0;
+    for(int64_t j=firstblock; j<=lastblock; j++)
+    {
+        block = GetBlock(j);
+        buf = block->GetBufReadWrite();
+        int bsize = blocksize - (ofs%blocksize);
+        bsize = std::min((int64_t)bsize, size);
+        memcpy(&buf[ofs%blocksize], &d[dofs], bsize);
+        ofs += bsize;
+        dofs += bsize;
+        size -= bsize;
+        block->ReleaseBuf();
+    }
+    Sync();
+}
+
+void CCacheIO::Zero(int64_t ofs, int64_t size)
+{
+    CBLOCKPTR block;
+    int8_t *buf = NULL;
+    //printf("ZeroFragment ofs=%li size=%li\n", ofs, size);
+    if (size == 0) return;
+
+    int firstblock = ofs/blocksize;
+    int lastblock = (ofs+size-1)/blocksize;
+
+    // check which blocks we have to read
+    if ((ofs%blocksize) != 0)          block = GetBlock(firstblock);
+    if (((ofs+size-1)%blocksize) != 0) block = GetBlock(lastblock);
+
+    int64_t dofs = 0;
+    for(int64_t j=firstblock; j<=lastblock; j++)
+    {
+        block = GetBlock(j);
+        buf = block->GetBufReadWrite();
+        int bsize = blocksize - (ofs%blocksize);
+        bsize = std::min((int64_t)bsize, size);
+        memset(&buf[ofs%blocksize], 0, bsize);
+        ofs += bsize;
+        dofs += bsize;
+        size -= bsize;
+        block->ReleaseBuf();
+    }
+    Sync();
 }

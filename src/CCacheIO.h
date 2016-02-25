@@ -43,12 +43,17 @@ public:
     CCacheIO(CAbstractBlockIO &bio, CEncrypt &_enc, bool _cryptcache);
     ~CCacheIO();
 
+    void Read(int64_t ofs, int64_t size, int8_t *d);
+    void Write(int64_t ofs, int64_t size, const int8_t *d);
+    void Zero(int64_t ofs, int64_t size);
+
     CBLOCKPTR GetBlock(const int blockidx, bool read=true);
     CBLOCKPTR GetWriteBlock(const int blockidx);
     void CacheBlocks(const int blockidx, const int n);
 
     size_t GetFilesize();
     void Sync();
+
     int blocksize;
 
 private:
