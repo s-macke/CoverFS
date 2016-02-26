@@ -5,7 +5,7 @@
 
 using boost::asio::ip::tcp;
 
-enum COMMAND {READ=0, WRITE=1, SIZE=2};
+enum COMMAND {READ=0, WRITE=1, SIZE=2, INFO=3};
 
 typedef struct
 {
@@ -101,6 +101,8 @@ CNetBlockIO::CNetBlockIO(int _blocksize, const std::string &host, const std::str
         boost::asio::io_service::work work(io_service);
         io_service.run();
     });
+
+    GetInfo();
 }
 
 size_t CNetBlockIO::GetFilesize()
@@ -118,6 +120,20 @@ size_t CNetBlockIO::GetFilesize()
     memcpy(&filesize, data, sizeof(filesize)); // to prevent the aliasing warning
 
     return filesize;
+}
+
+void CNetBlockIO::GetInfo()
+{
+    COMMANDSTRUCT cmd;
+    int8_t data[36];
+    cmd.cmdlen = 8;
+    cmd.cmd = INFO;
+    mtx.lock();
+    writerb->Push((int8_t*)&cmd, cmd.cmdlen);
+    int len = GetNextPacket(s, data, 36);
+    mtx.unlock();
+    assert(len == 36);
+    printf("Connected top '%s'\n", data);
 }
 
 void CNetBlockIO::Read(const int blockidx, const int n, int8_t *d)

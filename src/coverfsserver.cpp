@@ -18,7 +18,7 @@ typedef boost::asio::ssl::stream<boost::asio::ip::tcp::socket> ssl_socket;
 FILE *fp;
 size_t filesize;
 
-enum class COMMAND {read, write, size};
+enum class COMMAND {read, write, size, info};
 
 typedef struct
 {
@@ -63,6 +63,17 @@ void ParseCommand(char *commandbuf, ssl_socket &sock)
             data[0] = 12;
             memcpy(&data[1], &filesize, 8);
             boost::asio::write(sock, boost::asio::buffer(data, 12));
+            break;
+        }
+
+    case COMMAND::info:
+        {
+            //printf("INFO\n");
+            char data[40];
+            memset(data, 0, 40);
+            data[0] = 40;
+            strncpy(&data[4], "CoverFS Server V 1.0", 36);
+            boost::asio::write(sock, boost::asio::buffer(data, 40));
             break;
         }
 

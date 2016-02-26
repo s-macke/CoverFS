@@ -22,6 +22,7 @@ public:
     void Read(const int blockidx, const int n, int8_t* d);
     void Write(const int blockidx, const int n, int8_t* d);
     size_t GetFilesize();
+    void GetInfo();
 
 private:
     boost::asio::io_service io_service;
