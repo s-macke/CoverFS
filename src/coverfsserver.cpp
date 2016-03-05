@@ -23,11 +23,21 @@ enum class COMMAND {read, write, size, info};
 typedef struct
 {
     int32_t cmdlen;
+    int32_t id;
     int32_t cmd;
+    int32_t dummy;
     int64_t offset;
     int64_t length;
     int32_t data;
 } COMMANDSTRUCT;
+
+typedef struct
+{
+    int32_t cmdlen;
+    int32_t id;
+    int8_t data;
+} REPLYCOMMANDSTRUCT;
+
 
 void ParseCommand(char *commandbuf, ssl_socket &sock)
 {
@@ -40,10 +50,12 @@ void ParseCommand(char *commandbuf, ssl_socket &sock)
         {
             //printf("READ ofs=%li size=%li (block: %li)\n", cmd->offset, cmd->length, cmd->offset/4096);
             fseek(fp, cmd->offset, SEEK_SET);
-            int8_t *data = new int8_t[cmd->length+4];
-            fread(&data[4], cmd->length, 1, fp);
-            ((int32_t*)data)[0] = cmd->length+4;
-            boost::asio::write(sock, boost::asio::buffer(data, cmd->length+4));
+            int8_t *data = new int8_t[cmd->length+8];
+            REPLYCOMMANDSTRUCT *reply = (REPLYCOMMANDSTRUCT*)data;
+            reply->cmdlen = cmd->length+8;
+            reply->id = cmd->id;
+            fread(&reply->data, cmd->length, 1, fp);
+            boost::asio::write(sock, boost::asio::buffer(reply, reply->cmdlen));
             delete[] data;
             break;
         }
@@ -59,21 +71,25 @@ void ParseCommand(char *commandbuf, ssl_socket &sock)
             fseek(fp, 0L, SEEK_END);
             filesize = ftell(fp);
             fseek(fp, 0L, SEEK_SET);
-            int32_t data[3];
-            data[0] = 12;
-            memcpy(&data[1], &filesize, 8);
-            boost::asio::write(sock, boost::asio::buffer(data, 12));
+            int32_t data[4];
+            REPLYCOMMANDSTRUCT *reply = (REPLYCOMMANDSTRUCT*)data;
+            reply->cmdlen = 16;
+            reply->id = cmd->id;
+            memcpy(&reply->data, &filesize, 8);
+            boost::asio::write(sock, boost::asio::buffer(reply, reply->cmdlen));
             break;
         }
 
     case COMMAND::info:
         {
             //printf("INFO\n");
-            char data[40];
-            memset(data, 0, 40);
-            data[0] = 40;
-            strncpy(&data[4], "CoverFS Server V 1.0", 36);
-            boost::asio::write(sock, boost::asio::buffer(data, 40));
+            char data[44];
+            memset(data, 0, 44);
+            REPLYCOMMANDSTRUCT *reply = (REPLYCOMMANDSTRUCT*)data;
+            reply->cmdlen = 44;
+            reply->id = cmd->id;
+            strncpy((char*)&reply->data, "CoverFS Server V 1.0", 36);
+            boost::asio::write(sock, boost::asio::buffer(reply, reply->cmdlen));
             break;
         }
 
@@ -113,7 +129,6 @@ void session(ssl_socket &sock)
 
     try
     {
-
         for (;;)
         {
             boost::system::error_code error;
@@ -121,10 +136,9 @@ void session(ssl_socket &sock)
             /*
                 if (error == boost::asio::error::eof) break; // Connection closed cleanly by peer.
                 else if (error) throw boost::system::system_error(error); // Some other error.
-                */
+            */
             if (error) break;
             //printf("read block of size %li\n", length);
-
             ParseStream(data, length, sock);
         }
     }

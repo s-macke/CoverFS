@@ -12,6 +12,8 @@ namespace ssl = boost::asio::ssl;
 typedef ssl::stream<tcp::socket> ssl_socket;
 
 #include <mutex>
+#include <atomic>
+
 
 class CWriteRingBuffer;
 
@@ -29,6 +31,7 @@ private:
     ssl::context ctx;
     ssl_socket s;
     std::mutex mtx;
+    std::atomic_int cmdid;
     std::thread iothread;
     CWriteRingBuffer *writerb;
 };
