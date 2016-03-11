@@ -15,12 +15,13 @@ typedef ssl::stream<tcp::socket> ssl_socket;
 #include <atomic>
 
 
-class CWriteRingBuffer;
+class CNetReadWriteBuffer;
 
 class CNetBlockIO : public CAbstractBlockIO
 {
 public:
     CNetBlockIO(int _blocksize, const std::string &host, const std::string &port);
+
     void Read(const int blockidx, const int n, int8_t* d);
     void Write(const int blockidx, const int n, int8_t* d);
     size_t GetFilesize();
@@ -30,10 +31,9 @@ private:
     boost::asio::io_service io_service;
     ssl::context ctx;
     ssl_socket s;
-    std::mutex mtx;
     std::atomic_int cmdid;
     std::thread iothread;
-    CWriteRingBuffer *writerb;
+    CNetReadWriteBuffer *rbbuf;
 };
 
 #endif

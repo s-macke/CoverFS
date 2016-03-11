@@ -19,7 +19,7 @@ set(CPP_FILES
     src/CEncrypt.cpp
     src/CNetBlockIO.cpp
     src/CSimpleFS.cpp
-    src/CWriteRingBuffer.cpp
+    src/CNetReadWriteBuffer.cpp
     src/INode.cpp
     src/debug.cpp
     src/main.cpp
@@ -54,7 +54,7 @@ add_executable(checkfragment tests/checkfragment.cpp)
 
 target_link_libraries (coverfs ${Boost_SYSTEM_LIBRARY_RELEASE} Threads::Threads ssl crypto gcrypt ${FUSE_LIB})
 target_link_libraries (coverfsserver ${Boost_SYSTEM_LIBRARY_RELEASE} Threads::Threads ssl crypto)
-target_link_libraries (checkfragment Threads::Threads)
+target_link_libraries (checkfragment ${Boost_SYSTEM_LIBRARY_RELEASE} boost_thread Threads::Threads)
 
 
 add_custom_target(dist

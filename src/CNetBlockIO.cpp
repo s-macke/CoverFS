@@ -1,7 +1,8 @@
 #include"CNetBlockIO.h"
-#include"CWriteRingBuffer.h"
+#include"CNetReadWriteBuffer.h"
 
 #include<iostream>
+#include<future>
 
 using boost::asio::ip::tcp;
 
@@ -9,49 +10,12 @@ enum COMMAND {READ=0, WRITE=1, SIZE=2, INFO=3};
 
 typedef struct
 {
-    int32_t cmdlen;
-    int32_t id;
     int32_t cmd;
     int32_t dummy;
     int64_t offset;
     int64_t length;
     int32_t data;
-} COMMANDSTRUCT;
-
-
-int GetNextPacket(ssl_socket &sock, int8_t *d, int32_t dsize, int cmdid)
-{
-    static int8_t data[4096*8];
-    static uint32_t dataofs = 0;
-    static size_t datalength = 0;
-
-    int32_t packetlen = 0;
-    int32_t len = -1;
-
-    for (;;)
-    {
-        if (dataofs == datalength)
-        {
-            boost::system::error_code error;
-            datalength = sock.read_some(boost::asio::buffer(data, 4096*8), error);
-            if (error) break;
-            dataofs = 0;
-        }
-        d[packetlen++] = data[dataofs++];
-        if (len == packetlen) return len;
-
-        if ((len == -1) && (packetlen >= 8))
-        {
-            COMMANDSTRUCT *cmd = (COMMANDSTRUCT*)d;
-            len = cmd->cmdlen - 8;
-            assert(cmd->id == cmdid);
-            packetlen = 0;
-            assert((len+4) > 0);
-            assert((len) <= dsize);
-        }
-    }
-    return 0;
-}
+} CommandDesc;
 
 bool verify_certificate(bool preverified, boost::asio::ssl::verify_context& ctx)
 {
@@ -99,7 +63,7 @@ CNetBlockIO::CNetBlockIO(int _blocksize, const std::string &host, const std::str
         exit(1);
     }
     s.handshake(boost::asio::ssl::stream_base::client);
-    writerb = new CWriteRingBuffer(s);
+    rbbuf = new CNetReadWriteBuffer(s);
 
     iothread = std::thread([&](){
         boost::asio::io_service::work work(io_service);
@@ -112,16 +76,13 @@ CNetBlockIO::CNetBlockIO(int _blocksize, const std::string &host, const std::str
 size_t CNetBlockIO::GetFilesize()
 {
     int64_t filesize;
-    COMMANDSTRUCT cmd;
+    CommandDesc cmd;
     int8_t data[8];
-    cmd.cmdlen = 12;
-    cmd.id = cmdid.fetch_add(1);
+    int32_t id = cmdid.fetch_add(1);
     cmd.cmd = SIZE;
-    mtx.lock();
-    writerb->Push((int8_t*)&cmd, cmd.cmdlen);
-    int len = GetNextPacket(s, data, 12, cmd.id);
-    mtx.unlock();
-    assert(len == 8);
+    std::future<void> fut = rbbuf->Read(id, data, 8);
+    rbbuf->Write(id, (int8_t*)&cmd, 4);
+    fut.get();
     memcpy(&filesize, data, sizeof(filesize)); // to prevent the aliasing warning
 
     return filesize;
@@ -129,47 +90,37 @@ size_t CNetBlockIO::GetFilesize()
 
 void CNetBlockIO::GetInfo()
 {
-    COMMANDSTRUCT cmd;
+    CommandDesc cmd;
     int8_t data[36];
-    cmd.cmdlen = 12;
-    cmd.id = cmdid.fetch_add(1);
+    int32_t id = cmdid.fetch_add(1);
     cmd.cmd = INFO;
-    mtx.lock();
-    writerb->Push((int8_t*)&cmd, cmd.cmdlen);
-    int len = GetNextPacket(s, data, 36, cmd.id);
-    mtx.unlock();
-    assert(len == 36);
+    std::future<void> fut = rbbuf->Read(id, data, 36);
+    rbbuf->Write(id, (int8_t*)&cmd, 4);
+    fut.get();
     printf("Connected to '%s'\n", data);
 }
 
 void CNetBlockIO::Read(const int blockidx, const int n, int8_t *d)
 {
-    COMMANDSTRUCT cmd;
-    cmd.cmdlen = 4*4+2*8;
-    cmd.id = cmdid.fetch_add(1);
+    CommandDesc cmd;
+    int32_t id = cmdid.fetch_add(1);
     cmd.cmd = READ;
     cmd.offset = blockidx*blocksize;
     cmd.length = blocksize*n;
-    mtx.lock();
     //printf("read block %i\n", blockidx);
-    writerb->Push((int8_t*)&cmd, cmd.cmdlen);
-    int len = GetNextPacket(s, d, blocksize*n, cmd.id);
-    mtx.unlock();
-    assert(len == (int32_t)blocksize*n);
+    std::future<void> fut = rbbuf->Read(id, d, blocksize*n);
+    rbbuf->Write(id, (int8_t*)&cmd, 2*4+2*8);
+    fut.get();
 }
 
 void CNetBlockIO::Write(const int blockidx, const int n, int8_t* d)
 {
-    int8_t buf[blocksize*n + 2*8 + 4*4];
-    COMMANDSTRUCT *cmd = (COMMANDSTRUCT*)buf;
-    cmd->cmdlen = blocksize*n + 2*8 + 4*4;
-    cmd->id = cmdid.fetch_add(1);
+    int8_t buf[blocksize*n + 2*8 + 2*4];
+    CommandDesc *cmd = (CommandDesc*)buf;
+    int32_t id = cmdid.fetch_add(1);
     cmd->cmd = WRITE;
     cmd->offset = blockidx*blocksize;
     cmd->length = blocksize*n;
     memcpy(&cmd->data, d, blocksize*n);
-    mtx.lock();
-    writerb->Push(buf, blocksize*n + 2*8 + 4*4);
-    mtx.unlock();
+    rbbuf->Write(id, buf, blocksize*n + 2*8 + 2*4);
 }
-

@@ -10,7 +10,6 @@
 /*
 TODO:
     - faster sorted offset list
-    - better locks in cache
     - readahead
     - remove should check for shared_ptr number of pointers
     - gcrypt mode is not xts?
