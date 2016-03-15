@@ -8,6 +8,7 @@
 #include"CNetBlockIO.h"
 
 #include"CEncrypt.h"
+#include"ParallelTest.h"
 
 #include"CCacheIO.h"
 #include"CSimpleFS.h"
@@ -35,6 +36,7 @@ void PrintUsage(int argc, char *argv[])
     printf("  --fragments         Prints information about the fragments\n");
     printf("  --rootdir           Print root directory\n");
     printf("  --check             Check filesystem\n");
+    printf("  --test              Tests filesystem and multi-threading\n");
     printf("  --debug             Debug output\n");
 }
 
@@ -60,6 +62,7 @@ int main(int argc, char *argv[])
     bool showfragments = false;
     bool rootdir = false;
     bool cryptcache = false;
+    bool testfs = false;
 
     strncpy(hostname,   "localhost", 255);
     strncpy(port,       "62000",     255);
@@ -83,6 +86,7 @@ int main(int argc, char *argv[])
             {"backend",    required_argument, 0,  0 },
             {"debug",      no_argument,       0,  0 },
             {"cryptcache", no_argument,       0,  0 },
+            {"test",       no_argument,       0,  0 },
             {0,            0,                 0,  0 }
         };
 
@@ -133,6 +137,10 @@ int main(int argc, char *argv[])
                     cryptcache = true;
                     break;
 
+                case 10:
+                    testfs = true;
+                    break;
+
                 case 0: // help
                 default:
                     PrintUsage(argc, argv);
@@ -148,7 +156,7 @@ int main(int argc, char *argv[])
         }
     }
 
-    if ((!check) && (!info) && (!showfragments) && (!rootdir))
+    if ((!check) && (!info) && (!showfragments) && (!rootdir) && (!testfs))
     {
         if (optind < argc)
         {
@@ -209,8 +217,15 @@ int main(int argc, char *argv[])
         printf("==============================\n");
         fs.CheckFS();
     }
+    if (testfs)
+    {
+        printf("==============================\n");
+        printf("============ TEST ============\n");
+        printf("==============================\n");
+        ParallelTest(10, 10, 2000, fs);
+    }
 
-if ((info) || (showfragments) || (check) || (rootdir))
+if ((info) || (showfragments) || (check) || (rootdir) || (testfs))
 {
     return EXIT_SUCCESS;
 }

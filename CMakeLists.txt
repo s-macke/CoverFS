@@ -22,6 +22,7 @@ set(CPP_FILES
     src/CNetReadWriteBuffer.cpp
     src/INode.cpp
     src/debug.cpp
+    src/ParallelTest.cpp
     src/main.cpp
 )
 
