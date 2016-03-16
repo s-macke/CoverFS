@@ -156,12 +156,13 @@ size_t CCacheIO::GetFilesize()
 
 void CCacheIO::Async_Sync()
 {
-    std::unique_lock<std::mutex> lock(async_sync_mutex);
+    int8_t buf[blocksize];
     for(;;)
     {
         while (ndirty.load() == 0)
         {
             if (terminatesyncthread.load()) return;
+            std::unique_lock<std::mutex> lock(async_sync_mutex);
             async_sync_cond.wait(lock);
         }
 
@@ -173,14 +174,14 @@ void CCacheIO::Async_Sync()
             block->mutex.lock(); // TODO trylock and put back on the list
             cachemtx.unlock();
             nextblockidx = block->nextdirtyidx;
-            if (!cryptcache)
-                enc.Encrypt(block->blockidx, block->buf);
-            bio.Write(block->blockidx, 1, block->buf);
-            if (!cryptcache)
-                enc.Decrypt(block->blockidx, block->buf);
+            memcpy(buf, block->buf, blocksize);
             block->nextdirtyidx = -1;
             ndirty--;
             block->mutex.unlock();
+
+            if (!cryptcache)
+                enc.Encrypt(block->blockidx, buf);
+            bio.Write(block->blockidx, 1, buf);
         }
     }
 }
@@ -188,7 +189,6 @@ void CCacheIO::Async_Sync()
 
 void CCacheIO::Sync()
 {
-    std::unique_lock<std::mutex> lock(async_sync_mutex);
     async_sync_cond.notify_one();
 }
 
@@ -211,7 +211,7 @@ void CCacheIO::Read(int64_t ofs, int64_t size, int8_t *d)
     {
         //printf("GetBlock %i\n", j);
 
-        block = GetBlock(j);
+        block = GetBlock(j, true);
         //printf("GetBuf %i\n", j);
         buf = block->GetBufRead();
         int bsize = blocksize - (ofs%blocksize);
@@ -235,13 +235,13 @@ void CCacheIO::Write(int64_t ofs, int64_t size, const int8_t *d)
     int lastblock = (ofs+size-1)/blocksize;
 
     // check which blocks we have to read
-    if ((ofs%blocksize) != 0) block = GetBlock(firstblock);
-    if (((ofs+size-1)%blocksize) != 0) block = GetBlock(lastblock);
+    if ((ofs%blocksize) != 0) block = GetBlock(firstblock, true);
+    if (((ofs+size-1)%blocksize) != 0) block = GetBlock(lastblock, true);
 
     int64_t dofs = 0;
     for(int64_t j=firstblock; j<=lastblock; j++)
     {
-        block = GetBlock(j);
+        block = GetBlock(j, false);
         buf = block->GetBufReadWrite();
         int bsize = blocksize - (ofs%blocksize);
         bsize = std::min((int64_t)bsize, size);
@@ -265,13 +265,13 @@ void CCacheIO::Zero(int64_t ofs, int64_t size)
     int lastblock = (ofs+size-1)/blocksize;
 
     // check which blocks we have to read
-    if ((ofs%blocksize) != 0)          block = GetBlock(firstblock);
-    if (((ofs+size-1)%blocksize) != 0) block = GetBlock(lastblock);
+    if ((ofs%blocksize) != 0)          block = GetBlock(firstblock, true);
+    if (((ofs+size-1)%blocksize) != 0) block = GetBlock(lastblock, true);
 
     int64_t dofs = 0;
     for(int64_t j=firstblock; j<=lastblock; j++)
     {
-        block = GetBlock(j);
+        block = GetBlock(j, false);
         buf = block->GetBufReadWrite();
         int bsize = blocksize - (ofs%blocksize);
         bsize = std::min((int64_t)bsize, size);
