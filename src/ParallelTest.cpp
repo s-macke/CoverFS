@@ -35,6 +35,8 @@ static unsigned int niter = 2000;
 static unsigned int nfiles = 10;
 static unsigned int nthreads = 10;
 
+static unsigned int g_seed = 0;
+
 inline int fastrand(unsigned int &g_seed)
 {
   g_seed = (214013*g_seed+2531011);
@@ -51,8 +53,8 @@ void Execute(int tid)
     //printf("thread %i:\n", tid);
     for(unsigned int iter=0; iter<niter; iter++)
     {
-        int cmd = rand()%6;
-        int id = rand()%nfiles;
+        int cmd = fastrand(g_seed)%6;
+        int id = fastrand(g_seed)%nfiles;
         int ofs = 0;
 
         files[id].mtx.lock();
@@ -158,15 +160,18 @@ void Execute(int tid)
 
 void ParallelTest(unsigned int _nfiles, unsigned int _nthreads, unsigned int _niter, SimpleFilesystem &_fs)
 {
-    printf("Start parallel test of Filesystem\n");
     printf("number of files %i\n", nfiles);
     printf("number of threads: %i\n", nthreads);
     printf("number of iterations per thread: %i\n", niter);
+
+    srand (time(NULL));
+    g_seed = time(NULL);
 
     nfiles = _nfiles;
     nthreads = _nthreads;
     niter = _niter;
     fs = &_fs;
+    CDirectory dir = fs->OpenDir("/");
 
     files = new FSTRUCT[nfiles];
     for(unsigned int i=0; i<nfiles; i++)
@@ -175,16 +180,15 @@ void ParallelTest(unsigned int _nfiles, unsigned int _nthreads, unsigned int _ni
         sprintf(files[i].filename, "tests%02i_%03i.dat", i, 0);
         try
         {
-            CDirectory dir = fs->OpenDir("/");
             dir.CreateFile(files[i].filename);
-            files[i].node = fs->OpenNode(files[i].filename);
-            files[i].node->Truncate(0);
         }
         catch(...)
         {
-            perror("Error during open");
-            exit(1);
+            // file already exists
         }
+        files[i].node = fs->OpenNode(files[i].filename);
+        files[i].node->Truncate(0);
+
         files[i].size = 0;
         memset(files[i].data, 0, MAXSIZE+1);
     }
