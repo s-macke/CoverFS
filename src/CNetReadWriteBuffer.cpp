@@ -13,6 +13,22 @@ CNetReadWriteBuffer::CNetReadWriteBuffer(ssl_socket &s) : socket(s)
     AsyncRead();
 }
 
+CNetReadWriteBuffer::~CNetReadWriteBuffer()
+{
+    {
+        std::lock_guard<std::mutex> lock(readidmapmtx);
+        int n = readidmap.size();
+        if (n != 0) printf("Warning: read queue not empty\n");
+    }
+    while(1)
+    {
+        unsigned int n = bufsize.load();
+        if (n == 0) return;
+        printf("write cache: emptying cache. Still %i bytes to go.\n", n);
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    }
+}
+
 // --------------------------------------------------------
 
 std::future<void> CNetReadWriteBuffer::Read(int32_t id, int8_t *buf, int32_t size)
@@ -99,8 +115,8 @@ void CNetReadWriteBuffer::AsyncWrite()
     wpmutex.lock();
     bool wip = write_in_progress.test_and_set();
     wpmutex.unlock();
-    if (wip) return; // return if it already runs
 
+    if (wip) return; // return if it already runs
     //if (bufsize.load() > 0) printf("write size=%i\n", bufsize.load());
     int sendsize = std::min((unsigned int)buf.size()-popidx, bufsize.load());
     boost::asio::async_write(

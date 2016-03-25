@@ -23,11 +23,11 @@ class CReadBufferDesc
     std::promise<void> promise; // which task to notify
 };
 
-
 class CNetReadWriteBuffer
 {
     public:
     CNetReadWriteBuffer(ssl_socket &s);
+    ~CNetReadWriteBuffer();
     void Write(int32_t id, int8_t *d, int n);
     std::future<void> Read(int32_t id, int8_t *buf, int32_t size);
 

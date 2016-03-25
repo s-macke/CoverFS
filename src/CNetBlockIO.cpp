@@ -73,6 +73,11 @@ CNetBlockIO::CNetBlockIO(int _blocksize, const std::string &host, const std::str
     GetInfo();
 }
 
+CNetBlockIO::~CNetBlockIO()
+{
+    delete rbbuf;
+}
+
 size_t CNetBlockIO::GetFilesize()
 {
     int64_t filesize;
