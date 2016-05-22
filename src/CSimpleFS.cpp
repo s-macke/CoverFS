@@ -435,7 +435,7 @@ int SimpleFilesystem::ReserveNextFreeFragment(INODE &node, int64_t maxsize)
         if ((hole > 0x100000) || (hole > maxsize/4))
         {
             fragments[storeidx].id = node.id;
-            fragments[storeidx].size = std::min<int64_t>({maxsize, hole, 0xFFFFFFFFL});
+            fragments[storeidx].size = std::min<int64_t>({maxsize, hole, (int64_t)0xFFFFFFFFL});
             fragments[storeidx].ofs = nextofs;
             return storeidx;
         }
@@ -527,7 +527,7 @@ void SimpleFilesystem::ShrinkNode(INODE &node, int64_t size)
         int lastidx = node.fragments.back();
         CFragmentDesc &r = fragments[lastidx];
         node.size -= r.size;
-        r.size = std::max(size-node.size, 0LL);
+        r.size = std::max(size - node.size, (int64_t)0);
         node.size += r.size;
 
         if ((r.size == 0) && (node.size != 0)) // don't remove last element
