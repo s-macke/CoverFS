@@ -22,6 +22,7 @@ set(CPP_FILES
     src/INode.cpp
     src/debug.cpp
     src/ParallelTest.cpp
+    src/CStatusView.cpp
     src/main.cpp
 )
 
@@ -30,8 +31,6 @@ find_package(Threads REQUIRED)
 find_package(Boost COMPONENTS system REQUIRED)
 find_package(OpenSSL REQUIRED)
 find_package(Libgcrypt REQUIRED)
-
-
 
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")

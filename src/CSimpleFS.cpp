@@ -93,7 +93,12 @@ SimpleFilesystem::SimpleFilesystem(CCacheIO &_bio) : bio(_bio), nodeinvalid(new 
     }
     superblock->ReleaseBuf();
 
-    CreateFS();	
+    CreateFS();
+}
+
+int64_t SimpleFilesystem::GetNInodes()
+{
+    return inodes.size();
 }
 
 
@@ -279,9 +284,9 @@ INODEPTR SimpleFilesystem::OpenNode(const std::vector<std::string> splitpath)
     std::lock_guard<std::mutex> lock(node->GetMutex());
     node->parentid = dirid;
     node->type = (INODETYPE)e.type; // static cast?
-    if (splitpath.empty()) 
+    if (splitpath.empty())
         node->name = "/";
-    else 
+    else
         node->name = splitpath.back();
 
     return node;
@@ -679,7 +684,7 @@ void SimpleFilesystem::PrintFS()
     printf("Fragmentation:\n");
 
     int frags[8] = {0};
-    for(auto f : s) 
+    for(auto f : s)
     {
         int nfragments = 0;
         for(unsigned int i=0; i<fragments.size(); i++)

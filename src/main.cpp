@@ -13,6 +13,7 @@
 #include"CCacheIO.h"
 #include"CSimpleFS.h"
 #include"CDirectory.h"
+#include"CStatusView.h"
 
 #if !defined(_WIN32) && !defined(_WIN64) && !defined(__CYGWIN__)
 #include"fuseoper.h"
@@ -95,7 +96,7 @@ int main(int argc, char *argv[])
         int option_index = 0;
         int c = getopt_long(argc, argv, "", long_options, &option_index);
         if (c == -1) break;
-        switch (c) 
+        switch (c)
         {
         case 0:
             switch(option_index)
@@ -225,16 +226,18 @@ int main(int argc, char *argv[])
         ParallelTest(10, 10, 2000, fs);
     }
 
-if ((info) || (showfragments) || (check) || (rootdir) || (testfs))
-{
-    return EXIT_SUCCESS;
-}
+    if ((info) || (showfragments) || (check) || (rootdir) || (testfs))
+    {
+        return EXIT_SUCCESS;
+    }
 
-if (signal(SIGINT, catch_function) == SIG_ERR)
-{
-    fputs("An error occurred while setting a signal handler.\n", stderr);
-    return EXIT_FAILURE;
-}
+    ShowStatus(fs, cbio);
+
+    if (signal(SIGINT, catch_function) == SIG_ERR)
+    {
+        fputs("An error occurred while setting a signal handler.\n", stderr);
+        return EXIT_FAILURE;
+    }
 
 #if !defined(_WIN32) && !defined(_WIN64) && !defined(__CYGWIN__)
     return StartFuse(argc, argv, mountpoint, fs);

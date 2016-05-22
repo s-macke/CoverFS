@@ -59,6 +59,8 @@ public:
     void PrintFragments();
     void GetRecursiveDirectories(std::map<int32_t, std::string> &direntries, int id, const std::string &path);
 
+    int64_t GetNInodes();
+
     static const int32_t ROOTID       =  0; // contains the root directory structure
     static const int32_t FREEID       = -1; // this block is not used and can be overwritten
     static const int32_t TABLEID      = -2; // contains the layout tables of the whole filesystem

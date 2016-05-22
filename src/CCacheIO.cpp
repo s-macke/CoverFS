@@ -154,6 +154,20 @@ int64_t CCacheIO::GetFilesize()
     return bio.GetFilesize();
 }
 
+int64_t CCacheIO::GetNDirty()
+{
+    return ndirty.load();
+}
+
+int64_t CCacheIO::GetNCachedBlocks()
+{
+    cachemtx.lock();
+    int64_t n = cache.size();
+    cachemtx.unlock();
+    return n;
+}
+
+
 void CCacheIO::Async_Sync()
 {
     int8_t buf[blocksize];
