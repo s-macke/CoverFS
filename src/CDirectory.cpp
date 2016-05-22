@@ -134,7 +134,7 @@ bool CDirectory::IsEmpty()
 
 void CDirectory::List()
 {
-    printf("  Listing of id=%i, name='%s', with size=%li\n", dirnode->id, dirnode->name.c_str(), dirnode->size);
+    printf("  Listing of id=%i, name='%s', with size=%lli\n", dirnode->id, dirnode->name.c_str(), (long long int)dirnode->size);
     int n = -1;
     const char *typestr[] = {"UNK", "DIR", "FILE"};
     ForEachEntry([&](DIRENTRY &de)

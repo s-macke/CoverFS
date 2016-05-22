@@ -122,7 +122,7 @@ void Execute(int tid)
             printf("tid %1i %5i: filesize %i\n", tid, iter, id);
             if (files[id].node->size != (unsigned int)files[id].size)
             {
-                printf("size of file %i does not match %i %li\n", id, files[id].size, files[id].node->size);
+                printf("size of file %i does not match %i %lli\n", id, files[id].size, (long long int)files[id].node->size);
                 exit(1);
             }
         }

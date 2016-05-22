@@ -11,7 +11,7 @@ CRAMBlockIO::CRAMBlockIO(int _blocksize) : CAbstractBlockIO(_blocksize)
     data.assign(blocksize*3, 0xFF);
 }
 
-size_t CRAMBlockIO::GetFilesize()
+int64_t CRAMBlockIO::GetFilesize()
 {
     std::lock_guard<std::mutex> lock(mutex);
     return data.size();

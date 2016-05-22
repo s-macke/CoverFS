@@ -6,6 +6,7 @@
 #include<set>
 #include<algorithm>
 #include<climits>
+#include<algorithm>
 
 /*
 TODO:
@@ -51,7 +52,6 @@ SimpleFilesystem::SimpleFilesystem(CCacheIO &_bio) : bio(_bio), nodeinvalid(new 
     nodeinvalid->id = INVALIDID;
 
     assert(sizeof(DIRENTRY) == 128);
-    assert(sizeof(size_t) == 8);
     assert(sizeof(CFragmentDesc) == 16);
 
     printf("container info:\n");
@@ -86,7 +86,6 @@ SimpleFilesystem::SimpleFilesystem(CCacheIO &_bio) : bio(_bio), nodeinvalid(new 
             int8_t* buf = block->GetBufRead();
             memcpy(&fragments[i*nidsperblock], buf, sizeof(CFragmentDesc)*nidsperblock);
             block->ReleaseBuf();
-        
         }
         SortOffsets();
         printf("\n");
@@ -523,7 +522,7 @@ void SimpleFilesystem::ShrinkNode(INODE &node, int64_t size)
         int lastidx = node.fragments.back();
         CFragmentDesc &r = fragments[lastidx];
         node.size -= r.size;
-        r.size = std::max(size-node.size, 0L);
+        r.size = std::max(size-node.size, 0LL);
         node.size += r.size;
 
         if ((r.size == 0) && (node.size != 0)) // don't remove last element
@@ -614,7 +613,7 @@ void SimpleFilesystem::Write(INODE &node, const int8_t *d, int64_t ofs, int64_t 
     //printf("write node.id=%i node.size=%li write_ofs=%li write_size=%li\n", node.id, node.size, ofs, size);
 
     if (node.size < ofs+size) Truncate(node, ofs+size, false);
-    
+
     int64_t fragmentofs = 0x0;
     for(unsigned int i=0; i<node.fragments.size(); i++)
     {
@@ -646,10 +645,13 @@ void SimpleFilesystem::PrintFragments()
         //int idx1 = ofssort[i];
         int idx1 = i;
         if (fragments[idx1].id == FREEID) continue;
-        printf("frag=%4i id=%4i ofs=%7li size=%10u '%s'\n", idx1, fragments[idx1].id, fragments[idx1].ofs, fragments[idx1].size, direntries[fragments[idx1].id].c_str());
-    }
-
-
+        printf("frag=%4i id=%4i ofs=%7llu size=%10llu '%s'\n",
+            idx1,
+            fragments[idx1].id,
+            (long long unsigned int)fragments[idx1].ofs,
+            (long long unsigned int)fragments[idx1].size,
+            direntries[fragments[idx1].id].c_str());
+        }
 }
 
 
@@ -662,14 +664,14 @@ void SimpleFilesystem::PrintFS()
     for(unsigned int i=0; i<fragments.size(); i++)
     {
         int32_t id = fragments[i].id;
-        if (id >= 0) 
+        if (id >= 0)
 	{
 		size += fragments[i].size;
 		s.insert(id);
 	}
     }
-    printf("number of inodes: %li\n", s.size());
-    printf("stored bytes: %li\n", size);
+    printf("number of inodes: %zu\n", s.size());
+    printf("stored bytes: %lli\n", (long long int)size);
     printf("container usage: %f %%\n", (double)size/(double)bio.GetFilesize()*100.);
 
     // very very slow
@@ -714,8 +716,8 @@ void SimpleFilesystem::Rename(INODEPTR &node, CDirectory &newdir, const std::str
     CDirectory olddir = OpenDir(node->parentid);
     olddir.RemoveEntry(node->name, e);
     strncpy(e.name, filename.c_str(), 64+32);
-    /*        
-    // check if file already exist and remove it        
+    /*
+    // check if file already exist and remove it
     // this is already done in fuserop
     newdir.Find(filename, e);
     DIRENTRY e(filename);
@@ -813,7 +815,7 @@ void SimpleFilesystem::StatFS(struct statvfs *buf)
     buf->f_frsize  = bio.blocksize;
     buf->f_namemax = 64+31;
 
-    int64_t totalsize = bio.GetFilesize() + (100L * 0x40000000L); // add always 100GB
+    int64_t totalsize = bio.GetFilesize() + (100LL * 0x40000000LL); // add always 100GB
     buf->f_blocks  = totalsize/bio.blocksize;
 
     std::lock_guard<std::mutex> lock(fragmentsmtx);

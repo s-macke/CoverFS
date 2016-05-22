@@ -149,7 +149,7 @@ void CCacheIO::CacheBlocks(const int blockidx, const int n)
     BlockReadForce(blockidx+istart, npart);
 }
 
-size_t CCacheIO::GetFilesize()
+int64_t CCacheIO::GetFilesize()
 {
     return bio.GetFilesize();
 }

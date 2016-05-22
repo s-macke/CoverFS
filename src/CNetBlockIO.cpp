@@ -78,7 +78,7 @@ CNetBlockIO::~CNetBlockIO()
     delete rbbuf;
 }
 
-size_t CNetBlockIO::GetFilesize()
+int64_t CNetBlockIO::GetFilesize()
 {
     int64_t filesize;
     CommandDesc cmd;

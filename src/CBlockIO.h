@@ -16,7 +16,7 @@ public:
     CAbstractBlockIO(int _blocksize);
     virtual void Read(const int blockidx, const int n, int8_t* d) = 0;
     virtual void Write(const int blockidx, const int n, int8_t* d) = 0;
-    virtual size_t GetFilesize() = 0;
+    virtual int64_t GetFilesize() = 0;
 
 public:
     unsigned int blocksize;
@@ -29,7 +29,7 @@ public:
     CRAMBlockIO(int _blocksize);
     void Read(const int blockidx, const int n, int8_t* d);
     void Write(const int blockidx, const int n, int8_t* d);
-    size_t GetFilesize();
+    int64_t GetFilesize();
 
 private:
     std::vector<int8_t> data;

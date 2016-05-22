@@ -42,7 +42,7 @@ size_t fsize(int fd)
     if(fstat(fd, &st) != 0) {
         return 0;
     }
-    return st.st_size;   
+    return st.st_size;
 }
 
 void Execute(int tid)
@@ -133,7 +133,7 @@ void Execute(int tid)
             printf("tid %1i %5i: filesize %i\n", tid, iter, id);
             if (fsize(files[id].fd) != (unsigned int)files[id].size)
             {
-                printf("size of file %i does not match %i %li\n", id, files[id].size, fsize(files[id].fd));
+                printf("size of file %i does not match %i %lli\n", id, files[id].size, (long long int)fsize(files[id].fd));
                 exit(1);
             }
             break;

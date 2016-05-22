@@ -16,7 +16,7 @@ using boost::asio::ip::tcp;
 typedef boost::asio::ssl::stream<boost::asio::ip::tcp::socket> ssl_socket;
 
 FILE *fp;
-size_t filesize;
+int64_t filesize;
 
 enum class COMMAND {read, write, size, info};
 

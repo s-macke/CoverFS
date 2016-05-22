@@ -51,7 +51,7 @@ public:
     CBLOCKPTR GetWriteBlock(const int blockidx);
     void CacheBlocks(const int blockidx, const int n);
 
-    size_t GetFilesize();
+    int64_t GetFilesize();
     void Sync();
 
     int blocksize;

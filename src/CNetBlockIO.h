@@ -25,7 +25,7 @@ public:
 
     void Read(const int blockidx, const int n, int8_t* d);
     void Write(const int blockidx, const int n, int8_t* d);
-    size_t GetFilesize();
+    int64_t GetFilesize();
     void GetInfo();
 
 private:
