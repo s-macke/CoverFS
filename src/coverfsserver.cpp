@@ -11,8 +11,6 @@
 
 using boost::asio::ip::tcp;
 
-//typedef ssl::stream<tcp::socket> ssl_socket;
-
 typedef boost::asio::ssl::stream<boost::asio::ip::tcp::socket> ssl_socket;
 
 FILE *fp;
@@ -99,10 +97,7 @@ void ParseCommand(char *commandbuf, ssl_socket &sock)
 
 }
 
-static char commandbuf[4096*2];
-static int32_t commandbuflen = 0;
-
-void ParseStream(char *data, int length, ssl_socket &sock)
+void ParseStream(char *data, int length, ssl_socket &sock, char *commandbuf, int32_t &commandbuflen)
 {
     for(int i=0; i<length; i++) 
     {
@@ -121,31 +116,33 @@ void ParseStream(char *data, int length, ssl_socket &sock)
 }
 
 
-void session(ssl_socket &sock)
+void session(ssl_socket *sock)
 {
     const int max_length = 4096*10;
     char data[max_length];
-    commandbuflen = 0; // hack, find better solution, only one connection allowed at a time
+
+    char commandbuf[4096*2];
+    int32_t commandbuflen = 0;
 
     try
     {
         for (;;)
         {
             boost::system::error_code error;
-            size_t length = sock.read_some(boost::asio::buffer(data, max_length), error);
+            size_t length = sock->read_some(boost::asio::buffer(data, max_length), error);
             /*
                 if (error == boost::asio::error::eof) break; // Connection closed cleanly by peer.
                 else if (error) throw boost::system::system_error(error); // Some other error.
             */
             if (error) break;
-            //printf("read block of size %li\n", length);
-            ParseStream(data, length, sock);
+            ParseStream(data, length, *sock, commandbuf, commandbuflen);
         }
     }
     catch (std::exception& e)
     {
         std::cerr << "Exception in thread: " << e.what() << "\n";
     }
+    printf("Connection closed\n");
 }
 
 std::string get_password(std::size_t max_length, boost::asio::ssl::context::password_purpose purpose)
@@ -175,17 +172,14 @@ void server(boost::asio::io_service& io_service, unsigned short port)
     {
         try
         {
-            //tcp::ssl::socket sock(io_service, ctx);
-            ssl_socket sock(io_service, ctx);
-            //session* new_session = new session(io_service_, context_);
-            a.accept(sock.lowest_layer());
-            printf("Connection from '%s'. Establish SSL connection\n", sock.lowest_layer().remote_endpoint().address().to_string().c_str());
+            ssl_socket *sock = new ssl_socket(io_service, ctx);
+            a.accept(sock->lowest_layer());
+            printf("Connection from '%s'. Establish SSL connection\n", sock->lowest_layer().remote_endpoint().address().to_string().c_str());
         
-            sock.handshake(boost::asio::ssl::stream_base::server);
+            sock->handshake(boost::asio::ssl::stream_base::server);
         
-            //std::thread(session, std::move(sock)).detach();
-            session(sock);
-            printf("Connection closed\n");
+            std::thread(session, sock).detach();
+            //session(sock);
         }
         catch (std::exception& e)
         {

@@ -37,13 +37,20 @@ bool verify_certificate(bool preverified, boost::asio::ssl::verify_context& ctx)
 
 
 CNetBlockIO::CNetBlockIO(int _blocksize, const std::string &host, const std::string &port)
-: CAbstractBlockIO(_blocksize), ctx(io_service, ssl::context::sslv23), s(io_service, ctx), cmdid(0)
+: CAbstractBlockIO(_blocksize),
+  ctx(io_service, ssl::context::sslv23),
+  sctrl(io_service, ctx),
+  sdata(io_service, ctx),
+  cmdid(0)
 {
     ctx.set_verify_mode(boost::asio::ssl::context::verify_peer);
     ctx.load_verify_file("ssl/server.crt");
 
-    s.set_verify_mode(boost::asio::ssl::verify_peer);
-    s.set_verify_callback(verify_certificate);
+    sctrl.set_verify_mode(boost::asio::ssl::verify_peer);
+    sctrl.set_verify_callback(verify_certificate);
+
+    sdata.set_verify_mode(boost::asio::ssl::verify_peer);
+    sdata.set_verify_callback(verify_certificate);
 
     tcp::resolver resolver(io_service);
     tcp::resolver::query q(host, port);
@@ -56,14 +63,31 @@ CNetBlockIO::CNetBlockIO(int _blocksize, const std::string &host, const std::str
     }
     printf("Connect to %s\n", host.c_str());
 
-    boost::asio::connect(s.lowest_layer(), iter, ec);
+    boost::asio::connect(sctrl.lowest_layer(), iter, ec);
     if (ec)
     {
-        fprintf(stderr, "Error: Cannot connect to server.\n");
+        fprintf(stderr, "Error: Cannot connect to server. (Control Stream)\n");
         exit(1);
     }
-    s.handshake(boost::asio::ssl::stream_base::client);
-    rbbuf = new CNetReadWriteBuffer(s);
+    sctrl.handshake(boost::asio::ssl::stream_base::client);
+
+    boost::asio::connect(sdata.lowest_layer(), iter, ec);
+    if (ec)
+    {
+        fprintf(stderr, "Error: Cannot connect to server. (Data Stream))\n");
+        exit(1);
+    }
+    sdata.handshake(boost::asio::ssl::stream_base::client);
+
+    int priority = 6;
+    int ret = setsockopt(sctrl.lowest_layer().native(), SOL_SOCKET, SO_PRIORITY, &priority, sizeof(priority));
+    if (ret != 0)
+    {
+        fprintf(stderr, "Warning: Cannot set socket priority\n");
+    }
+
+    rbbufctrl = new CNetReadWriteBuffer(sctrl);
+    rbbufdata = new CNetReadWriteBuffer(sdata);
 
     iothread = std::thread([&](){
         boost::asio::io_service::work work(io_service);
@@ -75,7 +99,8 @@ CNetBlockIO::CNetBlockIO(int _blocksize, const std::string &host, const std::str
 
 CNetBlockIO::~CNetBlockIO()
 {
-    delete rbbuf;
+    delete rbbufctrl;
+    delete rbbufdata;
 }
 
 int64_t CNetBlockIO::GetFilesize()
@@ -85,8 +110,8 @@ int64_t CNetBlockIO::GetFilesize()
     int8_t data[8];
     int32_t id = cmdid.fetch_add(1);
     cmd.cmd = SIZE;
-    std::future<void> fut = rbbuf->Read(id, data, 8);
-    rbbuf->Write(id, (int8_t*)&cmd, 4);
+    std::future<void> fut = rbbufctrl->Read(id, data, 8);
+    rbbufctrl->Write(id, (int8_t*)&cmd, 4);
     fut.get();
     memcpy(&filesize, data, sizeof(filesize)); // to prevent the aliasing warning
 
@@ -99,8 +124,8 @@ void CNetBlockIO::GetInfo()
     int8_t data[36];
     int32_t id = cmdid.fetch_add(1);
     cmd.cmd = INFO;
-    std::future<void> fut = rbbuf->Read(id, data, 36);
-    rbbuf->Write(id, (int8_t*)&cmd, 4);
+    std::future<void> fut = rbbufctrl->Read(id, data, 36);
+    rbbufctrl->Write(id, (int8_t*)&cmd, 4);
     fut.get();
     printf("Connected to '%s'\n", data);
 }
@@ -113,8 +138,8 @@ void CNetBlockIO::Read(const int blockidx, const int n, int8_t *d)
     cmd.offset = blockidx*blocksize;
     cmd.length = blocksize*n;
     //printf("read block %i\n", blockidx);
-    std::future<void> fut = rbbuf->Read(id, d, blocksize*n);
-    rbbuf->Write(id, (int8_t*)&cmd, 2*4+2*8);
+    std::future<void> fut = rbbufctrl->Read(id, d, blocksize*n);
+    rbbufctrl->Write(id, (int8_t*)&cmd, 2*4+2*8);
     fut.get();
 }
 
@@ -127,5 +152,5 @@ void CNetBlockIO::Write(const int blockidx, const int n, int8_t* d)
     cmd->offset = blockidx*blocksize;
     cmd->length = blocksize*n;
     memcpy(&cmd->data, d, blocksize*n);
-    rbbuf->Write(id, buf, blocksize*n + 2*8 + 2*4);
+    rbbufdata->Write(id, buf, blocksize*n + 2*8 + 2*4);
 }

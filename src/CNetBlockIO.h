@@ -31,10 +31,12 @@ public:
 private:
     boost::asio::io_service io_service;
     ssl::context ctx;
-    ssl_socket s;
+    ssl_socket sctrl;
+    ssl_socket sdata;
     std::atomic_int cmdid;
     std::thread iothread;
-    CNetReadWriteBuffer *rbbuf;
+    CNetReadWriteBuffer *rbbufctrl;
+    CNetReadWriteBuffer *rbbufdata;
 };
 
 #endif
