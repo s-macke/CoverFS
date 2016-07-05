@@ -23,14 +23,13 @@ Features
    * No local storage of files
 
 Limits
-   * Filesystem still unstable
-   * At the moment slow connection
+   * Filesystem layout not final 
+   * Several Posix features like dates are missing
    * Only one user at a time
-   * No check disk tool available yet
+   * Limited check disk utility. Limited repair options.
    * No XTS block encryption yet
    * No change of password allowed after creation yet
    * Background job for automatic defragmentation missing
-   * Several Posix features like dates are missing
 
 Build CoverFS
 =============
@@ -120,7 +119,7 @@ The filesystem structure is simple and optimized in order to minimize read and w
 It is build on the principle, that the filesystem is always consistent no matter of the writing order.
 But there is no guarantee, that no data will be lost.
 
-Also a file system structure checking and correction tool is not implemented yet. 
+Also a complete file system structure checking and correction tool is not implemented yet. 
 My small test suite works, but I haven't used it much under real conditions. 
 
 
