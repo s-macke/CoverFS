@@ -79,12 +79,14 @@ CNetBlockIO::CNetBlockIO(int _blocksize, const std::string &host, const std::str
     }
     sdata.handshake(boost::asio::ssl::stream_base::client);
 
+#ifdef __linux__
     int priority = 6;
     int ret = setsockopt(sctrl.lowest_layer().native(), SOL_SOCKET, SO_PRIORITY, &priority, sizeof(priority));
     if (ret != 0)
     {
         fprintf(stderr, "Warning: Cannot set socket priority\n");
     }
+#endif
 
     rbbufctrl = new CNetReadWriteBuffer(sctrl);
     rbbufdata = new CNetReadWriteBuffer(sdata);

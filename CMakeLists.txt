@@ -1,15 +1,18 @@
 set(CMAKE_LEGACY_CYGWIN_WIN32 0)
+
 project (CoverFS)
+
+cmake_minimum_required(VERSION 3.0.0)
+cmake_policy(SET CMP0054 NEW)
+
 set(PROJECT_VERSION "0.9")
 set(ARCHIVE_NAME ${CMAKE_PROJECT_NAME}-${PROJECT_VERSION})
 
-
 MESSAGE( STATUS "CMAKE_SYSTEM_NAME: " ${CMAKE_SYSTEM_NAME} )
 
-cmake_minimum_required(VERSION 3.0.0)
 set( CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake )
 
-add_definitions(-std=c++11 -Wall -O2 -D_FILE_OFFSET_BITS=64)
+add_definitions(-std=c++11 -Wall -O2 -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE)
 
 set(CPP_FILES
     src/CBlockIO.cpp
@@ -42,9 +45,9 @@ endif ()
 if ("${CMAKE_SYSTEM_NAME}" STREQUAL "CYGWIN")
     MESSAGE( STATUS "Add Dokan Library")
     set(CPP_FILES ${CPP_FILES} src/dokanoper.cpp)
-    add_definitions(-I/cygdrive/c/Program\\ Files/Dokan/Dokan\\ Library-1.0.0/include)
+    add_definitions(-I/cygdrive/c/Program\\ Files/Dokan/Dokan\\ Library-1.0.3/include)
     set(FUSE_LIB dokan1)
-    LINK_DIRECTORIES(/cygdrive/c/Program\ Files/Dokan/Dokan\ Library-1.0.0/)
+    LINK_DIRECTORIES(/cygdrive/c/Program\ Files/Dokan/Dokan\ Library-1.0.3/)
 endif ()
 
 include_directories(${Boost_INCLUDE_DIRS})
@@ -62,3 +65,4 @@ add_custom_target(dist
     COMMAND git archive --prefix=${ARCHIVE_NAME}/ HEAD
         | bzip2 > ${CMAKE_BINARY_DIR}/${ARCHIVE_NAME}.tar.bz2
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
