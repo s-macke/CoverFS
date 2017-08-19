@@ -5,6 +5,7 @@
 #include <mutex>
 #include <assert.h>
 #include <stdint.h>
+#include <functional>
 
 enum class FOREACHENTRYRET {OK, QUIT, WRITEANDQUIT};
 
