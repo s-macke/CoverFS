@@ -83,6 +83,25 @@ void  CPrintCheckRepair::Check()
             exit(1);
         }
     }
+
+    printf("Check for different types in fragments\n");
+    std::map<int32_t, INODETYPE> mapping;
+    for(unsigned int i=0; i<fs.fragments.size(); i++)
+    {
+        int32_t id = fs.fragments[i].id;
+        auto it = mapping.find(id);
+        if (it != mapping.end())
+        {
+            if (it->second != fs.fragments[i].type)
+            {
+                printf("Type mismatch for node id: %i\n", id);
+            }
+        } else
+        {
+            mapping[id] = fs.fragments[i].type;
+        }
+    }
+
     printf("Receive List of all directories\n");
     std::map<int32_t, std::string> direntries;
     GetRecursiveDirectories(direntries, 0, "");
@@ -93,6 +112,7 @@ void  CPrintCheckRepair::PrintInfo()
     fs.SortOffsets();
 
     std::set<int32_t> s;
+    std::map<INODETYPE, int32_t> types;
     int64_t size=0;
     uint64_t lastfreeblock = 0;
     for(unsigned int i=0; i<fs.fragments.size(); i++)
@@ -103,6 +123,7 @@ void  CPrintCheckRepair::PrintInfo()
                 size += fs.fragments[i].size;
                 if (lastfreeblock < fs.fragments[i].GetNextFreeBlock(fs.bio.blocksize)) lastfreeblock = fs.fragments[i].GetNextFreeBlock(fs.bio.blocksize);
                 s.insert(id);
+                types[fs.fragments[i].type]++;
         }
     }
     printf("number of inodes: %zu\n", s.size());
@@ -110,6 +131,9 @@ void  CPrintCheckRepair::PrintInfo()
     printf("container usage: %f %%\n", (double)size/(double)fs.bio.GetFilesize()*100.);
     printf("last free block: %lli\n", (long long int)lastfreeblock);
     printf("empty space at end: %lli Bytes\n", (long long int)fs.bio.GetFilesize()-lastfreeblock*fs.bio.blocksize);
+
+    printf("directory fragments: %i\n", types[INODETYPE::dir]);
+    printf("     file fragments: %i\n", types[INODETYPE::file]);
 
     printf("Fragmentation:\n");
 

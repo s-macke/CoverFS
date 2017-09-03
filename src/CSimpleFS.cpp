@@ -219,7 +219,7 @@ INODEPTR SimpleFilesystem::OpenNode(int id)
     }
     fragmentsmtx.unlock();
     assert(node->fragments.size() > 0);
-    node->type = node->fragments[0].type;
+    node->type = fragments[node->fragments[0]].type;
     inodes[id] = node;
     //printf("Open File with id=%i blocks=%zu\n", id, node->blocks.size());
     return node;
