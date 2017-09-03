@@ -12,24 +12,12 @@
 
 #include"CCacheIO.h"
 #include"INode.h"
+#include"CFragment.h"
 
 class CDirectory;
 class SimpleFilesystem;
 class INODE;
 class DIRENTRY;
-
-// ----------------------------------------------------------
-
-// this is the structure on the hard drive
-class CFragmentDesc
-{
-    public:
-    CFragmentDesc(int32_t _id, uint32_t _ofs=0, uint32_t _size=0) : id(_id), size(_size), ofs(_ofs) {};
-    uint64_t GetNextFreeBlock(int blocksize) const { return  ofs + (size-1)/blocksize + 1; };
-    int32_t id;
-    uint32_t size; // in bytes
-    uint64_t ofs; // in blocks
-};
 
 // ----------------------------------------------------------
 
@@ -79,7 +67,7 @@ private:
     void GrowNode(INODE &node, int64_t size);
     void ShrinkNode(INODE &node, int64_t size);
 
-    int ReserveNewFragment();
+    int ReserveNewFragment(INODETYPE t);
     int ReserveNextFreeFragment(INODE &node, int64_t maxsize);
     void FreeAllFragments(INODE &node);
 

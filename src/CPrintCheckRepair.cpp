@@ -22,7 +22,7 @@ void CPrintCheckRepair::GetRecursiveDirectories(std::map<int32_t, std::string> &
             if (it != direntries.end())
             {
                 printf("Warning: Found two directory entries with the same id id=%i in directory '%s' and directory '%s'\n",
-		de.id,	path.c_str(), it->second.c_str());
+                de.id,	path.c_str(), it->second.c_str());
             }
             direntries[de.id] = path + "/" + de.name;
             if ((INODETYPE)de.type == INODETYPE::dir)
@@ -51,8 +51,9 @@ void  CPrintCheckRepair::PrintFragments()
         //int idx1 = ofssort[i];
         int idx1 = i;
         if (fs.fragments[idx1].id == fs.FREEID) continue;
-        printf("frag=%4i id=%4i ofs=%7llu size=%10llu '%s'\n",
+        printf("frag=%4i type=%2i id=%4i ofs=%7llu size=%10llu '%s'\n",
             idx1,
+            (int)fs.fragments[idx1].type,
             fs.fragments[idx1].id,
             (long long unsigned int)fs.fragments[idx1].ofs,
             (long long unsigned int)fs.fragments[idx1].size,

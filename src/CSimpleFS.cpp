@@ -50,7 +50,7 @@ SimpleFilesystem::SimpleFilesystem(CCacheIO &_bio) : bio(_bio), nodeinvalid(new 
     nodeinvalid->id = INVALIDID;
 
     assert(sizeof(DIRENTRY) == 128);
-    assert(sizeof(CFragmentDesc) == 16);
+    assert(CFragmentDesc::SIZEONDISK == 16);
 
     printf("container info:\n");
     printf("  size: %i MB\n", int(bio.GetFilesize()/(1024*1024)));
@@ -64,7 +64,7 @@ SimpleFilesystem::SimpleFilesystem(CCacheIO &_bio) : bio(_bio), nodeinvalid(new 
         superblock->ReleaseBuf();
 
         unsigned int nfragmentblocks = 5;
-        unsigned int nentries = bio.blocksize*nfragmentblocks/16;
+        unsigned int nentries = bio.blocksize*nfragmentblocks/CFragmentDesc::SIZEONDISK;
         printf("  number of blocks containing fragments: %i with %i entries\n", nfragmentblocks, nentries);
 
         fragmentblocks.clear();
@@ -74,14 +74,17 @@ SimpleFilesystem::SimpleFilesystem(CCacheIO &_bio) : bio(_bio), nodeinvalid(new 
         ofssort.assign(nentries, 0);
         for(unsigned int i=0; i<nentries; i++) ofssort[i] = i;
 
-        fragments.assign(nentries, CFragmentDesc(FREEID, 0, 0));
+        fragments.assign(nentries, CFragmentDesc(INODETYPE::free, FREEID, 0, 0));
 
         for(unsigned int i=0; i<nfragmentblocks; i++)
         {
-            int nidsperblock = bio.blocksize / 16;
+            int nidsperblock = bio.blocksize / CFragmentDesc::SIZEONDISK;
             CBLOCKPTR block = fragmentblocks[i];
             int8_t* buf = block->GetBufRead();
-            memcpy(&fragments[i*nidsperblock], buf, sizeof(CFragmentDesc)*nidsperblock);
+            for(int j=0; j<nidsperblock; j++)
+            {
+                fragments[i*nidsperblock + j] = CFragmentDesc(&buf[j*CFragmentDesc::SIZEONDISK]);
+            }
             block->ReleaseBuf();
         }
         SortOffsets();
@@ -130,9 +133,9 @@ void SimpleFilesystem::CreateFS()
         ofssort[i] = i;
     }
 
-    fragments.assign(nentries, CFragmentDesc(FREEID, 0, 0));
-    fragments[0] = CFragmentDesc(SUPERID, 0, bio.blocksize*2);
-    fragments[1] = CFragmentDesc(TABLEID, 2, bio.blocksize*nfragmentblocks);
+    fragments.assign(nentries, CFragmentDesc(INODETYPE::unknown, FREEID, 0, 0));
+    fragments[0] = CFragmentDesc(INODETYPE::unknown, SUPERID, 0, bio.blocksize*2);
+    fragments[1] = CFragmentDesc(INODETYPE::unknown, TABLEID, 2, bio.blocksize*nfragmentblocks);
 
     SortOffsets();
 
@@ -167,6 +170,8 @@ void SimpleFilesystem::CreateFS()
     const char *s = "Hello world\n";
     node->Write((int8_t*)s, 0, strlen(s));
 
+    bio.Sync();
+
     printf("Filesystem created\n");
     printf("==================\n");
 }
@@ -176,7 +181,7 @@ void SimpleFilesystem::StoreFragment(int idx)
     int nidsperblock = bio.blocksize / 16;
     CBLOCKPTR block = fragmentblocks[idx/nidsperblock];
     int8_t* buf = block->GetBufReadWrite();
-    ((CFragmentDesc*)buf)[idx%nidsperblock] = fragments[idx];
+    fragments[idx].ToDisk( &buf[(idx%nidsperblock) * CFragmentDesc::SIZEONDISK] );
     block->ReleaseBuf();
 }
 
@@ -198,11 +203,12 @@ INODEPTR SimpleFilesystem::OpenNode(int id)
     node->size = 0;
     node->fragments.clear();
     node->parentid = INVALIDID;
-
+/*
     if (id == ROOTID)
     {
         node->type = INODETYPE::dir;
     }
+*/
     fragmentsmtx.lock();
     for(unsigned int i=0; i<fragments.size(); i++)
     {
@@ -213,6 +219,7 @@ INODEPTR SimpleFilesystem::OpenNode(int id)
     }
     fragmentsmtx.unlock();
     assert(node->fragments.size() > 0);
+    node->type = node->fragments[0].type;
     inodes[id] = node;
     //printf("Open File with id=%i blocks=%zu\n", id, node->blocks.size());
     return node;
@@ -279,7 +286,7 @@ INODEPTR SimpleFilesystem::OpenNode(const std::vector<std::string> splitpath)
     node = OpenNode(e.id);
     std::lock_guard<std::mutex> lock(node->GetMutex());
     node->parentid = dirid;
-    node->type = (INODETYPE)e.type; // static cast?
+    //node->type = (INODETYPE)e.type; // static cast?
     if (splitpath.empty())
         node->name = "/";
     else
@@ -372,6 +379,7 @@ int SimpleFilesystem::ReserveNextFreeFragment(INODE &node, int64_t maxsize)
             fragments[storeidx].id = node.id;
             fragments[storeidx].size = std::min<int64_t>({maxsize, hole, (int64_t)0xFFFFFFFFL});
             fragments[storeidx].ofs = nextofs;
+            fragments[storeidx].type = node.type;
             return storeidx;
         }
     }
@@ -380,6 +388,7 @@ int SimpleFilesystem::ReserveNextFreeFragment(INODE &node, int64_t maxsize)
     //printf("no hole found\n");
     fragments[storeidx].id = node.id;
     fragments[storeidx].size = std::min<int64_t>(maxsize, 0xFFFFFFFFL);
+    fragments[storeidx].type = node.type;
     if (fragments[idx1].size == 0)
         fragments[storeidx].ofs = fragments[idx1].ofs;
     else
@@ -583,7 +592,7 @@ void SimpleFilesystem::Rename(INODEPTR &node, CDirectory &newdir, const std::str
 }
 
 
-int SimpleFilesystem::ReserveNewFragment()
+int SimpleFilesystem::ReserveNewFragment(INODETYPE type)
 {
     std::lock_guard<std::mutex> lock(fragmentsmtx);
 
@@ -598,7 +607,7 @@ int SimpleFilesystem::ReserveNewFragment()
     for(unsigned int i=0; i<fragments.size(); i++)
     {
         if (fragments[i].id != FREEID) continue;
-        fragments[i] = CFragmentDesc(id, 0, 0);
+        fragments[i] = CFragmentDesc(type, id, 0, 0);
         StoreFragment(i);
         // SortOffsets(); // Sorting is not necessary, because a FREEID and ofs=0 are treated the same way
         return id;
@@ -611,7 +620,7 @@ int SimpleFilesystem::ReserveNewFragment()
 int SimpleFilesystem::CreateNode(CDirectory &dir, const std::string &name, INODETYPE t)
 {
     // Reserve one block. Necessary even for empty files
-    int id = ReserveNewFragment();
+    int id = ReserveNewFragment(t);
     bio.Sync();
     if (dir.dirnode->id == INVALIDID) return id; // this is the root directory and does not have a parent
     dir.AddEntry(DIRENTRY(name, id, t));
@@ -645,6 +654,7 @@ void SimpleFilesystem::FreeAllFragments(INODE &node)
     for(unsigned int i=0; i<node.fragments.size(); i++)
     {
         fragments[node.fragments[i]].id = FREEID;
+        fragments[node.fragments[i]].type = INODETYPE::free;
         StoreFragment(node.fragments[i]);
     }
     SortOffsets();
