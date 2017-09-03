@@ -52,7 +52,7 @@ int CDirectory::CreateDirectory(const std::string &name)
 {
     DIRENTRY e("");
     Find(name, e);
-    if (e.id != fs.INVALIDID) throw EEXIST;    
+    if (e.id != fs.INVALIDID) throw EEXIST;
     return fs.CreateDirectory(*this, name);
 }
 
@@ -60,7 +60,7 @@ int CDirectory::CreateFile(const std::string &name)
 {
     DIRENTRY e("");
     Find(name, e);
-    if (e.id != fs.INVALIDID) throw EEXIST;    
+    if (e.id != fs.INVALIDID) throw EEXIST;
     return fs.CreateFile(*this, name);
 }
 

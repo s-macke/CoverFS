@@ -39,8 +39,6 @@ bool FindIntersect(const CFragmentOverlap &a, const CFragmentOverlap &b, CFragme
 
 // -------------------------------------------------------------
 
-
-
 typedef struct
 {
     char magic[8];
@@ -273,7 +271,7 @@ INODEPTR SimpleFilesystem::OpenNode(const std::vector<std::string> splitpath)
         dirid = e.id;
         node = OpenNode(dirid);
         CDirectory(node, *this).Find(splitpath[i], e);
-        if (e.id == INVALIDID) 
+        if (e.id == INVALIDID)
         {
             throw ENOENT;
         }
@@ -335,66 +333,6 @@ INODEPTR SimpleFilesystem::OpenFile(const std::vector<std::string> splitpath)
     return node;
 }
 
-void SimpleFilesystem::GetRecursiveDirectories(std::map<int32_t, std::string> &direntries, int id, const std::string &path)
-{
-    std::string newpath;
-    try
-    {
-        INODEPTR node = OpenNode(id);
-        node->type = INODETYPE::dir; // if opened with the id, the type might not be set
-        CDirectory dir = CDirectory(node, *this);
-
-        dir.ForEachEntry([&](DIRENTRY &de)
-        {
-            if ((INODETYPE)de.type == INODETYPE::free) return FOREACHENTRYRET::OK;
-            //printf("id=%6i: '%s/%s'\n", de.id, path.c_str(), de.name);
-            auto it = direntries.find(de.id);
-            if (it != direntries.end())
-            {
-                printf("Warning: Found two directory entries with the same id id=%i\n", de.id);
-            }
-            direntries[de.id] = path + "/" + de.name;
-            if ((INODETYPE)de.type == INODETYPE::dir)
-            {
-                newpath = path + "/" + de.name;
-                GetRecursiveDirectories(direntries, de.id, newpath);
-            }
-            return FOREACHENTRYRET::OK;
-        });
-    }
-    catch(const int &err)
-    {
-        printf("Error: Cannot open dir '%s' with id=%i. Errno: %s\n", path.c_str(), id, strerror(err));
-    }
-}
-
-void SimpleFilesystem::CheckFS()
-{
-    // check for overlap
-    SortOffsets();
-
-    printf("Check for overlap\n");
-    int idx1, idx2;
-    for(unsigned int i=0; i<ofssort.size()-1; i++)
-    {
-        idx1 = ofssort[i+0];
-        idx2 = ofssort[i+1];
-
-        int nextofs = fragments[idx1].GetNextFreeOfs(bio.blocksize);
-        if (fragments[idx2].size == 0) break;
-        if (fragments[idx2].id == FREEID) break;
-        int64_t hole = (fragments[idx2].ofs  - nextofs)*bio.blocksize;
-        if (hole < 0)
-        {
-            fprintf(stderr, "Error in CheckFS: fragment overlap detected");
-            exit(1);
-        }
-    }
-    printf("Receive List of all directories\n");
-    std::map<int32_t, std::string> direntries;
-    GetRecursiveDirectories(direntries, 0, "");
-}
-
 int SimpleFilesystem::ReserveNextFreeFragment(INODE &node, int64_t maxsize)
 {
     assert(node.fragments.size() != 0);
@@ -412,7 +350,6 @@ int SimpleFilesystem::ReserveNextFreeFragment(INODE &node, int64_t maxsize)
         break;
     }
     assert(storeidx != -1); // TODO: change list size in this case
-
 
     //printf("  found next free fragment: storeidx=%i\n", storeidx);
 
@@ -467,17 +404,6 @@ void SimpleFilesystem::SortOffsets()
     });
 }
 
-void SimpleFilesystem::SortIDs()
-{
-    std::sort(idssort.begin(),idssort.end(), [&](int a, int b)
-    {
-        int id1 = fragments[a].id;
-        int id2 = fragments[b].id;
-        if (fragments[a].id == FREEID) id1 = INT_MAX;
-        if (fragments[b].id == FREEID) id2 = INT_MAX;
-        return id1 < id2;
-    });
-}
 
 void SimpleFilesystem::GrowNode(INODE &node, int64_t size)
 {
@@ -560,7 +486,7 @@ void SimpleFilesystem::Truncate(INODE &node, int64_t size, bool dozero)
         for(unsigned int i=0; i<node.fragments.size(); i++)
         {
             int idx = node.fragments[i];
-	    CFragmentOverlap intersect;
+            CFragmentOverlap intersect;
             if (FindIntersect(CFragmentOverlap(fragmentofs, fragments[idx].size), CFragmentOverlap(ofs, size-ofs), intersect))
             {
                 assert(intersect.ofs >= ofs);
@@ -623,7 +549,7 @@ void SimpleFilesystem::Write(INODE &node, const int8_t *d, int64_t ofs, int64_t 
     for(unsigned int i=0; i<node.fragments.size(); i++)
     {
         int idx = node.fragments[i];
-	CFragmentOverlap intersect;
+        CFragmentOverlap intersect;
         if (FindIntersect(CFragmentOverlap(fragmentofs, fragments[idx].size), CFragmentOverlap(ofs, size), intersect))
         {
             assert(intersect.ofs >= ofs);
@@ -636,81 +562,6 @@ void SimpleFilesystem::Write(INODE &node, const int8_t *d, int64_t ofs, int64_t 
         fragmentofs += fragments[idx].size;
     }
     bio.Sync();
-}
-
-void SimpleFilesystem::PrintFragments()
-{
-    printf("Receive List of all directories\n");
-    std::map<int32_t, std::string> direntries;
-    GetRecursiveDirectories(direntries, 0, "");
-
-    printf("Fragment List:\n");
-    for(unsigned int i=0; i<ofssort.size(); i++)
-    {
-        //int idx1 = ofssort[i];
-        int idx1 = i;
-        if (fragments[idx1].id == FREEID) continue;
-        printf("frag=%4i id=%4i ofs=%7llu size=%10llu '%s'\n",
-            idx1,
-            fragments[idx1].id,
-            (long long unsigned int)fragments[idx1].ofs,
-            (long long unsigned int)fragments[idx1].size,
-            direntries[fragments[idx1].id].c_str());
-        }
-}
-
-
-void SimpleFilesystem::PrintFS()
-{
-    SortOffsets();
-
-    std::set<int32_t> s;
-    int64_t size=0;
-    for(unsigned int i=0; i<fragments.size(); i++)
-    {
-        int32_t id = fragments[i].id;
-        if (id >= 0)
-	{
-		size += fragments[i].size;
-		s.insert(id);
-	}
-    }
-    printf("number of inodes: %zu\n", s.size());
-    printf("stored bytes: %lli\n", (long long int)size);
-    printf("container usage: %f %%\n", (double)size/(double)bio.GetFilesize()*100.);
-
-    // very very slow
-    SortIDs();
-    printf("Fragmentation:\n");
-
-    int frags[8] = {0};
-    for(auto f : s)
-    {
-        int nfragments = 0;
-        for(unsigned int i=0; i<fragments.size(); i++)
-        {
-            if (fragments[i].id == f) nfragments++;
-        }
-        int idx = 0;
-        if (nfragments > 20) idx = 7; else
-        if (nfragments > 10) idx = 6; else
-        if (nfragments > 5) idx = 5; else
-        if (nfragments > 4) idx = 4; else
-        if (nfragments > 3) idx = 3; else
-        if (nfragments > 2) idx = 2; else
-        if (nfragments > 1) idx = 1; else
-        if (nfragments > 0) idx = 0;
-        frags[idx]++;
-    }
-
-    printf("  inodes with 1   fragment : %4i\n", frags[0]);
-    printf("  inodes with 2   fragments: %4i\n", frags[1]);
-    printf("  inodes with 3   fragments: %4i\n", frags[2]);
-    printf("  inodes with 4   fragments: %4i\n", frags[3]);
-    printf("  inodes with 5   fragments: %4i\n", frags[4]);
-    printf("  inodes with >5  fragments: %4i\n", frags[5]);
-    printf("  inodes with >10 fragments: %4i\n", frags[6]);
-    printf("  inodes with >20 fragments: %4i\n", frags[7]);
 }
 
 // -----------

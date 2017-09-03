@@ -14,6 +14,7 @@
 #include"CSimpleFS.h"
 #include"CDirectory.h"
 #include"CStatusView.h"
+#include"CPrintCheckRepair.h"
 
 #if !defined(_WIN32) && !defined(_WIN64) && !defined(__CYGWIN__)
 #include"fuseoper.h"
@@ -197,26 +198,26 @@ int main(int argc, char *argv[])
         printf("==============================\n");
         printf("============ INFO ============\n");
         printf("==============================\n");
-        fs.PrintFS();
+        CPrintCheckRepair(fs).PrintInfo();
     }
     if (showfragments)
     {
         printf("==============================\n");
         printf("========= FRAGMENTS ==========\n");
         printf("==============================\n");
-        fs.PrintFragments();
-    }
-    if (rootdir)
-    {
-        CDirectory dir = fs.OpenDir("/");
-        dir.List();
+        CPrintCheckRepair(fs).PrintFragments();
     }
     if (check)
     {
         printf("==============================\n");
         printf("=========== CHECK ============\n");
         printf("==============================\n");
-        fs.CheckFS();
+        CPrintCheckRepair(fs).Check();
+    }
+    if (rootdir)
+    {
+        CDirectory dir = fs.OpenDir("/");
+        dir.List();
     }
     if (testfs)
     {

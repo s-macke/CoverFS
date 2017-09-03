@@ -21,6 +21,7 @@ set(CPP_FILES
     src/CEncrypt.cpp
     src/CNetBlockIO.cpp
     src/CSimpleFS.cpp
+    src/CPrintCheckRepair.cpp
     src/CNetReadWriteBuffer.cpp
     src/INode.cpp
     src/debug.cpp

@@ -37,6 +37,8 @@ class SimpleFilesystem
 {
     friend class CDirectory;
     friend class INODE;
+    friend class CPrintCheckRepair;
+
 public:
     SimpleFilesystem(CCacheIO &_bio);
     INODEPTR OpenNode(int id);
@@ -54,9 +56,6 @@ public:
     void StatFS(struct statvfs *buf);
 
     void CreateFS();
-    void CheckFS();
-    void PrintFS();
-    void PrintFragments();
     void GetRecursiveDirectories(std::map<int32_t, std::string> &direntries, int id, const std::string &path);
 
     int64_t GetNInodes();
