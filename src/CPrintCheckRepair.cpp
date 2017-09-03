@@ -2,7 +2,6 @@
 #include<algorithm>
 #include<climits>
 
-
 #include"CPrintCheckRepair.h"
 #include"CDirectory.h"
 
@@ -40,18 +39,6 @@ void CPrintCheckRepair::GetRecursiveDirectories(std::map<int32_t, std::string> &
     }
 }
 
-void CPrintCheckRepair::SortIDs()
-{
-    std::sort(fs.idssort.begin(),fs.idssort.end(), [&](int a, int b)
-    {
-        int id1 = fs.fragments[a].id;
-        int id2 = fs.fragments[b].id;
-        if (fs.fragments[a].id == fs.FREEID) id1 = INT_MAX;
-        if (fs.fragments[b].id == fs.FREEID) id2 = INT_MAX;
-        return id1 < id2;
-    });
-}
-
 void  CPrintCheckRepair::PrintFragments()
 {
     printf("Receive List of all directories\n");
@@ -85,7 +72,7 @@ void  CPrintCheckRepair::Check()
         idx1 = fs.ofssort[i+0];
         idx2 = fs.ofssort[i+1];
 
-        int nextofs = fs.fragments[idx1].GetNextFreeOfs(fs.bio.blocksize);
+        int nextofs = fs.fragments[idx1].GetNextFreeBlock(fs.bio.blocksize);
         if (fs.fragments[idx2].size == 0) break;
         if (fs.fragments[idx2].id == fs.FREEID) break;
         int64_t hole = (fs.fragments[idx2].ofs  - nextofs)*fs.bio.blocksize;
@@ -106,21 +93,23 @@ void  CPrintCheckRepair::PrintInfo()
 
     std::set<int32_t> s;
     int64_t size=0;
+    uint64_t lastfreeblock = 0;
     for(unsigned int i=0; i<fs.fragments.size(); i++)
     {
         int32_t id = fs.fragments[i].id;
         if (id >= 0)
         {
                 size += fs.fragments[i].size;
+                if (lastfreeblock < fs.fragments[i].GetNextFreeBlock(fs.bio.blocksize)) lastfreeblock = fs.fragments[i].GetNextFreeBlock(fs.bio.blocksize);
                 s.insert(id);
         }
     }
     printf("number of inodes: %zu\n", s.size());
     printf("stored bytes: %lli\n", (long long int)size);
     printf("container usage: %f %%\n", (double)size/(double)fs.bio.GetFilesize()*100.);
+    printf("last free block: %lli\n", (long long int)lastfreeblock);
+    printf("empty space at end: %lli Bytes\n", (long long int)fs.bio.GetFilesize()-lastfreeblock*fs.bio.blocksize);
 
-    // very very slow
-    SortIDs();
     printf("Fragmentation:\n");
 
     int frags[8] = {0};

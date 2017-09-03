@@ -72,8 +72,7 @@ SimpleFilesystem::SimpleFilesystem(CCacheIO &_bio) : bio(_bio), nodeinvalid(new 
             fragmentblocks.push_back(bio.GetBlock(i+2));
 
         ofssort.assign(nentries, 0);
-        idssort.assign(nentries, 0);
-        for(unsigned int i=0; i<nentries; i++) {ofssort[i] = i; idssort[i] = i;}
+        for(unsigned int i=0; i<nentries; i++) ofssort[i] = i;
 
         fragments.assign(nentries, CFragmentDesc(FREEID, 0, 0));
 
@@ -98,7 +97,6 @@ int64_t SimpleFilesystem::GetNInodes()
 {
     return inodes.size();
 }
-
 
 void SimpleFilesystem::CreateFS()
 {
@@ -361,7 +359,7 @@ int SimpleFilesystem::ReserveNextFreeFragment(INODE &node, int64_t maxsize)
         idx2 = ofssort[i+1];
 
         //printf("  analyze fragment %i with ofsblock=%li size=%u of id=%i\n", idx1, fragments[idx1].ofs, fragments[idx1].size, fragments[idx1].id);
-        int64_t nextofs = fragments[idx1].GetNextFreeOfs(bio.blocksize);
+        int64_t nextofs = fragments[idx1].GetNextFreeBlock(bio.blocksize);
         if (fragments[idx2].size == 0) break;
         if (fragments[idx2].id == FREEID) break;
 
@@ -414,7 +412,7 @@ void SimpleFilesystem::GrowNode(INODE &node, int64_t size)
         assert(node.fragments.back() != storeidx);
         CFragmentDesc &fd = fragments[storeidx];
 
-        uint64_t nextofs = fragments[node.fragments.back()].GetNextFreeOfs(bio.blocksize);
+        uint64_t nextofs = fragments[node.fragments.back()].GetNextFreeBlock(bio.blocksize);
         if (fragments[node.fragments.back()].size == 0) // empty fragment can be overwritten
         {
             storeidx = node.fragments.back();

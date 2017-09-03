@@ -8,7 +8,7 @@ class CPrintCheckRepair
     private:
         SimpleFilesystem &fs;
         void GetRecursiveDirectories(std::map<int32_t, std::string> &direntries, int id, const std::string &path);
-        void SortIDs();
+        void SortIDs(std::vector<int> &idssort);
 
     public:
         CPrintCheckRepair(SimpleFilesystem &_fs) : fs(_fs) {};

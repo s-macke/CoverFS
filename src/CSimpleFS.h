@@ -25,7 +25,7 @@ class CFragmentDesc
 {
     public:
     CFragmentDesc(int32_t _id, uint32_t _ofs=0, uint32_t _size=0) : id(_id), size(_size), ofs(_ofs) {};
-    uint64_t GetNextFreeOfs(int blocksize) const { return  ofs + (size-1)/blocksize + 1; };
+    uint64_t GetNextFreeBlock(int blocksize) const { return  ofs + (size-1)/blocksize + 1; };
     int32_t id;
     uint32_t size; // in bytes
     uint64_t ofs; // in blocks
@@ -86,7 +86,6 @@ private:
     void StoreFragment(int idx);
 
     void SortOffsets();
-    void SortIDs();
 
     int CreateNode(CDirectory &dir, const std::string &name, INODETYPE t);
 
@@ -97,7 +96,6 @@ private:
     std::vector<CBLOCKPTR> fragmentblocks;
     std::vector<CFragmentDesc> fragments;
     std::vector<int> ofssort;
-    std::vector<int> idssort;
 
     std::map<int32_t, INODEPTR > inodes;
     INODEPTR nodeinvalid;
