@@ -48,12 +48,6 @@ public:
 
     int64_t GetNInodes();
 
-    static const int32_t ROOTID       =  0; // contains the root directory structure
-    static const int32_t FREEID       = -1; // this block is not used and can be overwritten
-    static const int32_t TABLEID      = -2; // contains the layout tables of the whole filesystem
-    static const int32_t SUPERID      = -3; // id of the super block
-    static const int32_t INVALIDID    = -4; // defines an invalid id like the parent dir of the root directory
-
 private:
 
     int CreateDirectory(CDirectory &dir, const std::string &name);
@@ -67,23 +61,13 @@ private:
     void GrowNode(INODE &node, int64_t size);
     void ShrinkNode(INODE &node, int64_t size);
 
-    int ReserveNewFragment(INODETYPE t);
-    int ReserveNextFreeFragment(INODE &node, int64_t maxsize);
-    void FreeAllFragments(INODE &node);
-
-    void StoreFragment(int idx);
-
-    void SortOffsets();
-
     int CreateNode(CDirectory &dir, const std::string &name, INODETYPE t);
 
     CCacheIO &bio;
 
-    std::mutex fragmentsmtx;
     std::mutex inodescachemtx;
-    std::vector<CBLOCKPTR> fragmentblocks;
-    std::vector<CFragmentDesc> fragments;
-    std::vector<int> ofssort;
+
+    CFragmentList fragmentlist;
 
     std::map<int32_t, INODEPTR > inodes;
     INODEPTR nodeinvalid;

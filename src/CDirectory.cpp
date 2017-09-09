@@ -52,7 +52,7 @@ int CDirectory::CreateDirectory(const std::string &name)
 {
     DIRENTRY e("");
     Find(name, e);
-    if (e.id != fs.INVALIDID) throw EEXIST;
+    if (e.id != CFragmentDesc::INVALIDID) throw EEXIST;
     return fs.CreateDirectory(*this, name);
 }
 
@@ -60,7 +60,7 @@ int CDirectory::CreateFile(const std::string &name)
 {
     DIRENTRY e("");
     Find(name, e);
-    if (e.id != fs.INVALIDID) throw EEXIST;
+    if (e.id != CFragmentDesc::INVALIDID) throw EEXIST;
     return fs.CreateFile(*this, name);
 }
 
@@ -90,7 +90,7 @@ void CDirectory::AddEntry(const DIRENTRY &denew)
 
 void CDirectory::RemoveEntry(const std::string &name, DIRENTRY &e)
 {
-    e.id = fs.INVALIDID;
+    e.id = CFragmentDesc::INVALIDID;
     //printf("RemoveDirEntry '%s' in dir '%s' and dirid %i\n", name.c_str(), dirnode->name.c_str(), dirnode->id);
     ForEachEntry([&](DIRENTRY &de)
     {
@@ -107,7 +107,7 @@ void CDirectory::RemoveEntry(const std::string &name, DIRENTRY &e)
 
 void CDirectory::Find(const std::string &s, DIRENTRY &e)
 {
-    e.id = fs.INVALIDID;
+    e.id = CFragmentDesc::INVALIDID;
     ForEachEntry([&](DIRENTRY &de)
     {
         if ((INODETYPE)de.type == INODETYPE::free) return FOREACHENTRYRET::OK;

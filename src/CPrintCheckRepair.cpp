@@ -17,7 +17,7 @@ void CPrintCheckRepair::GetRecursiveDirectories(std::map<int32_t, std::string> &
         dir.ForEachEntry([&](DIRENTRY &de)
         {
             if ((INODETYPE)de.type == INODETYPE::free) return FOREACHENTRYRET::OK;
-            printf("id=%9i: '%s/%s'\n", de.id, path.c_str(), de.name);
+            //printf("id=%9i: '%s/%s'\n", de.id, path.c_str(), de.name);
             auto it = direntries.find(de.id);
             if (it != direntries.end())
             {
@@ -41,42 +41,43 @@ void CPrintCheckRepair::GetRecursiveDirectories(std::map<int32_t, std::string> &
 
 void  CPrintCheckRepair::PrintFragments()
 {
+    auto &fragments = fs.fragmentlist.fragments;
     printf("Receive List of all directories\n");
     std::map<int32_t, std::string> direntries;
     GetRecursiveDirectories(direntries, 0, "");
 
     printf("Fragment List:\n");
-    for(unsigned int i=0; i<fs.ofssort.size(); i++)
+    for(unsigned int i=0; i<fs.fragmentlist.ofssort.size(); i++)
     {
         //int idx1 = ofssort[i];
         int idx1 = i;
-        if (fs.fragments[idx1].id == fs.FREEID) continue;
-        printf("frag=%4i type=%2i id=%4i ofs=%7llu size=%10llu '%s'\n",
+        if (fragments[idx1].id == CFragmentDesc::FREEID) continue;
+        printf("frag=%6i type=%2i id=%6i ofs=%7llu size=%10llu '%s'\n",
             idx1,
-            (int)fs.fragments[idx1].type,
-            fs.fragments[idx1].id,
-            (long long unsigned int)fs.fragments[idx1].ofs,
-            (long long unsigned int)fs.fragments[idx1].size,
-            direntries[fs.fragments[idx1].id].c_str());
+            (int)fragments[idx1].type,
+            fragments[idx1].id,
+            (long long unsigned int)fragments[idx1].ofs,
+            (long long unsigned int)fragments[idx1].size,
+            direntries[fragments[idx1].id].c_str());
         }
 }
 
 void  CPrintCheckRepair::Check()
 {
     // check for overlap
-    fs.SortOffsets();
+    fs.fragmentlist.SortOffsets();
 
     printf("Check for overlap\n");
     int idx1, idx2;
-    for(unsigned int i=0; i<fs.ofssort.size()-1; i++)
+    for(unsigned int i=0; i<fs.fragmentlist.ofssort.size()-1; i++)
     {
-        idx1 = fs.ofssort[i+0];
-        idx2 = fs.ofssort[i+1];
+        idx1 = fs.fragmentlist.ofssort[i+0];
+        idx2 = fs.fragmentlist.ofssort[i+1];
 
-        int nextofs = fs.fragments[idx1].GetNextFreeBlock(fs.bio.blocksize);
-        if (fs.fragments[idx2].size == 0) break;
-        if (fs.fragments[idx2].id == fs.FREEID) break;
-        int64_t hole = (fs.fragments[idx2].ofs  - nextofs)*fs.bio.blocksize;
+        int nextofs = fs.fragmentlist.fragments[idx1].GetNextFreeBlock(fs.bio.blocksize);
+        if (fs.fragmentlist.fragments[idx2].size == 0) break;
+        if (fs.fragmentlist.fragments[idx2].id == CFragmentDesc::FREEID) break;
+        int64_t hole = (fs.fragmentlist.fragments[idx2].ofs  - nextofs)*fs.bio.blocksize;
         if (hole < 0)
         {
             fprintf(stderr, "Error in CheckFS: fragment overlap detected");
@@ -86,19 +87,19 @@ void  CPrintCheckRepair::Check()
 
     printf("Check for different types in fragments\n");
     std::map<int32_t, INODETYPE> mapping;
-    for(unsigned int i=0; i<fs.fragments.size(); i++)
+    for(unsigned int i=0; i<fs.fragmentlist.fragments.size(); i++)
     {
-        int32_t id = fs.fragments[i].id;
+        int32_t id = fs.fragmentlist.fragments[i].id;
         auto it = mapping.find(id);
         if (it != mapping.end())
         {
-            if (it->second != fs.fragments[i].type)
+            if (it->second != fs.fragmentlist.fragments[i].type)
             {
                 printf("Type mismatch for node id: %i\n", id);
             }
         } else
         {
-            mapping[id] = fs.fragments[i].type;
+            mapping[id] = fs.fragmentlist.fragments[i].type;
         }
     }
 
@@ -109,21 +110,22 @@ void  CPrintCheckRepair::Check()
 
 void  CPrintCheckRepair::PrintInfo()
 {
-    fs.SortOffsets();
+    fs.fragmentlist.SortOffsets();
 
     std::set<int32_t> s;
     std::map<INODETYPE, int32_t> types;
     int64_t size=0;
     uint64_t lastfreeblock = 0;
-    for(unsigned int i=0; i<fs.fragments.size(); i++)
+    for(unsigned int i=0; i<fs.fragmentlist.fragments.size(); i++)
     {
-        int32_t id = fs.fragments[i].id;
+        int32_t id = fs.fragmentlist.fragments[i].id;
         if (id >= 0)
         {
-                size += fs.fragments[i].size;
-                if (lastfreeblock < fs.fragments[i].GetNextFreeBlock(fs.bio.blocksize)) lastfreeblock = fs.fragments[i].GetNextFreeBlock(fs.bio.blocksize);
+                size += fs.fragmentlist.fragments[i].size;
+                if (lastfreeblock < fs.fragmentlist.fragments[i].GetNextFreeBlock(fs.bio.blocksize))
+                    lastfreeblock = fs.fragmentlist.fragments[i].GetNextFreeBlock(fs.bio.blocksize);
                 s.insert(id);
-                types[fs.fragments[i].type]++;
+                types[fs.fragmentlist.fragments[i].type]++;
         }
     }
     printf("number of inodes: %zu\n", s.size());
@@ -141,9 +143,9 @@ void  CPrintCheckRepair::PrintInfo()
     for(auto f : s)
     {
         int nfragments = 0;
-        for(unsigned int i=0; i<fs.fragments.size(); i++)
+        for(unsigned int i=0; i<fs.fragmentlist.fragments.size(); i++)
         {
-            if (fs.fragments[i].id == f) nfragments++;
+            if (fs.fragmentlist.fragments[i].id == f) nfragments++;
         }
         int idx = 0;
         if (nfragments > 20) idx = 7; else

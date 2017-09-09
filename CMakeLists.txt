@@ -20,6 +20,7 @@ set(CPP_FILES
     src/CDirectory.cpp
     src/CEncrypt.cpp
     src/CNetBlockIO.cpp
+    src/CFragment.cpp
     src/CSimpleFS.cpp
     src/CPrintCheckRepair.cpp
     src/CNetReadWriteBuffer.cpp
