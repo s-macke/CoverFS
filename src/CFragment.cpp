@@ -7,12 +7,12 @@
 void CFragmentList::Load()
 {
     unsigned int nfragmentblocks = 5;
-    unsigned int nentries = bio.blocksize*nfragmentblocks/CFragmentDesc::SIZEONDISK;
+    unsigned int nentries = bio->blocksize*nfragmentblocks/CFragmentDesc::SIZEONDISK;
     printf("  number of blocks containing fragments: %i with %i entries\n", nfragmentblocks, nentries);
 
     fragmentblocks.clear();
     for(unsigned int i=0; i<nfragmentblocks; i++)
-        fragmentblocks.push_back(bio.GetBlock(i+2));
+        fragmentblocks.push_back(bio->GetBlock(i+2));
 
     ofssort.assign(nentries, 0);
     for(unsigned int i=0; i<nentries; i++) ofssort[i] = i;
@@ -21,7 +21,7 @@ void CFragmentList::Load()
 
     for(unsigned int i=0; i<nfragmentblocks; i++)
     {
-        int nidsperblock = bio.blocksize / CFragmentDesc::SIZEONDISK;
+        int nidsperblock = bio->blocksize / CFragmentDesc::SIZEONDISK;
         CBLOCKPTR block = fragmentblocks[i];
         int8_t* buf = block->GetBufRead();
         for(int j=0; j<nidsperblock; j++)
@@ -37,13 +37,13 @@ void CFragmentList::Load()
 void CFragmentList::Create()
 {
     unsigned int nfragmentblocks = 5;
-    unsigned int nentries = bio.blocksize*nfragmentblocks/16;
+    unsigned int nentries = bio->blocksize*nfragmentblocks/16;
     printf("  number of blocks containing fragment: %i with %i entries\n", nfragmentblocks, nentries);
 // ---
     fragmentblocks.clear();
     for(unsigned int i=0; i<nfragmentblocks; i++)
     {
-        fragmentblocks.push_back(bio.GetBlock(i+2));
+        fragmentblocks.push_back(bio->GetBlock(i+2));
     }
 // ---
 
@@ -54,21 +54,21 @@ void CFragmentList::Create()
     }
 
     fragments.assign(nentries, CFragmentDesc(INODETYPE::unknown, CFragmentDesc::FREEID, 0, 0));
-    fragments[0] = CFragmentDesc(INODETYPE::unknown, CFragmentDesc::SUPERID, 0, bio.blocksize*2);
-    fragments[1] = CFragmentDesc(INODETYPE::unknown, CFragmentDesc::TABLEID, 2, bio.blocksize*nfragmentblocks);
+    fragments[0] = CFragmentDesc(INODETYPE::unknown, CFragmentDesc::SUPERID, 0, bio->blocksize*2);
+    fragments[1] = CFragmentDesc(INODETYPE::unknown, CFragmentDesc::TABLEID, 2, bio->blocksize*nfragmentblocks);
 
     SortOffsets();
 
     for(unsigned int i=0; i<nentries; i++)
         StoreFragment(i);
 
-    bio.Sync();
+    bio->Sync();
 }
 
 
 void CFragmentList::StoreFragment(int idx)
 {
-    int nidsperblock = bio.blocksize / 16;
+    int nidsperblock = bio->blocksize / 16;
     CBLOCKPTR block = fragmentblocks[idx/nidsperblock];
     int8_t* buf = block->GetBufReadWrite();
     fragments[idx].ToDisk( &buf[(idx%nidsperblock) * CFragmentDesc::SIZEONDISK] );
@@ -85,7 +85,7 @@ void CFragmentList::FreeAllFragments(std::vector<int> &ff)
         StoreFragment(ff[i]);
     }
     SortOffsets();
-    bio.Sync();
+    bio->Sync();
 }
 
 void CFragmentList::GetFragmentIdxList(int32_t id, std::vector<int> &list, int64_t &size)
@@ -157,11 +157,11 @@ int CFragmentList::ReserveNextFreeFragment(int lastidx, int32_t id, INODETYPE ty
         idx2 = ofssort[i+1];
 
         //printf("  analyze fragment %i with ofsblock=%li size=%u of id=%i\n", idx1, fragments[idx1].ofs, fragments[idx1].size, fragments[idx1].id);
-        int64_t nextofs = fragments[idx1].GetNextFreeBlock(bio.blocksize);
+        int64_t nextofs = fragments[idx1].GetNextFreeBlock(bio->blocksize);
         if (fragments[idx2].size == 0) break;
         if (fragments[idx2].id == CFragmentDesc::FREEID) break;
 
-        int64_t hole = (fragments[idx2].ofs  - nextofs)*bio.blocksize;
+        int64_t hole = (fragments[idx2].ofs  - nextofs)*bio->blocksize;
         assert(hole >= 0);
 
         // prevent fragmentation
@@ -183,7 +183,7 @@ int CFragmentList::ReserveNextFreeFragment(int lastidx, int32_t id, INODETYPE ty
     if (fragments[idx1].size == 0)
         fragments[storeidx].ofs = fragments[idx1].ofs;
     else
-        fragments[storeidx].ofs = fragments[idx1].ofs + (fragments[idx1].size-1)/bio.blocksize + 1;
+        fragments[storeidx].ofs = fragments[idx1].ofs + (fragments[idx1].size-1)/bio->blocksize + 1;
 
     return storeidx;
 }

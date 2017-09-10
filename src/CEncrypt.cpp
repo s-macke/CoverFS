@@ -45,7 +45,7 @@ void CEncrypt::CreateEnc(int8_t *block)
     gcry_randomize (key, 32, GCRY_STRONG_RANDOM);
 
     TEncHeader *h = (TEncHeader*)block;
-    memset(h, 0, sizeof(bio.blocksize));
+    memset(h, 0, sizeof(blocksize));
     h->majorversion = 1;
     h->minorversion = 0;
     strcpy(h->magic, "coverfs");
@@ -72,13 +72,14 @@ void CEncrypt::CreateEnc(int8_t *block)
     for(int i=0; i<32; i++) key[i] = 0x0;
     gcry_cipher_close(hd);
 
-    gcry_md_hash_buffer(GCRY_MD_CRC32, &h->crc, (int8_t*)h+4, bio.blocksize-4);
+    gcry_md_hash_buffer(GCRY_MD_CRC32, &h->crc, (int8_t*)h+4, blocksize-4);
 }
 
-CEncrypt::CEncrypt(CAbstractBlockIO &_bio) : bio(_bio)
+CEncrypt::CEncrypt(CAbstractBlockIO &bio)
 {
     assert(sizeof(TEncHeader) == 4+8+4+32+(128+32+32+32+4)*4);
     assert(bio.blocksize >= 1024);
+    blocksize = bio.blocksize;
     gpg_error_t ret;
 
     ret = gcry_control (GCRYCTL_SET_THREAD_CBS, &gcry_threads_pthread);
@@ -87,7 +88,7 @@ CEncrypt::CEncrypt(CAbstractBlockIO &_bio) : bio(_bio)
 
     assert(gcry_md_get_algo_dlen (GCRY_MD_CRC32) == 4);
 
-    int8_t block[bio.blocksize];
+    int8_t block[blocksize];
     bio.Read(0, 1, block);
     TEncHeader *h = (TEncHeader*)block;
     if (strncmp(h->magic, "coverfs", 8) != 0)
@@ -97,7 +98,7 @@ CEncrypt::CEncrypt(CAbstractBlockIO &_bio) : bio(_bio)
     }
 
     int32_t crc;
-    gcry_md_hash_buffer(GCRY_MD_CRC32, &crc, (int8_t*)h+4, bio.blocksize-4);
+    gcry_md_hash_buffer(GCRY_MD_CRC32, &crc, (int8_t*)h+4, blocksize-4);
     assert(h->crc == crc);
     assert(h->majorversion == 1);
     assert(h->minorversion == 0);
@@ -133,7 +134,7 @@ CEncrypt::CEncrypt(CAbstractBlockIO &_bio) : bio(_bio)
     }
 
     memset(key, 0, 32);
-    memset(block, 0, bio.blocksize);
+    memset(block, 0, blocksize);
 }
 
 void CEncrypt::Decrypt(const int blockidx, int8_t *d)
@@ -148,7 +149,7 @@ void CEncrypt::Decrypt(const int blockidx, int8_t *d)
     {
         if (!mutex[i].try_lock()) continue;
         gcry_cipher_setiv (hdblock[i], iv, 16);
-        gpg_error_t ret = gcry_cipher_decrypt(hdblock[i], d, bio.blocksize, NULL, 0);
+        gpg_error_t ret = gcry_cipher_decrypt(hdblock[i], d, blocksize, NULL, 0);
         assert(ret == 0);
         mutex[i].unlock();
         return;
@@ -157,7 +158,7 @@ void CEncrypt::Decrypt(const int blockidx, int8_t *d)
     // all cipher handles are locked. Wait ...
     mutex[0].lock();
     gcry_cipher_setiv (hdblock[0], iv, 16);
-    gpg_error_t ret = gcry_cipher_decrypt(hdblock[0], d, bio.blocksize, NULL, 0);
+    gpg_error_t ret = gcry_cipher_decrypt(hdblock[0], d, blocksize, NULL, 0);
     assert(ret == 0);
     mutex[0].unlock();
 }
@@ -173,7 +174,7 @@ void CEncrypt::Encrypt(const int blockidx, int8_t* d)
     {
         if (!mutex[i].try_lock()) continue;
         gcry_cipher_setiv (hdblock[i], iv, 16);
-        gpg_error_t ret = gcry_cipher_encrypt(hdblock[i], d, bio.blocksize, 0, 0);
+        gpg_error_t ret = gcry_cipher_encrypt(hdblock[i], d, blocksize, 0, 0);
         assert(ret == 0);
         mutex[i].unlock();
         return;
@@ -182,7 +183,7 @@ void CEncrypt::Encrypt(const int blockidx, int8_t* d)
     // all cipher handles are locked. Wait ...
     mutex[1].lock();
     gcry_cipher_setiv (hdblock[1], iv, 16);
-    gpg_error_t ret = gcry_cipher_encrypt(hdblock[1], d, bio.blocksize, 0, 0);
+    gpg_error_t ret = gcry_cipher_encrypt(hdblock[1], d, blocksize, 0, 0);
     assert(ret == 0);
     mutex[1].unlock();
 }

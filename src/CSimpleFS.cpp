@@ -42,7 +42,7 @@ typedef struct
     int32_t version;
 } SUPER;
 
-SimpleFilesystem::SimpleFilesystem(CCacheIO &_bio) : bio(_bio), fragmentlist(_bio), nodeinvalid(new INODE(*this))
+SimpleFilesystem::SimpleFilesystem(const std::shared_ptr<CCacheIO> &_bio) : bio(_bio), fragmentlist(_bio), nodeinvalid(new INODE(*this))
 {
     nodeinvalid->id = CFragmentDesc::INVALIDID;
 
@@ -50,10 +50,10 @@ SimpleFilesystem::SimpleFilesystem(CCacheIO &_bio) : bio(_bio), fragmentlist(_bi
     assert(CFragmentDesc::SIZEONDISK == 16);
 
     printf("container info:\n");
-    printf("  size: %i MB\n", int(bio.GetFilesize()/(1024*1024)));
-    printf("  blocksize: %i\n", bio.blocksize);
+    printf("  size: %i MB\n", int(bio->GetFilesize()/(1024*1024)));
+    printf("  blocksize: %i\n", bio->blocksize);
 
-    CBLOCKPTR superblock = bio.GetBlock(1);
+    CBLOCKPTR superblock = bio->GetBlock(1);
     SUPER* super = (SUPER*)superblock->GetBufRead();
     if (strncmp(super->magic, "CoverFS", 7) != 0)
     {
@@ -68,6 +68,11 @@ SimpleFilesystem::SimpleFilesystem(CCacheIO &_bio) : bio(_bio), fragmentlist(_bi
     return;
 }
 
+SimpleFilesystem::~SimpleFilesystem()
+{
+    printf("SimpleFilesystem: Destruct\n");
+}
+
 int64_t SimpleFilesystem::GetNInodes()
 {
     return inodes.size();
@@ -80,13 +85,13 @@ void SimpleFilesystem::CreateFS()
 
     printf("  Write superblock\n");
 
-    CBLOCKPTR superblock = bio.GetBlock(1);
+    CBLOCKPTR superblock = bio->GetBlock(1);
     SUPER* super = (SUPER*)superblock->GetBufReadWrite();
     memset(super, 0, sizeof(SUPER));
     strncpy(super->magic, "CoverFS", 8);
     super->version = (1<<16) | 0;
     superblock->ReleaseBuf();
-    bio.Sync();
+    bio->Sync();
     fragmentlist.Create();
    
 
@@ -113,7 +118,7 @@ void SimpleFilesystem::CreateFS()
     const char *s = "Hello world\n";
     node->Write((int8_t*)s, 0, strlen(s));
 
-    bio.Sync();
+    bio->Sync();
 
     printf("Filesystem created\n");
     printf("==================\n");
@@ -275,7 +280,7 @@ void SimpleFilesystem::GrowNode(INODE &node, int64_t size)
         assert(node.fragments.back() != storeidx);
         CFragmentDesc &fd = fragmentlist.fragments[storeidx];
 
-        uint64_t nextofs = fragmentlist.fragments[node.fragments.back()].GetNextFreeBlock(bio.blocksize);
+        uint64_t nextofs = fragmentlist.fragments[node.fragments.back()].GetNextFreeBlock(bio->blocksize);
         if (fragmentlist.fragments[node.fragments.back()].size == 0) // empty fragment can be overwritten
         {
             storeidx = node.fragments.back();
@@ -351,8 +356,8 @@ void SimpleFilesystem::Truncate(INODE &node, int64_t size, bool dozero)
             {
                 assert(intersect.ofs >= ofs);
                 assert(intersect.ofs >= fragmentofs);
-                bio.Zero(
-                    fragmentlist.fragments[idx].ofs*bio.blocksize + (intersect.ofs - fragmentofs),
+                bio->Zero(
+                    fragmentlist.fragments[idx].ofs*bio->blocksize + (intersect.ofs - fragmentofs),
                     intersect.size);
             }
             fragmentofs += fragmentlist.fragments[idx].size;
@@ -363,7 +368,7 @@ void SimpleFilesystem::Truncate(INODE &node, int64_t size, bool dozero)
     {
         ShrinkNode(node, size);
     }
-    bio.Sync();
+    bio->Sync();
 }
 
 // -----------
@@ -385,15 +390,15 @@ int64_t SimpleFilesystem::Read(INODE &node, int8_t *d, int64_t ofs, int64_t size
         {
             assert(intersect.ofs >= ofs);
             assert(intersect.ofs >= fragmentofs);
-            bio.Read(
-                fragmentlist.fragments[idx].ofs*bio.blocksize + (intersect.ofs - fragmentofs),
+            bio->Read(
+                fragmentlist.fragments[idx].ofs*bio->blocksize + (intersect.ofs - fragmentofs),
                 intersect.size,
                 &d[intersect.ofs-ofs]);
             s += intersect.size;
         }
         fragmentofs += fragmentlist.fragments[idx].size;
     }
-    //bio.Sync();
+    //bio->Sync();
     return s;
 }
 
@@ -414,14 +419,14 @@ void SimpleFilesystem::Write(INODE &node, const int8_t *d, int64_t ofs, int64_t 
         {
             assert(intersect.ofs >= ofs);
             assert(intersect.ofs >= fragmentofs);
-            bio.Write(
-                fragmentlist.fragments[idx].ofs*bio.blocksize + (intersect.ofs - fragmentofs),
+            bio->Write(
+                fragmentlist.fragments[idx].ofs*bio->blocksize + (intersect.ofs - fragmentofs),
                 intersect.size,
                 &d[intersect.ofs-ofs]);
         }
         fragmentofs += fragmentlist.fragments[idx].size;
     }
-    bio.Sync();
+    bio->Sync();
 }
 
 // -----------
@@ -448,7 +453,7 @@ int SimpleFilesystem::CreateNode(CDirectory &dir, const std::string &name, INODE
 {
     // Reserve one block. Necessary even for empty files
     int id = fragmentlist.ReserveNewFragment(t);
-    bio.Sync();
+    bio->Sync();
     if (dir.dirnode->id == CFragmentDesc::INVALIDID) return id; // this is the root directory and does not have a parent
     dir.AddEntry(DIRENTRY(name, id, t));
     return id;
@@ -489,12 +494,12 @@ void SimpleFilesystem::Remove(INODE &node)
 
 void SimpleFilesystem::StatFS(struct statvfs *buf)
 {
-    buf->f_bsize   = bio.blocksize;
-    buf->f_frsize  = bio.blocksize;
+    buf->f_bsize   = bio->blocksize;
+    buf->f_frsize  = bio->blocksize;
     buf->f_namemax = 64+31;
 
-    int64_t totalsize = bio.GetFilesize() + (100LL * 0x40000000LL); // add always 100GB
-    buf->f_blocks  = totalsize/bio.blocksize;
+    int64_t totalsize = bio->GetFilesize() + (100LL * 0x40000000LL); // add always 100GB
+    buf->f_blocks  = totalsize/bio->blocksize;
 
     std::lock_guard<std::mutex> lock(fragmentlist.fragmentsmtx);
 
@@ -505,11 +510,11 @@ void SimpleFilesystem::StatFS(struct statvfs *buf)
         int32_t id = fragmentlist.fragments[i].id;
         if (id >= 0)
         {
-            size += fragmentlist.fragments[i].size/bio.blocksize+1;
+            size += fragmentlist.fragments[i].size/bio->blocksize+1;
             s.insert(id);
         }
     }
-    buf->f_bfree  = totalsize / bio.blocksize - size;
-    buf->f_bavail = totalsize / bio.blocksize - size;
+    buf->f_bfree  = totalsize / bio->blocksize - size;
+    buf->f_bavail = totalsize / bio->blocksize - size;
     buf->f_files  = s.size();
 }

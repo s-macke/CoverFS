@@ -47,9 +47,9 @@ class CFragmentDesc
 class CFragmentList
 {
     public:
-    CFragmentList(CCacheIO &_bio) : bio(_bio) {}
+    CFragmentList(const std::shared_ptr<CCacheIO> &_bio) : bio(_bio) {}
 
-    CCacheIO &bio;
+    std::shared_ptr<CCacheIO> bio;
 
     std::mutex fragmentsmtx;
     std::vector<CFragmentDesc> fragments;

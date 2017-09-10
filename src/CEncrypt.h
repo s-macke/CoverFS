@@ -16,7 +16,7 @@ public:
     void CreateEnc(int8_t* block);
 
 private:
-    CAbstractBlockIO &bio;
+    int blocksize;
     gcry_cipher_hd_t hdblock[4]; // for multi-threading support we need several cipher handles
     std::mutex mutex[4];
 };

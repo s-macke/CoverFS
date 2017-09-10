@@ -3,7 +3,7 @@
 
 CDirectory::CDirectory(INODEPTR node, SimpleFilesystem &_fs) : dirnode(node), fs(_fs) 
 {
-    blocksize = fs.bio.blocksize;
+    blocksize = fs.bio->blocksize;
     std::lock_guard<std::mutex> lock(dirnode->GetMutex());
     if (node->type != INODETYPE::dir) throw ENOTDIR;
 }

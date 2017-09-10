@@ -36,18 +36,20 @@ void CBlock::ReleaseBuf()
 
 // -----------------------------------------------------------------
 
-CCacheIO::CCacheIO(CAbstractBlockIO &_bio, CEncrypt &_enc, bool _cryptcache) : bio(_bio), enc(_enc), ndirty(0), lastdirtyidx(-1), terminatesyncthread(false), cryptcache(_cryptcache)
+CCacheIO::CCacheIO(const std::shared_ptr<CAbstractBlockIO> &_bio, CEncrypt &_enc, bool _cryptcache) : bio(_bio), enc(_enc), ndirty(0), lastdirtyidx(-1), terminatesyncthread(false), cryptcache(_cryptcache)
 {
-    blocksize = bio.blocksize;
+    blocksize = bio->blocksize;
     syncthread = std::thread(&CCacheIO::Async_Sync, this);
 }
 
 CCacheIO::~CCacheIO()
 {
+    printf("Cache: destruct\n");
     terminatesyncthread.store(true);
     Sync();
     syncthread.join();
     assert(ndirty.load() == 0);
+    printf("All Blocks stored. Erase cache ...\n");
 
     cachemtx.lock();
     for(auto iter = cache.begin(); iter != cache.end();)
@@ -69,6 +71,8 @@ CCacheIO::~CCacheIO()
         delete[] block->buf;
         block->mutex.unlock();
     }
+    printf("Cache erased\n");
+
     if (!cache.empty())
     {
         printf("Warning: Cache not empty\n");
@@ -92,7 +96,7 @@ CBLOCKPTR CCacheIO::GetBlock(const int blockidx, bool read)
     cachemtx.unlock();
     if (read)
     {
-        bio.Read(blockidx, 1, buf);
+        bio->Read(blockidx, 1, buf);
         if (!cryptcache)
             enc.Decrypt(blockidx, buf);
     }
@@ -105,7 +109,7 @@ void CCacheIO::BlockReadForce(const int blockidx, const int n)
 {
     if (n <= 0) return;
     int8_t *buf = new int8_t[blocksize*n];
-    bio.Read(blockidx, n, buf);
+    bio->Read(blockidx, n, buf);
     cachemtx.lock();
     for(int i=0; i<n; i++)
     {
@@ -151,7 +155,7 @@ void CCacheIO::CacheBlocks(const int blockidx, const int n)
 
 int64_t CCacheIO::GetFilesize()
 {
-    return bio.GetFilesize();
+    return bio->GetFilesize();
 }
 
 int64_t CCacheIO::GetNDirty()
@@ -195,7 +199,7 @@ void CCacheIO::Async_Sync()
 
             if (!cryptcache)
                 enc.Encrypt(block->blockidx, buf);
-            bio.Write(block->blockidx, 1, buf);
+            bio->Write(block->blockidx, 1, buf);
         }
     }
 }

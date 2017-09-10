@@ -2,6 +2,8 @@
 #include<stdlib.h>
 #include<unistd.h>
 #include<getopt.h>
+#include<memory>
+#include<memory>
 
 #include"debug.h"
 #include"CBlockIO.h"
@@ -170,10 +172,10 @@ int main(int argc, char *argv[])
         }
     }
 
-    CAbstractBlockIO *bio = NULL;
+    std::shared_ptr<CAbstractBlockIO> bio;
     if (strcmp(backend, "ram") == 0)
     {
-        bio = new CRAMBlockIO(4096);
+        bio.reset(new CRAMBlockIO(4096));
     } else
     if (strncmp(backend, "file", 255) == 0)
     {
@@ -182,7 +184,7 @@ int main(int argc, char *argv[])
     } else
     if (strncmp(backend, "cvfsserver", 255) == 0)
     {
-        bio = new CNetBlockIO(4096, hostname, port);
+        bio.reset(new CNetBlockIO(4096, hostname, port));
     } else
     {
         fprintf(stderr, "Error: Backend '%s' not found\n", backend);
@@ -190,33 +192,33 @@ int main(int argc, char *argv[])
     }
 
     CEncrypt enc(*bio);
-    CCacheIO cbio(*bio, enc, cryptcache);
-    SimpleFilesystem fs(cbio);
+    std::shared_ptr<CCacheIO> cbio(new CCacheIO(bio, enc, cryptcache));
+    std::shared_ptr<SimpleFilesystem> fs(new SimpleFilesystem(cbio));
 
     if (info)
     {
         printf("==============================\n");
         printf("============ INFO ============\n");
         printf("==============================\n");
-        CPrintCheckRepair(fs).PrintInfo();
+        CPrintCheckRepair(*fs).PrintInfo();
     }
     if (showfragments)
     {
         printf("==============================\n");
         printf("========= FRAGMENTS ==========\n");
         printf("==============================\n");
-        CPrintCheckRepair(fs).PrintFragments();
+        CPrintCheckRepair(*fs).PrintFragments();
     }
     if (check)
     {
         printf("==============================\n");
         printf("=========== CHECK ============\n");
         printf("==============================\n");
-        CPrintCheckRepair(fs).Check();
+        CPrintCheckRepair(*fs).Check();
     }
     if (rootdir)
     {
-        CDirectory dir = fs.OpenDir("/");
+        CDirectory dir = fs->OpenDir("/");
         dir.List();
     }
     if (testfs)
@@ -224,7 +226,8 @@ int main(int argc, char *argv[])
         printf("==============================\n");
         printf("============ TEST ============\n");
         printf("==============================\n");
-        ParallelTest(10, 10, 2000, fs);
+        ParallelTest(10, 10, 2000, *fs);
+        ShowStatus(fs, cbio);
     }
 
     if ((info) || (showfragments) || (check) || (rootdir) || (testfs))
@@ -241,9 +244,9 @@ int main(int argc, char *argv[])
     }
 
 #if !defined(_WIN32) && !defined(_WIN64) && !defined(__CYGWIN__)
-    return StartFuse(argc, argv, mountpoint, fs);
+    return StartFuse(argc, argv, mountpoint, *fs);
 #else
-    return StartDokan(argc, argv, mountpoint, fs);
+    return StartDokan(argc, argv, mountpoint, *fs);
 #endif
 
 }

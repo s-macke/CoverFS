@@ -160,9 +160,9 @@ void Execute(int tid)
 
 void ParallelTest(unsigned int _nfiles, unsigned int _nthreads, unsigned int _niter, SimpleFilesystem &_fs)
 {
-    printf("number of files %i\n", nfiles);
-    printf("number of threads: %i\n", nthreads);
-    printf("number of iterations per thread: %i\n", niter);
+    printf("Number of files %i\n", nfiles);
+    printf("Number of threads: %i\n", nthreads);
+    printf("Number of iterations per thread: %i\n", niter);
 
     srand (time(NULL));
     g_seed = time(NULL);
@@ -204,4 +204,6 @@ void ParallelTest(unsigned int _nfiles, unsigned int _nthreads, unsigned int _ni
     {
         t[i].join();
     }
+    printf("Tests done\n");
+
 }

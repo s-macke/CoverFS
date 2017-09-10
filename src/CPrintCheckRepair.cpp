@@ -74,10 +74,10 @@ void  CPrintCheckRepair::Check()
         idx1 = fs.fragmentlist.ofssort[i+0];
         idx2 = fs.fragmentlist.ofssort[i+1];
 
-        int nextofs = fs.fragmentlist.fragments[idx1].GetNextFreeBlock(fs.bio.blocksize);
+        int nextofs = fs.fragmentlist.fragments[idx1].GetNextFreeBlock(fs.bio->blocksize);
         if (fs.fragmentlist.fragments[idx2].size == 0) break;
         if (fs.fragmentlist.fragments[idx2].id == CFragmentDesc::FREEID) break;
-        int64_t hole = (fs.fragmentlist.fragments[idx2].ofs  - nextofs)*fs.bio.blocksize;
+        int64_t hole = (fs.fragmentlist.fragments[idx2].ofs  - nextofs)*fs.bio->blocksize;
         if (hole < 0)
         {
             fprintf(stderr, "Error in CheckFS: fragment overlap detected");
@@ -122,17 +122,17 @@ void  CPrintCheckRepair::PrintInfo()
         if (id >= 0)
         {
                 size += fs.fragmentlist.fragments[i].size;
-                if (lastfreeblock < fs.fragmentlist.fragments[i].GetNextFreeBlock(fs.bio.blocksize))
-                    lastfreeblock = fs.fragmentlist.fragments[i].GetNextFreeBlock(fs.bio.blocksize);
+                if (lastfreeblock < fs.fragmentlist.fragments[i].GetNextFreeBlock(fs.bio->blocksize))
+                    lastfreeblock = fs.fragmentlist.fragments[i].GetNextFreeBlock(fs.bio->blocksize);
                 s.insert(id);
                 types[fs.fragmentlist.fragments[i].type]++;
         }
     }
     printf("number of inodes: %zu\n", s.size());
     printf("stored bytes: %lli\n", (long long int)size);
-    printf("container usage: %f %%\n", (double)size/(double)fs.bio.GetFilesize()*100.);
+    printf("container usage: %f %%\n", (double)size/(double)fs.bio->GetFilesize()*100.);
     printf("last free block: %lli\n", (long long int)lastfreeblock);
-    printf("empty space at end: %lli Bytes\n", (long long int)fs.bio.GetFilesize()-lastfreeblock*fs.bio.blocksize);
+    printf("empty space at end: %lli Bytes\n", (long long int)fs.bio->GetFilesize()-lastfreeblock*fs.bio->blocksize);
 
     printf("directory fragments: %i\n", types[INODETYPE::dir]);
     printf("     file fragments: %i\n", types[INODETYPE::file]);

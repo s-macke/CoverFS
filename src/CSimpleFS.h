@@ -28,7 +28,8 @@ class SimpleFilesystem
     friend class CPrintCheckRepair;
 
 public:
-    SimpleFilesystem(CCacheIO &_bio);
+    SimpleFilesystem(const std::shared_ptr<CCacheIO> &_bio);
+    ~SimpleFilesystem();
     INODEPTR OpenNode(int id);
     INODEPTR OpenNode(const std::string &path);
     INODEPTR OpenNode(const std::vector<std::string> splitpath);
@@ -63,7 +64,7 @@ private:
 
     int CreateNode(CDirectory &dir, const std::string &name, INODETYPE t);
 
-    CCacheIO &bio;
+    std::shared_ptr<CCacheIO> bio;
 
     std::mutex inodescachemtx;
 

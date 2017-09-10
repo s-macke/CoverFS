@@ -35,8 +35,8 @@ private:
     ssl_socket sdata;
     std::atomic_int cmdid;
     std::thread iothread;
-    CNetReadWriteBuffer *rbbufctrl;
-    CNetReadWriteBuffer *rbbufdata;
+    std::unique_ptr<CNetReadWriteBuffer> rbbufctrl;
+    std::unique_ptr<CNetReadWriteBuffer> rbbufdata;
 };
 
 #endif

@@ -4,7 +4,9 @@
 #include "CSimpleFS.h"
 #include "CCacheIO.h"
 
-void ShowStatus(SimpleFilesystem &fs, CCacheIO &cbio);
+#include<memory>
+
+void ShowStatus(std::weak_ptr<SimpleFilesystem> fs, std::weak_ptr<CCacheIO> cbio);
 
 #endif
 

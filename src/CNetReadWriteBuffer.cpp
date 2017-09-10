@@ -15,6 +15,7 @@ CNetReadWriteBuffer::CNetReadWriteBuffer(ssl_socket &s) : socket(s)
 
 CNetReadWriteBuffer::~CNetReadWriteBuffer()
 {
+    printf("CNewReadWriteBuffer: destruct\n");
     {
         std::lock_guard<std::mutex> lock(readidmapmtx);
         int n = readidmap.size();

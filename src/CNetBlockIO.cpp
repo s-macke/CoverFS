@@ -91,8 +91,8 @@ CNetBlockIO::CNetBlockIO(int _blocksize, const std::string &host, const std::str
     }
 #endif
 
-    rbbufctrl = new CNetReadWriteBuffer(sctrl);
-    rbbufdata = new CNetReadWriteBuffer(sdata);
+    rbbufctrl.reset(new CNetReadWriteBuffer(sctrl));
+    rbbufdata.reset(new CNetReadWriteBuffer(sdata));
 
     iothread = std::thread([&](){
         boost::asio::io_service::work work(io_service);
@@ -104,8 +104,7 @@ CNetBlockIO::CNetBlockIO(int _blocksize, const std::string &host, const std::str
 
 CNetBlockIO::~CNetBlockIO()
 {
-    delete rbbufctrl;
-    delete rbbufdata;
+    printf("CNetBlockIO: Destruct\n");
 }
 
 int64_t CNetBlockIO::GetFilesize()
