@@ -154,7 +154,7 @@ void Execute(int tid)
         files[id].mtx.unlock();
 
     }
-
+    delete[] data;
 }
 
 
@@ -204,6 +204,9 @@ void ParallelTest(unsigned int _nfiles, unsigned int _nthreads, unsigned int _ni
     {
         t[i].join();
     }
+    delete[] t;
+    delete[] files;
+
     printf("Tests done\n");
 
 }
