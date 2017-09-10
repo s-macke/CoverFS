@@ -17,7 +17,7 @@ typedef boost::asio::ssl::stream<boost::asio::ip::tcp::socket> ssl_socket;
 FILE *fp;
 int64_t filesize;
 
-enum class COMMAND {read, write, size, info};
+enum class COMMAND {read, write, size, info, close};
 
 typedef struct
 {
@@ -60,7 +60,7 @@ void ParseCommand(char *commandbuf, ssl_socket &sock)
         }
     case COMMAND::write:
         //printf("WRITE ofs=%li size=%li (block: %li)\n", cmd->offset, cmd->length, cmd->offset/4096);
-        fseek(fp, cmd->offset, SEEK_SET);                        
+        fseek(fp, cmd->offset, SEEK_SET);
         fwrite(&cmd->data, cmd->length, 1, fp);
         break;
 
@@ -92,6 +92,16 @@ void ParseCommand(char *commandbuf, ssl_socket &sock)
             break;
         }
 
+    case COMMAND::close:
+        {
+            //printf("CLOSE\n");
+            REPLYCOMMANDSTRUCT reply;
+            reply.cmdlen = 8;
+            reply.id = cmd->id;
+            boost::asio::write(sock, boost::asio::buffer(&reply, reply.cmdlen));
+            break;
+        }
+
     default:
         fprintf(stderr, "ignore received command %i\n", cmd->cmd);
     }
@@ -100,7 +110,7 @@ void ParseCommand(char *commandbuf, ssl_socket &sock)
 
 void ParseStream(char *data, int length, ssl_socket &sock, char *commandbuf, int32_t &commandbuflen)
 {
-    for(int i=0; i<length; i++) 
+    for(int i=0; i<length; i++)
     {
         commandbuf[commandbuflen++] = data[i];
         if (commandbuflen < 4) continue;

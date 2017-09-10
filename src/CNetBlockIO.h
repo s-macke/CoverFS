@@ -26,6 +26,7 @@ public:
     void Write(const int blockidx, const int n, int8_t* d);
     int64_t GetFilesize();
     void GetInfo();
+    void Close();
 
 private:
     boost::asio::io_service io_service;

@@ -16,6 +16,13 @@ CNetReadWriteBuffer::CNetReadWriteBuffer(ssl_socket &s) : socket(s)
 CNetReadWriteBuffer::~CNetReadWriteBuffer()
 {
     printf("CNetReadWriteBuffer: destruct\n");
+    Sync();
+    printf("CNetReadWriteBuffer: destruct done\n");
+}
+
+// --------------------------------------------------------
+void CNetReadWriteBuffer::Sync()
+{
     {
         std::lock_guard<std::mutex> lock(readidmapmtx);
         int n = readidmap.size();
@@ -24,14 +31,17 @@ CNetReadWriteBuffer::~CNetReadWriteBuffer()
     while(1)
     {
         unsigned int n = bufsize.load();
-        if (n == 0) return;
+        if (n == 0)
+        {
+            printf("CNetReadWriteBuffer: sync done\n");
+            return;
+        }
         printf("write cache: emptying cache. Still %i bytes to go.\n", n);
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
     }
-    printf("CNetReadWriteBuffer: destruct done\n");
 }
 
-// --------------------------------------------------------
+
 
 std::future<void> CNetReadWriteBuffer::Read(int32_t id, int8_t *buf, int32_t size)
 {

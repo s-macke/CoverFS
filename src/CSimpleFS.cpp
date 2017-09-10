@@ -71,6 +71,15 @@ SimpleFilesystem::SimpleFilesystem(const std::shared_ptr<CCacheIO> &_bio) : bio(
 SimpleFilesystem::~SimpleFilesystem()
 {
     printf("SimpleFilesystem: Destruct\n");
+    std::lock_guard<std::mutex> lock(inodescachemtx);
+    for (auto &inode : inodes)
+    {
+        while(inode.second.use_count() > 1)
+        {
+            printf("Warning: inode with id=%i still in use filename='%s'\n", inode.second->id, inode.second->name.c_str());
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+        }
+    }
 }
 
 int64_t SimpleFilesystem::GetNInodes()

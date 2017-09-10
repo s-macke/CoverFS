@@ -7,7 +7,7 @@
 
 using boost::asio::ip::tcp;
 
-enum COMMAND {READ=0, WRITE=1, SIZE=2, INFO=3};
+enum COMMAND {READ=0, WRITE=1, SIZE=2, INFO=3, CLOSE=4};
 
 typedef struct
 {
@@ -104,12 +104,25 @@ CNetBlockIO::CNetBlockIO(int _blocksize, const std::string &host, const std::str
 
 CNetBlockIO::~CNetBlockIO()
 {
+
     printf("CNetBlockIO: Destruct\n");
-    rbbufctrl.reset();
-    rbbufdata.reset();
+    printf("CNetBlockIO: Send Close command\n");
+    Close();
+    printf("CNetBlockIO: Send Close command done\n");
+
+    rbbufctrl->Sync();
+    rbbufdata->Sync();
+
     work.reset();
     io_service.stop();
     iothread.join();
+
+    printf("CNetBlockIO: Destruct buffer\n");
+    rbbufctrl.reset();
+    rbbufdata.reset();
+    printf("CNetBlockIO: Destruct buffers done\n");
+
+    printf("CNetBlockIO: Destruct done\n");
 }
 
 int64_t CNetBlockIO::GetFilesize()
@@ -138,6 +151,22 @@ void CNetBlockIO::GetInfo()
     fut.get();
     printf("Connected to '%s'\n", data);
 }
+
+
+void CNetBlockIO::Close()
+{
+    CommandDesc cmd;
+    int8_t data[8];
+    int32_t id = cmdid.fetch_add(1);
+    cmd.cmd = CLOSE;
+    std::future<void> futctrl = rbbufctrl->Read(id, data, 0);
+    std::future<void> futdata = rbbufdata->Read(id, data, 0);
+    rbbufctrl->Write(id, (int8_t*)&cmd, 4);
+    rbbufdata->Write(id, (int8_t*)&cmd, 4);
+    futctrl.get();
+    futdata.get();
+}
+
 
 void CNetBlockIO::Read(const int blockidx, const int n, int8_t *d)
 {

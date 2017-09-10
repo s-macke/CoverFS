@@ -6,7 +6,7 @@
 
 static std::thread t;
 
-void ShowStatusThread(std::weak_ptr<SimpleFilesystem> &pfs, std::weak_ptr<CCacheIO> &pcbio)
+void ShowStatusThread(std::weak_ptr<SimpleFilesystem> pfs, std::weak_ptr<CCacheIO> pcbio)
 {
     long long int ninodes = 0;
     long long int ncached = 0;
@@ -36,7 +36,7 @@ void ShowStatusThread(std::weak_ptr<SimpleFilesystem> &pfs, std::weak_ptr<CCache
     }
 }
 
-void ShowStatus(std::weak_ptr<SimpleFilesystem> fs, std::weak_ptr<CCacheIO> cbio)
+void ShowStatus(const std::weak_ptr<SimpleFilesystem> fs, const std::weak_ptr<CCacheIO> cbio)
 {
-    t = std::thread(ShowStatusThread, std::ref(fs), std::ref(cbio));
+    t = std::thread(ShowStatusThread, fs, cbio);
 }
