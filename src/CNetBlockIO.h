@@ -14,7 +14,6 @@ typedef ssl::stream<tcp::socket> ssl_socket;
 #include <mutex>
 #include <atomic>
 
-
 class CNetReadWriteBuffer;
 
 class CNetBlockIO : public CAbstractBlockIO
@@ -35,6 +34,7 @@ private:
     ssl_socket sdata;
     std::atomic_int cmdid;
     std::thread iothread;
+    std::unique_ptr<boost::asio::io_service::work> work;
     std::unique_ptr<CNetReadWriteBuffer> rbbufctrl;
     std::unique_ptr<CNetReadWriteBuffer> rbbufdata;
 };
