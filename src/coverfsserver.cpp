@@ -5,6 +5,7 @@
 #include <iostream>
 #include <thread>
 #include <utility>
+#include <cassert>
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
 #include <boost/asio/ssl.hpp>
@@ -26,7 +27,7 @@ typedef struct
     int32_t dummy;
     int64_t offset;
     int64_t length;
-    int32_t data;
+    int64_t data;
 } COMMANDSTRUCT;
 
 typedef struct
@@ -175,9 +176,9 @@ void server(boost::asio::io_service& io_service, unsigned short port)
             ssl_socket *sock = new ssl_socket(io_service, ctx);
             a.accept(sock->lowest_layer());
             printf("Connection from '%s'. Establish SSL connection\n", sock->lowest_layer().remote_endpoint().address().to_string().c_str());
-        
+
             sock->handshake(boost::asio::ssl::stream_base::server);
-        
+
             std::thread(session, sock).detach();
             //session(sock);
         }
@@ -201,6 +202,7 @@ void PrintUsage(int argc, char *argv[])
 
 int main(int argc, char *argv[])
 {
+    assert(sizeof(COMMANDSTRUCT) == 40);
     boost::asio::io_service io_service;
     int defaultport = 62000;
 
@@ -227,7 +229,7 @@ int main(int argc, char *argv[])
             return 1;
         }
         char data[4096*3] = {0};
-        fwrite(data, sizeof(data), 1, fp);        
+        fwrite(data, sizeof(data), 1, fp);
         fclose(fp);
         fp = fopen(filename, "r+b");
         if (fp == NULL)

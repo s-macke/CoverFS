@@ -3,6 +3,7 @@
 
 #include<iostream>
 #include<future>
+#include<cassert>
 
 using boost::asio::ip::tcp;
 
@@ -14,7 +15,7 @@ typedef struct
     int32_t dummy;
     int64_t offset;
     int64_t length;
-    int32_t data;
+    int64_t data;
 } CommandDesc;
 
 bool verify_certificate(bool preverified, boost::asio::ssl::verify_context& ctx)
@@ -43,6 +44,8 @@ CNetBlockIO::CNetBlockIO(int _blocksize, const std::string &host, const std::str
   sdata(io_service, ctx),
   cmdid(0)
 {
+    assert(sizeof(CommandDesc) == 32);
+
     ctx.set_verify_mode(boost::asio::ssl::context::verify_peer);
     ctx.load_verify_file("ssl/server.crt");
 
@@ -137,6 +140,7 @@ void CNetBlockIO::Read(const int blockidx, const int n, int8_t *d)
     CommandDesc cmd;
     int32_t id = cmdid.fetch_add(1);
     cmd.cmd = READ;
+    cmd.dummy = 0;
     cmd.offset = blockidx*blocksize;
     cmd.length = blocksize*n;
     //printf("read block %i\n", blockidx);
@@ -151,6 +155,7 @@ void CNetBlockIO::Write(const int blockidx, const int n, int8_t* d)
     CommandDesc *cmd = (CommandDesc*)buf;
     int32_t id = cmdid.fetch_add(1);
     cmd->cmd = WRITE;
+    cmd->dummy = 0;
     cmd->offset = blockidx*blocksize;
     cmd->length = blocksize*n;
     memcpy(&cmd->data, d, blocksize*n);
