@@ -4,11 +4,14 @@
 #include <memory>
 
 
-CStatusView::CStatusView(std::weak_ptr<SimpleFilesystem> _fs, std::weak_ptr<CCacheIO> _cbio) : fs(_fs), cbio(_cbio)
+CStatusView::CStatusView(
+    std::weak_ptr<SimpleFilesystem> _fs,
+    std::weak_ptr<CCacheIO> _cbio,
+    std::weak_ptr<CAbstractBlockIO> _bio
+    ) : fs(_fs), cbio(_cbio), bio(_bio)
 {
     wait_for_terminate = terminate_signal.get_future();
     t = std::thread(&CStatusView::Work, this);
-
 }
 
 CStatusView::~CStatusView()
@@ -19,29 +22,37 @@ CStatusView::~CStatusView()
 
 void CStatusView::Work()
 {
-    long long int ninodes = 0;
-    long long int ncached = 0;
-    long long int ndirty = 0;
+    std::string ninodes;
+    std::string ncached;
+    std::string ndirty;
+    std::string nwritecache;
 
     while(wait_for_terminate.wait_for(std::chrono::seconds(1)) == std::future_status::timeout)
     {
         if (auto fs = this->fs.lock())
         {
-            ninodes = fs->GetNInodes();
+            ninodes = std::to_string(fs->GetNInodes());
         } else
         {
-            ninodes = 0;
+            ninodes = "-";
+        }
+        if (auto bio = this->bio.lock())
+        {
+            nwritecache = std::to_string(bio->GetWriteCache());
+        } else
+        {
+            nwritecache = "-";
         }
         if (auto cbio = this->cbio.lock())
         {
-            ncached = cbio->GetNCachedBlocks();
-            ndirty = cbio->GetNDirty();
+            ncached = std::to_string(cbio->GetNCachedBlocks());
+            ndirty = std::to_string(cbio->GetNDirty());
         } else
         {
-            ncached = 0;
-            ndirty = 0;
+            ncached = "-";
+            ndirty = "-";
         }
-        printf("used inodes: %4lli cached blocks: %5lli dirty blocks: %5lli\n",
-            ninodes, ncached, ndirty);
+        printf("used inodes: %s cached blocks: %s dirty blocks: %s write cache: %s\n",
+            ninodes.c_str(), ncached.c_str(), ndirty.c_str(), nwritecache.c_str());
     }
 }

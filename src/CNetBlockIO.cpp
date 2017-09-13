@@ -125,6 +125,11 @@ CNetBlockIO::~CNetBlockIO()
     printf("CNetBlockIO: Destruct done\n");
 }
 
+int64_t CNetBlockIO::GetWriteCache()
+{
+    return rbbufctrl->GetBytesInCache() + rbbufdata->GetBytesInCache();
+}
+
 int64_t CNetBlockIO::GetFilesize()
 {
     int64_t filesize;

@@ -17,6 +17,7 @@ public:
     virtual void Read(const int blockidx, const int n, int8_t* d) = 0;
     virtual void Write(const int blockidx, const int n, int8_t* d) = 0;
     virtual int64_t GetFilesize() = 0;
+    virtual int64_t GetWriteCache();
 
 public:
     unsigned int blocksize;

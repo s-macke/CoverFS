@@ -228,7 +228,8 @@ int main(int argc, char *argv[])
         printf("============ TEST ============\n");
         printf("==============================\n");
         ParallelTest(10, 10, 2000, *fs);
-        statusview.reset(new CStatusView(fs, cbio));
+        statusview.reset(new CStatusView(fs, cbio, bio));
+        //std::this_thread::sleep_for(std::chrono::seconds(20));
     }
 
     if ((info) || (showfragments) || (check) || (rootdir) || (testfs))
@@ -236,7 +237,7 @@ int main(int argc, char *argv[])
         return EXIT_SUCCESS;
     }
 
-    statusview.reset(new CStatusView(fs, cbio));
+    statusview.reset(new CStatusView(fs, cbio, bio));
 
     if (signal(SIGINT, catch_function) == SIG_ERR)
     {

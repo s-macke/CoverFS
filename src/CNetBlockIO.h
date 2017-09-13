@@ -25,6 +25,7 @@ public:
     void Read(const int blockidx, const int n, int8_t* d);
     void Write(const int blockidx, const int n, int8_t* d);
     int64_t GetFilesize();
+    int64_t GetWriteCache();
     void GetInfo();
     void Close();
 

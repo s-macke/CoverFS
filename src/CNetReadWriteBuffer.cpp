@@ -21,6 +21,7 @@ CNetReadWriteBuffer::~CNetReadWriteBuffer()
 }
 
 // --------------------------------------------------------
+
 void CNetReadWriteBuffer::Sync()
 {
     {
@@ -40,8 +41,6 @@ void CNetReadWriteBuffer::Sync()
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
     }
 }
-
-
 
 std::future<void> CNetReadWriteBuffer::Read(int32_t id, int8_t *buf, int32_t size)
 {
@@ -71,7 +70,6 @@ void CNetReadWriteBuffer::AsyncRead2(int32_t size, int32_t id)
         AsyncRead();
     });
 }
-
 
 void CNetReadWriteBuffer::AsyncRead()
 {
@@ -147,4 +145,9 @@ void CNetReadWriteBuffer::AsyncWrite()
         wpmutex.unlock();
         if (bufsize.load() > 0) AsyncWrite();
     });
+}
+
+int64_t CNetReadWriteBuffer::GetBytesInCache()
+{
+    return bufsize.load();
 }

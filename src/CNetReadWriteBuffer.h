@@ -31,6 +31,7 @@ class CNetReadWriteBuffer
     void Write(int32_t id, int8_t *d, int n);
     std::future<void> Read(int32_t id, int8_t *buf, int32_t size);
     void Sync();
+    int64_t GetBytesInCache();
 
     private:
 

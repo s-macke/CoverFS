@@ -2,9 +2,9 @@
 #include <string.h>
 
 CAbstractBlockIO::CAbstractBlockIO(int _blocksize) : blocksize(_blocksize) {}
+int64_t CAbstractBlockIO::GetWriteCache() { return 0; }
 
 // -----------------------------------------------------------------
-
 
 CRAMBlockIO::CRAMBlockIO(int _blocksize) : CAbstractBlockIO(_blocksize)
 {
@@ -16,6 +16,7 @@ int64_t CRAMBlockIO::GetFilesize()
     std::lock_guard<std::mutex> lock(mutex);
     return data.size();
 }
+
 
 void CRAMBlockIO::Read(const int blockidx, const int n, int8_t *d)
 {
