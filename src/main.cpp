@@ -191,6 +191,7 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
+    std::unique_ptr<CStatusView> statusview;
     CEncrypt enc(*bio);
     std::shared_ptr<CCacheIO> cbio(new CCacheIO(bio, enc, cryptcache));
     std::shared_ptr<SimpleFilesystem> fs(new SimpleFilesystem(cbio));
@@ -227,7 +228,7 @@ int main(int argc, char *argv[])
         printf("============ TEST ============\n");
         printf("==============================\n");
         ParallelTest(10, 10, 2000, *fs);
-        ShowStatus(fs, cbio);
+        statusview.reset(new CStatusView(fs, cbio));
     }
 
     if ((info) || (showfragments) || (check) || (rootdir) || (testfs))
@@ -235,7 +236,7 @@ int main(int argc, char *argv[])
         return EXIT_SUCCESS;
     }
 
-    ShowStatus(fs, cbio);
+    statusview.reset(new CStatusView(fs, cbio));
 
     if (signal(SIGINT, catch_function) == SIG_ERR)
     {
