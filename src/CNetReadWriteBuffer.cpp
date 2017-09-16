@@ -1,3 +1,4 @@
+#include"Logger.h"
 #include "CNetReadWriteBuffer.h"
 
 
@@ -15,9 +16,9 @@ CNetReadWriteBuffer::CNetReadWriteBuffer(ssl_socket &s) : socket(s)
 
 CNetReadWriteBuffer::~CNetReadWriteBuffer()
 {
-    printf("CNetReadWriteBuffer: destruct\n");
+    LOG(DEBUG) << "CNetReadWriteBuffer: destruct";
     Sync();
-    printf("CNetReadWriteBuffer: destruct done\n");
+    LOG(DEBUG) << "CNetReadWriteBuffer: destruct done";
 }
 
 // --------------------------------------------------------
@@ -27,17 +28,20 @@ void CNetReadWriteBuffer::Sync()
     {
         std::lock_guard<std::mutex> lock(readidmapmtx);
         int n = readidmap.size();
-        if (n != 0) printf("Warning: read queue not empty\n");
+        if (n != 0)
+        {
+            LOG(WARN) << "Read queue not empty";
+        }
     }
     while(1)
     {
         unsigned int n = bufsize.load();
         if (n == 0)
         {
-            printf("CNetReadWriteBuffer: sync done\n");
+            LOG(DEBUG) << "CNetReadWriteBuffer: sync done";
             return;
         }
-        printf("write cache: emptying cache. Still %i bytes to go.\n", n);
+        LOG(INFO) << "write cache: emptying cache. Still "<< n << "bytes to go.";
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
     }
 }
@@ -99,13 +103,12 @@ void CNetReadWriteBuffer::Write(int32_t id, int8_t *d, int n)
 void CNetReadWriteBuffer::Push(int8_t *d, int n)
 {
     //printf("Push %i bytes\n", n);
-
     for(int i=0; i<n; i++)
     {
         // ringbuffer full. Block all further evaluations
         if (bufsize.load() > buf.size()-2)
         {
-            //printf("ringbuffer full: blocking\n");
+            LOG(DEBUG) << "Ringbuffer full: blocking";
             AsyncWrite();
             std::unique_lock<std::mutex> lock(condmtx);
             while(bufsize.load() > buf.size()-2)

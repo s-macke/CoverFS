@@ -1,5 +1,6 @@
 #include "CSimpleFS.h"
 #include "CDirectory.h"
+#include "Logger.h"
 
 #include<stdio.h>
 #include<assert.h>
@@ -49,9 +50,9 @@ SimpleFilesystem::SimpleFilesystem(const std::shared_ptr<CCacheIO> &_bio) : bio(
     assert(sizeof(DIRENTRY) == 128);
     assert(CFragmentDesc::SIZEONDISK == 16);
 
-    printf("container info:\n");
-    printf("  size: %i MB\n", int(bio->GetFilesize()/(1024*1024)));
-    printf("  blocksize: %i\n", bio->blocksize);
+    LOG(INFO) << "container info:";
+    LOG(INFO) << "  size: " << int(bio->GetFilesize()/(1024*1024)) << " MB";
+    LOG(INFO) << "  blocksize: " << bio->blocksize << " bytes";
 
     CBLOCKPTR superblock = bio->GetBlock(1);
     SUPER* super = (SUPER*)superblock->GetBufRead();
@@ -61,7 +62,7 @@ SimpleFilesystem::SimpleFilesystem(const std::shared_ptr<CCacheIO> &_bio) : bio(
         CreateFS();
         return;
     }
-    printf("filesystem %s V%i.%i\n", super->magic, super->version>>16, super->version|0xFFFF);
+    LOG(INFO) << "filesystem " << super->magic << " V" << (super->version>>16) << "." << (super->version|0xFFFF);
     superblock->ReleaseBuf();
 
     fragmentlist.Load();
@@ -70,13 +71,13 @@ SimpleFilesystem::SimpleFilesystem(const std::shared_ptr<CCacheIO> &_bio) : bio(
 
 SimpleFilesystem::~SimpleFilesystem()
 {
-    printf("SimpleFilesystem: Destruct\n");
+    LOG(DEBUG) << "SimpleFilesystem: Destruct";
     std::lock_guard<std::mutex> lock(inodescachemtx);
     for (auto &inode : inodes)
     {
         while(inode.second.use_count() > 1)
         {
-            printf("Warning: inode with id=%i still in use filename='%s'\n", inode.second->id, inode.second->name.c_str());
+            LOG(WARN) << "Inode with id=" << inode.second->id << "still in use. Filename='" << inode.second->name << "'";
             std::this_thread::sleep_for(std::chrono::seconds(1));
         }
     }
@@ -89,10 +90,10 @@ int64_t SimpleFilesystem::GetNInodes()
 
 void SimpleFilesystem::CreateFS()
 {
-    printf("==================\n");
-    printf("Create Filesystem\n");
+    LOG(INFO) << "==================";
+    LOG(INFO) << "Create Filesystem";
 
-    printf("  Write superblock\n");
+    LOG(INFO) << "  Write superblock";
 
     CBLOCKPTR superblock = bio->GetBlock(1);
     SUPER* super = (SUPER*)superblock->GetBufReadWrite();
@@ -102,7 +103,6 @@ void SimpleFilesystem::CreateFS()
     superblock->ReleaseBuf();
     bio->Sync();
     fragmentlist.Create();
-   
 
     // Create root directory
 
@@ -115,7 +115,7 @@ void SimpleFilesystem::CreateFS()
 
     if (id != CFragmentDesc::ROOTID)
     {
-        fprintf(stderr, "Error: Cannot create root directory\n");
+        LOG(ERROR) << "Error: Cannot create root directory";
         exit(1);
     }
 
@@ -129,8 +129,8 @@ void SimpleFilesystem::CreateFS()
 
     bio->Sync();
 
-    printf("Filesystem created\n");
-    printf("==================\n");
+    LOG(INFO) << "Filesystem created";
+    LOG(INFO) << "==================";
 }
 
 INODEPTR SimpleFilesystem::OpenNode(int id)
@@ -140,8 +140,7 @@ INODEPTR SimpleFilesystem::OpenNode(int id)
     auto it = inodes.find(id);
     if (it != inodes.end())
     {
-        //it->second->Print();
-        //printf("Open File with id=%i blocks=%zu and ptrcount=%li\n", id, it->second->blocks.size(), it->second.use_count());
+        LOG(DEEP) << "Open File with id=" << id << " size=" << it->second->size << "and ptrcount=" << it->second.use_count();
         assert(id == it->second->id);
         return it->second;
     }
@@ -151,18 +150,12 @@ INODEPTR SimpleFilesystem::OpenNode(int id)
     node->size = 0;
     node->fragments.clear();
     node->parentid = CFragmentDesc::INVALIDID;
-/*
-    if (id == CFragmentDesc::ROOTID)
-    {
-        node->type = INODETYPE::dir;
-    }
-*/
     fragmentlist.GetFragmentIdxList(id, node->fragments, node->size);
 
     assert(node->fragments.size() > 0);
     node->type = fragmentlist.fragments[node->fragments[0]].type;
     inodes[id] = node;
-    //printf("Open File with id=%i blocks=%zu\n", id, node->blocks.size());
+    LOG(DEEP) << "Open File with id=" << id << " size=" << node->size;
     return node;
 }
 
@@ -192,7 +185,7 @@ std::vector<std::string> SplitPath(const std::string &path)
     /*
         for(unsigned int i=0; i<d.size(); i++)
                 printf("  %i: %s\n", i, d[i].c_str());
-*/
+    */
     return d;
 }
 
@@ -227,7 +220,6 @@ INODEPTR SimpleFilesystem::OpenNode(const std::vector<std::string> splitpath)
     node = OpenNode(e.id);
     std::lock_guard<std::mutex> lock(node->GetMutex());
     node->parentid = dirid;
-    //node->type = (INODETYPE)e.type; // static cast?
     if (splitpath.empty())
         node->name = "/";
     else
@@ -346,7 +338,7 @@ void SimpleFilesystem::ShrinkNode(INODE &node, int64_t size)
 
 void SimpleFilesystem::Truncate(INODE &node, int64_t size, bool dozero)
 {
-    //printf("Truncate of id=%i to:%li from:%li\n", node.id, size, node.size);
+    LOG(DEEP) << "Truncate of id=" << node.id << " from:" << node.size << "to:" << size;
     assert(node.id != CFragmentDesc::INVALIDID);
     if (size == node.size) return;
 
@@ -446,15 +438,6 @@ void SimpleFilesystem::Rename(INODEPTR &node, CDirectory &newdir, const std::str
     CDirectory olddir = OpenDir(node->parentid);
     olddir.RemoveEntry(node->name, e);
     strncpy(e.name, filename.c_str(), 64+32);
-    /*
-    // check if file already exist and remove it
-    // this is already done in fuserop
-    newdir.Find(filename, e);
-    DIRENTRY e(filename);
-    if (e.id != CFragmentDesc::INVALIDID)
-    {
-    }
-    */
     newdir.AddEntry(e);
 }
 
@@ -471,14 +454,14 @@ int SimpleFilesystem::CreateNode(CDirectory &dir, const std::string &name, INODE
 int SimpleFilesystem::CreateFile(CDirectory &dir, const std::string &name)
 {
     int id = CreateNode(dir, name, INODETYPE::file);
-    //printf("Create File '%s' with id=%i\n", name.c_str(), id);
+    LOG(DEEP) << "Create File '" << name << "' with id=" << id;
     return id;
 }
 
 int SimpleFilesystem::CreateDirectory(CDirectory &dir, const std::string &name)
 {
     int id = CreateNode(dir, name, INODETYPE::dir);
-    //printf("Create Directory '%s' with id=%i\n", name.c_str(), id);
+    LOG(DEEP) << "Create Directory '" << name << "' with id=" << id;
 
     INODEPTR newdirnode = OpenNode(id);
     newdirnode->parentid = dir.dirnode->id;
@@ -491,7 +474,7 @@ int SimpleFilesystem::CreateDirectory(CDirectory &dir, const std::string &name)
 
 void SimpleFilesystem::Remove(INODE &node)
 {
-    //maybe, we have to check the shared_ptr here
+    // maybe, we have to check the shared_ptr here
     DIRENTRY e("");
     CDirectory dir = OpenDir(node.parentid);
     fragmentlist.FreeAllFragments(node.fragments);

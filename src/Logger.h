@@ -1,33 +1,30 @@
 #ifndef DEBUG_H
 #define DEBUG_H
 
-#include<iostream>
+#include <sstream>
 
-class Debug
+enum LogLevel {ERROR, WARN, INFO, DEBUG, DEEP};
+
+class Logger
 {
     public:
-    //Debug(int _level=WARN) : level(_level) {};
-    Debug(int _level=WARN);
+    Logger();
+    ~Logger();
 
-    template<typename T>
-    Debug& operator<<(T const& t)
-    {
-        if (level <= currentlevel)
-        {
-            std::cout << t;
-        }
-        return *this;
-    }
+    std::ostringstream& Get(LogLevel);
 
-    void Set(int newlevel);
+    static LogLevel& GetReporingLevel();
 
-    static const int ERR  = 0;
-    static const int WARN = 1;
-    static const int INFO = 2;
+    void Set(LogLevel newlevel);
 
     private:
-        int level;
-        int& currentlevel;
+        std::string ToString(LogLevel level);
+        static LogLevel level;
+        std::ostringstream os;
 };
+
+#define LOG(level)\
+  if (level > Logger::GetReporingLevel()) ;\
+  else Logger().Get(level)
 
 #endif

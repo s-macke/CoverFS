@@ -21,7 +21,7 @@ static SimpleFilesystem *fs;
 
 static int fuse_getattr(const char *path, struct stat *stbuf)
 {
-    Debug(Debug::INFO) << "getattr '" << path << "'\n";
+    LOG(INFO) << "FUSE: getattr '" << path << "'";
 
     memset(stbuf, 0, sizeof(struct stat));
 
@@ -58,25 +58,25 @@ static int fuse_getattr(const char *path, struct stat *stbuf)
 
 static int fuse_utimens(const char *path, const struct timespec tv[2])
 {
-    Debug(Debug::INFO) << "utimens '" << path << "'\n";
+    LOG(INFO) << "FUSE: utimens '" << path << "'";
     return 0;
 }
 
 static int fuse_chmod(const char *path, mode_t mode)
 {
-    Debug(Debug::INFO) << "chmod '" << path << "'\n";
+    LOG(INFO) << "FUSE: chmod '" << path << "'";
     return 0;
 }
 
 static int fuse_chown(const char *path, uid_t uid, gid_t gid)
 {
-    Debug(Debug::INFO) << "chown '" << path << "'\n";
+    LOG(INFO) << "FUSE: chown '" << path << "'";
     return 0;
 }
 
 static int fuse_truncate(const char *path, off_t size)
 {
-    Debug(Debug::INFO) << "truncate '" << path << "' size=" << size << "\n";
+    LOG(INFO) << "FUSE: truncate '" << path << "' size=" << size;
     try
     {
         INODEPTR node = fs->OpenFile(path);
@@ -90,7 +90,7 @@ static int fuse_truncate(const char *path, off_t size)
 
 static int fuse_opendir(const char *path, struct fuse_file_info *fi)
 {
-    Debug(Debug::INFO) << "opendir '" << path << "'\n";
+    LOG(INFO) << "FUSE: opendir '" << path << "'";
     try
     {
         CDirectory dir = fs->OpenDir(path);
@@ -105,7 +105,7 @@ static int fuse_opendir(const char *path, struct fuse_file_info *fi)
 static int fuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t offset, struct fuse_file_info *fi)
 {
     (void) offset;
-    Debug(Debug::INFO) << "readdir '" << path << "'\n";
+    LOG(INFO) << "FUSE: readdir '" << path << "'";
     try
     {
         CDirectory dir = fs->OpenDir(fi->fh);
@@ -128,7 +128,7 @@ static int fuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off
 
 static int fuse_open(const char *path, struct fuse_file_info *fi)
 {
-    Debug(Debug::INFO) << "open '" << path << "'\n";
+    LOG(INFO) << "FUSE: open '" << path << "'";
     try
     {
         INODEPTR node = fs->OpenFile(path);
@@ -146,7 +146,7 @@ static int fuse_open(const char *path, struct fuse_file_info *fi)
 
 static int fuse_read(const char *path, char *buf, size_t size, off_t offset, struct fuse_file_info *fi)
 {
-    Debug(Debug::INFO) << "read '" << path << "' ofs=" << offset << " size=" << size << "\n";
+    LOG(INFO) << "FUSE: read '" << path << "' ofs=" << offset << " size=" << size;
     try
     {
         INODEPTR node = fs->OpenFile(fi->fh);
@@ -161,7 +161,7 @@ static int fuse_read(const char *path, char *buf, size_t size, off_t offset, str
 
 static int fuse_write(const char *path, const char *buf, size_t size, off_t offset, struct fuse_file_info *fi)
 {
-    Debug(Debug::INFO) << "write '" << path << "' ofs=" << offset << " size=" << size << "\n";
+    LOG(INFO) << "FUSE: write '" << path << "' ofs=" << offset << " size=" << size;
 
     try
     {
@@ -178,7 +178,7 @@ static int fuse_write(const char *path, const char *buf, size_t size, off_t offs
 
 static int fuse_mkdir(const char *path, mode_t mode)
 {
-    Debug(Debug::INFO) << "mkdir '" << path << "'\n";
+    LOG(INFO) << "FUSE: mkdir '" << path << "'";
     // test if dir is empty? Looks like this is tested already
     std::vector<std::string> splitpath;
     splitpath = SplitPath(std::string(path));
@@ -198,7 +198,7 @@ static int fuse_mkdir(const char *path, mode_t mode)
 
 static int fuse_rmdir(const char *path)
 {
-    Debug(Debug::INFO) << "rmdir '" << path << "'\n";
+    LOG(INFO) << "FUSE: rmdir '" << path << "'";
 
     try
     {
@@ -214,7 +214,7 @@ static int fuse_rmdir(const char *path)
 
 static int fuse_unlink(const char *path)
 {
-    Debug(Debug::INFO) << "unlink '" << path << "'\n";
+    LOG(INFO) << "FUSE: unlink '" << path << "'";
 
     try
     {
@@ -230,7 +230,7 @@ static int fuse_unlink(const char *path)
 
 static int fuse_create(const char *path, mode_t mode, struct fuse_file_info *fi)
 {
-    Debug(Debug::INFO) << "create '" << path << "'\n";
+    LOG(INFO) << "FUSE: create '" << path << "'";
     std::vector<std::string> splitpath;
     splitpath = SplitPath(std::string(path));
     assert(splitpath.size() >= 1);
@@ -250,7 +250,7 @@ static int fuse_create(const char *path, mode_t mode, struct fuse_file_info *fi)
 
 static int fuse_access(const char *path, int mask)
 {
-    Debug(Debug::INFO) << "access '" << path << "'\n";
+    LOG(INFO) << "FUSE: access '" << path << "'";
     try
     {
         INODEPTR node = fs->OpenNode(path);
@@ -264,7 +264,7 @@ static int fuse_access(const char *path, int mask)
 
 static int fuse_rename(const char *oldpath, const char *newpath)
 {
-    Debug(Debug::INFO) << "create '" << oldpath << "' to '" << newpath << "'\n";
+    LOG(INFO) << "FUSE: create '" << oldpath << "' to '" << newpath << "'";
 
     std::vector<std::string> splitpath;
     splitpath = SplitPath(std::string(newpath));
@@ -294,7 +294,7 @@ static int fuse_rename(const char *oldpath, const char *newpath)
 
 static int fuse_statfs(const char *path, struct statvfs *buf)
 {
-    Debug(Debug::INFO) << "statfs '" << path << "'\n";
+    LOG(INFO) << "FUSE: statfs '" << path << "'";
     fs->StatFS(buf);
     return 0;
 }

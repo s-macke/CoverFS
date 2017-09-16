@@ -1,14 +1,37 @@
 #include "Logger.h"
+
 #include <iostream>
+#include <chrono>
 
-static int _currentlevel = 0;
+LogLevel Logger::level = INFO;
 
-Debug::Debug(int _level) : level(_level), currentlevel(_currentlevel)
+Logger::Logger() {}
+
+Logger::~Logger() 
 {
+    os << std::endl;
+    std::cout << os.str();
 }
 
-void Debug::Set(int newlevel)
+LogLevel& Logger::GetReporingLevel()
 {
-    _currentlevel = newlevel;
+    return level;
 }
 
+std::ostringstream& Logger::Get(LogLevel level)
+{
+    //os << "- " << NowTime();
+    os << " - " << ToString(level) << ": ";  
+    return os;
+}
+
+void Logger::Set(LogLevel newlevel)
+{
+    level = newlevel;
+}
+
+std::string Logger::ToString(LogLevel level)
+{
+    static const char* const buffer[] = {" ERR", "WARN", "INFO", " DBG", "DEEP"};
+    return buffer[level];
+}

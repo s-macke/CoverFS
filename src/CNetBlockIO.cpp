@@ -1,3 +1,4 @@
+#include"Logger.h"
 #include"CNetBlockIO.h"
 #include"CNetReadWriteBuffer.h"
 
@@ -7,7 +8,7 @@
 
 using boost::asio::ip::tcp;
 
-enum COMMAND {READ=0, WRITE=1, SIZE=2, INFO=3, CLOSE=4};
+enum COMMAND {READ=0, WRITE=1, SIZE=2, CONTAINERINFO=3, CLOSE=4};
 
 typedef struct
 {
@@ -31,7 +32,7 @@ bool verify_certificate(bool preverified, boost::asio::ssl::verify_context& ctx)
     char subject_name[256];
     X509* cert = X509_STORE_CTX_get_current_cert(ctx.native_handle());
     X509_NAME_oneline(X509_get_subject_name(cert), subject_name, 256);
-    std::cout << "Verifying certificate: " << subject_name << "\n";
+    LOG(INFO) << "Verifying certificate: " << subject_name;
 
     return preverified;
 }
@@ -61,15 +62,15 @@ CNetBlockIO::CNetBlockIO(int _blocksize, const std::string &host, const std::str
     tcp::resolver::iterator iter = resolver.resolve(q, ec);
     if (ec)
     {
-        fprintf(stderr, "Error: Cannot resolve host.\n");
+        LOG(ERROR) << "Cannot resolve host";
         exit(1);
     }
-    printf("Connect to %s\n", host.c_str());
+    LOG(INFO) << "Connect to " << host;
 
     boost::asio::connect(sctrl.lowest_layer(), iter, ec);
     if (ec)
     {
-        fprintf(stderr, "Error: Cannot connect to server. (Control Stream)\n");
+        LOG(ERROR) << "Cannot connect to server. (Control Stream)\n";
         exit(1);
     }
     sctrl.handshake(boost::asio::ssl::stream_base::client);
@@ -77,7 +78,7 @@ CNetBlockIO::CNetBlockIO(int _blocksize, const std::string &host, const std::str
     boost::asio::connect(sdata.lowest_layer(), iter, ec);
     if (ec)
     {
-        fprintf(stderr, "Error: Cannot connect to server. (Data Stream))\n");
+        LOG(ERROR) << "Cannot connect to server. (Data Stream)";
         exit(1);
     }
     sdata.handshake(boost::asio::ssl::stream_base::client);
@@ -87,7 +88,7 @@ CNetBlockIO::CNetBlockIO(int _blocksize, const std::string &host, const std::str
     int ret = setsockopt(sctrl.lowest_layer().native(), SOL_SOCKET, SO_PRIORITY, &priority, sizeof(priority));
     if (ret != 0)
     {
-        fprintf(stderr, "Warning: Cannot set socket priority\n");
+        LOG(WARN) << "Cannot set socket priority";
     }
 #endif
 
@@ -105,10 +106,10 @@ CNetBlockIO::CNetBlockIO(int _blocksize, const std::string &host, const std::str
 CNetBlockIO::~CNetBlockIO()
 {
 
-    printf("CNetBlockIO: Destruct\n");
-    printf("CNetBlockIO: Send Close command\n");
+    LOG(DEBUG) << "CNetBlockIO: Destruct";
+    LOG(DEBUG) << "CNetBlockIO: Send Close command";
     Close();
-    printf("CNetBlockIO: Send Close command done\n");
+    LOG(DEBUG) << "CNetBlockIO: Send Close command done";
 
     rbbufctrl->Sync();
     rbbufdata->Sync();
@@ -117,12 +118,12 @@ CNetBlockIO::~CNetBlockIO()
     io_service.stop();
     iothread.join();
 
-    printf("CNetBlockIO: Destruct buffer\n");
+    LOG(DEBUG) << "CNetBlockIO: Destruct buffer";
     rbbufctrl.reset();
     rbbufdata.reset();
-    printf("CNetBlockIO: Destruct buffers done\n");
+    LOG(DEBUG) << "CNetBlockIO: Destruct buffers done";
 
-    printf("CNetBlockIO: Destruct done\n");
+    LOG(DEBUG) << "CNetBlockIO: Destruct done";
 }
 
 int64_t CNetBlockIO::GetWriteCache()
@@ -150,11 +151,11 @@ void CNetBlockIO::GetInfo()
     CommandDesc cmd;
     int8_t data[36];
     int32_t id = cmdid.fetch_add(1);
-    cmd.cmd = INFO;
+    cmd.cmd = CONTAINERINFO;
     std::future<void> fut = rbbufctrl->Read(id, data, 36);
     rbbufctrl->Write(id, (int8_t*)&cmd, 4);
     fut.get();
-    printf("Connected to '%s'\n", data);
+    LOG(INFO) << "Connected to '" << data << "'";
 }
 
 

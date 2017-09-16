@@ -70,6 +70,8 @@ int main(int argc, char *argv[])
     strncpy(hostname,   "localhost", 255);
     strncpy(port,       "62000",     255);
     strncpy(backend,    "cvfsserver",  255);
+    Logger().Set(INFO);
+
     mountpoint[0] = 0;
 
     if (argc < 2)
@@ -133,7 +135,7 @@ int main(int argc, char *argv[])
                     break;
 
                 case 8:
-                    Debug().Set(Debug::INFO);
+                    Logger().Set(DEBUG);
                     break;
 
                 case 9:
@@ -240,7 +242,7 @@ int main(int argc, char *argv[])
 
     if (signal(SIGINT, catch_function) == SIG_ERR)
     {
-        fputs("An error occurred while setting a signal handler.\n", stderr);
+        LOG(ERROR) << "An error occurred while setting a signal handler.";
         return EXIT_FAILURE;
     }
 

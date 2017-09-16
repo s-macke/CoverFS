@@ -1,3 +1,4 @@
+#include"Logger.h"
 #include "CCacheIO.h"
 #include <assert.h>
 
@@ -5,7 +6,6 @@
 
 CBlock::CBlock(CCacheIO &_cio, CEncrypt &_enc, int _blockidx, int8_t *_buf) : nextdirtyidx(-1), blockidx(_blockidx), cio(_cio), enc(_enc), buf(_buf), count(0)
 {}
-
 
 int8_t* CBlock::GetBufRead()
 {
@@ -44,12 +44,12 @@ CCacheIO::CCacheIO(const std::shared_ptr<CAbstractBlockIO> &_bio, CEncrypt &_enc
 
 CCacheIO::~CCacheIO()
 {
-    printf("Cache: destruct\n");
+    LOG(DEBUG) << "Cache: destruct";
     terminatesyncthread.store(true);
     Sync();
     syncthread.join();
     assert(ndirty.load() == 0);
-    printf("All Blocks stored. Erase cache ...\n");
+    LOG(DEBUG) << "All Blocks stored. Erase cache ...";
 
     cachemtx.lock();
     for(auto iter = cache.begin(); iter != cache.end();)
@@ -57,13 +57,13 @@ CCacheIO::~CCacheIO()
         CBLOCKPTR block = iter->second;
         if (block.use_count() != 2)
         {
-            printf("Warning: Block %i still in use\n", block->blockidx);
+            LOG(WARN) << "Block " << block->blockidx << " still in use.";
             iter++;
             continue;
         }
         if (!block->mutex.try_lock())
         {
-            printf("Error: Locking block %i failed\n", block->blockidx);
+            LOG(WARN) << "Locking block " << block->blockidx << " failed.";
             iter++;
             continue;
         }
@@ -71,11 +71,11 @@ CCacheIO::~CCacheIO()
         delete[] block->buf;
         block->mutex.unlock();
     }
-    printf("Cache erased\n");
+    LOG(DEBUG) << "Cache erased";
 
     if (!cache.empty())
     {
-        printf("Warning: Cache not empty\n");
+        LOG(WARN) << "Cache not empty";
     }
     cachemtx.unlock();
 }
@@ -228,7 +228,6 @@ void CCacheIO::Read(int64_t ofs, int64_t size, int8_t *d)
     for(int64_t j=firstblock; j<=lastblock; j++)
     {
         //printf("GetBlock %i\n", j);
-
         block = GetBlock(j, true);
         //printf("GetBuf %i\n", j);
         buf = block->GetBufRead();

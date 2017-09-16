@@ -10,6 +10,8 @@
 #include <boost/bind.hpp>
 #include <boost/asio/ssl.hpp>
 
+#include "Logger.h"
+
 using boost::asio::ip::tcp;
 
 typedef boost::asio::ssl::stream<boost::asio::ip::tcp::socket> ssl_socket;
@@ -103,7 +105,7 @@ void ParseCommand(char *commandbuf, ssl_socket &sock)
         }
 
     default:
-        fprintf(stderr, "ignore received command %i\n", cmd->cmd);
+        LOG(WARN) << "Ignore received command " << cmd->cmd;
     }
 
 }
@@ -118,7 +120,7 @@ void ParseStream(char *data, int length, ssl_socket &sock, char *commandbuf, int
         memcpy(&len, commandbuf, 4); // to prevent the aliasing warning
         if (len <= commandbuflen)
         {
-            //printf("received command with len=%i\n", len);
+            LOG(INFO) << "received command with len=" << len;
             ParseCommand(commandbuf, sock);
             memset(commandbuf, 0xFF, commandbuflen);
             commandbuflen = 0;
@@ -151,9 +153,9 @@ void session(ssl_socket *sock)
     }
     catch (std::exception& e)
     {
-        std::cerr << "Exception in thread: " << e.what() << "\n";
+        LOG(ERROR) << "Exception in thread: " << e.what();
     }
-    printf("Connection closed\n");
+    LOG(INFO) << "Connection closed";
 }
 
 std::string get_password(std::size_t max_length, boost::asio::ssl::context::password_purpose purpose)
@@ -176,7 +178,7 @@ void server(boost::asio::io_service& io_service, unsigned short port)
     ctx.use_private_key_file("ssl/server.key", boost::asio::ssl::context::pem);
     ctx.use_tmp_dh_file("ssl/dh1024.pem");
 
-    printf("Start listening on port %i\n", port);
+    LOG(INFO) << "Start listening on port " << port;
     tcp::acceptor a(io_service, tcp::endpoint(tcp::v4(), port));
 
     for (;;)
@@ -185,7 +187,10 @@ void server(boost::asio::io_service& io_service, unsigned short port)
         {
             ssl_socket *sock = new ssl_socket(io_service, ctx);
             a.accept(sock->lowest_layer());
-            printf("Connection from '%s'. Establish SSL connection\n", sock->lowest_layer().remote_endpoint().address().to_string().c_str());
+            LOG(INFO)
+                << "Connection from '" 
+                << sock->lowest_layer().remote_endpoint().address().to_string()
+                << "'. Establish SSL connection";
 
             sock->handshake(boost::asio::ssl::stream_base::server);
 
@@ -194,11 +199,11 @@ void server(boost::asio::io_service& io_service, unsigned short port)
         }
         catch (std::exception& e)
         {
-            std::cerr << "Exception: " << e.what() << "\n";
+            LOG(ERROR) << "Exception: " << e.what();
         }
         catch (...) // No matter what happens, continue
         {
-            fprintf(stderr, "Error: Unknown connection problem. Connection closed\n");
+            LOG(ERROR) << "Unknown connection problem. Connection closed";
         }
 
     }
@@ -206,8 +211,8 @@ void server(boost::asio::io_service& io_service, unsigned short port)
 
 void PrintUsage(int argc, char *argv[])
 {
-	printf("Usage: %s [port]\n", argv[0]);
-	printf("The default port is 62000\n");
+    printf("Usage: %s [port]\n", argv[0]);
+    printf("The default port is 62000\n");
 }
 
 int main(int argc, char *argv[])
@@ -231,11 +236,11 @@ int main(int argc, char *argv[])
 
     if (fp == NULL)
     {
-        printf("create new file '%s'\n", filename);
+        LOG(INFO) << "create new file '" << filename << "'";
         fp = fopen(filename, "wb");
         if (fp == NULL)
         {
-            fprintf(stderr, "Error: Cannot create file\n");
+            LOG(ERROR) << "Cannot create file";
             return 1;
         }
         char data[4096*3] = {0};
@@ -244,7 +249,7 @@ int main(int argc, char *argv[])
         fp = fopen(filename, "r+b");
         if (fp == NULL)
         {
-            fprintf(stderr, "Error: Cannot open file\n");
+            LOG(ERROR) << "Cannot open file";
             return 1;
         }
     }

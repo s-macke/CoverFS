@@ -1,4 +1,5 @@
 #include "CStatusView.h"
+#include "Logger.h"
 
 #include <chrono>
 #include <memory>
@@ -52,7 +53,10 @@ void CStatusView::Work()
             ncached = "-";
             ndirty = "-";
         }
-        printf("used inodes: %s cached blocks: %s dirty blocks: %s write cache: %s\n",
-            ninodes.c_str(), ncached.c_str(), ndirty.c_str(), nwritecache.c_str());
+        LOG(INFO) << 
+        "used inodes: " << ninodes << 
+        " cached blocks: "<< ncached <<
+        " dirty blocks: " << ndirty <<
+        " write cache: " << nwritecache;
     }
 }

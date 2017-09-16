@@ -2,13 +2,14 @@
 #include<cassert>
 #include<algorithm>
 
+#include"Logger.h"
 #include"CFragment.h"
 
 void CFragmentList::Load()
 {
     unsigned int nfragmentblocks = 5;
     unsigned int nentries = bio->blocksize*nfragmentblocks/CFragmentDesc::SIZEONDISK;
-    printf("  number of blocks containing fragments: %i with %i entries\n", nfragmentblocks, nentries);
+    LOG(INFO) << "  number of blocks containing fragments: " << nfragmentblocks << " with " << nentries << " entries";
 
     fragmentblocks.clear();
     for(unsigned int i=0; i<nfragmentblocks; i++)
@@ -31,14 +32,13 @@ void CFragmentList::Load()
         block->ReleaseBuf();
     }
     SortOffsets();
-    printf("\n");
 }
 
 void CFragmentList::Create()
 {
     unsigned int nfragmentblocks = 5;
     unsigned int nentries = bio->blocksize*nfragmentblocks/16;
-    printf("  number of blocks containing fragment: %i with %i entries\n", nfragmentblocks, nentries);
+    LOG(INFO) << "  number of blocks containing fragments: " << nfragmentblocks << " with " << nentries << " entries";
 // ---
     fragmentblocks.clear();
     for(unsigned int i=0; i<nfragmentblocks; i++)
@@ -123,7 +123,7 @@ int CFragmentList::ReserveNewFragment(INODETYPE type)
         // SortOffsets(); // Sorting is not necessary, because a FREEID and ofs=0 are treated the same way
         return id;
     }
-    fprintf(stderr, "Error: No free fragments available\n");
+    LOG(ERROR) << "No free fragments available\n";
     exit(1);
     return id;
 }

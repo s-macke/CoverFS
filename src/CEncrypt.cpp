@@ -4,6 +4,7 @@
 #include <unistd.h>
 GCRY_THREAD_OPTION_PTHREAD_IMPL;
 
+#include "Logger.h"
 #include "CEncrypt.h"
 
 //https://gnupg.org/documentation/manuals/gcrypt/Working-with-cipher-handles.html#Working-with-cipher-handles
@@ -30,10 +31,7 @@ void GCryptCheckError(const char *function, gpg_error_t ret)
 {
     if (ret)
     {
-        fprintf (stderr, "%s: Failure: %s/%s\n",
-               function,
-               gcry_strsource (ret),
-               gcry_strerror (ret));
+        LOG(ERROR) << function << ": Failure: " << gcry_strsource(ret) << "/" << gcry_strerror (ret);
         exit(1);
     }
 }
@@ -55,7 +53,7 @@ void CEncrypt::PassToHash(const std::string &message, uint8_t salt[32], uint8_t 
 
 void CEncrypt::CreateEnc(int8_t *block)
 {
-    printf("Create Encryption block\n");
+    LOG(INFO) << "Create Encryption block";
     uint8_t key[64];
     gcry_randomize (key, 64, GCRY_STRONG_RANDOM);
 
@@ -102,10 +100,10 @@ CEncrypt::CEncrypt(CAbstractBlockIO &bio)
     const char* gcryptversion = gcry_check_version (GCRYPT_VERSION);
     if (gcryptversion == NULL)
     {
-        fprintf(stderr, "Error: gcrypt version too old\n");
+        LOG(ERROR) << "gcrypt version too old";
         exit(1);
     }
-    printf("gcrypt version %s\n", gcryptversion);
+    LOG(INFO) << "gcrypt version " << gcryptversion;
     ret = gcry_control (GCRYCTL_SET_THREAD_CBS, &gcry_threads_pthread);
     GCryptCheckError("gcry_control", ret);
     gcry_control(GCRYCTL_INITIALIZATION_FINISHED, 0);
@@ -141,7 +139,7 @@ CEncrypt::CEncrypt(CAbstractBlockIO &bio)
 
     if (memcmp(check, h->user[0].checkbytes, 64) != 0)
     {
-        fprintf(stderr, "Error: Cannot decrypt filesystem. Did you type the right password?\n");
+        LOG(ERROR) << "Cannot decrypt filesystem. Did you type the right password?";
         exit(1);
     }
     uint8_t key[64];

@@ -1,3 +1,4 @@
+#include "Logger.h"
 #include "CDirectory.h"
 
 
@@ -66,7 +67,7 @@ int CDirectory::CreateFile(const std::string &name)
 
 void CDirectory::AddEntry(const DIRENTRY &denew)
 {
-    //printf("AddDirEntry %s size=%li type=%i\n", denew.name, denew.size, denew.type);
+    LOG(DEEP) << "AddDirEntry '" << denew.name << "' type=" << denew.type;
     bool written = false;
     std::lock_guard<std::mutex> lock(dirnode->GetMutex());
     ForEachEntryNonBlocking([&](DIRENTRY &de)
@@ -91,7 +92,7 @@ void CDirectory::AddEntry(const DIRENTRY &denew)
 void CDirectory::RemoveEntry(const std::string &name, DIRENTRY &e)
 {
     e.id = CFragmentDesc::INVALIDID;
-    //printf("RemoveDirEntry '%s' in dir '%s' and dirid %i\n", name.c_str(), dirnode->name.c_str(), dirnode->id);
+    LOG(DEEP) << "RemoveDirEntry '" << name << "' in dir '" << dirnode->name << "'";
     ForEachEntry([&](DIRENTRY &de)
     {
         if ((INODETYPE)de.type == INODETYPE::free) return FOREACHENTRYRET::OK;
@@ -142,7 +143,6 @@ void CDirectory::List()
         n++;
         if ((INODETYPE)de.type == INODETYPE::free) return FOREACHENTRYRET::OK;
         printf("  %3i: %4s %4i %s\n", n, typestr[de.type], de.id, de.name);
-        //printf("  %3i: %s\n", n, de.name);
         return FOREACHENTRYRET::OK;
     });
 }

@@ -54,7 +54,7 @@ endif ()
 
 include_directories(${Boost_INCLUDE_DIRS})
 
-add_executable(coverfsserver src/coverfsserver.cpp)
+add_executable(coverfsserver src/coverfsserver.cpp src/Logger.cpp)
 add_executable(coverfs ${CPP_FILES})
 add_executable(checkfragment tests/checkfragment.cpp)
 

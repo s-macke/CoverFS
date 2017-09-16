@@ -7,6 +7,7 @@
 #include<errno.h>
 #include<assert.h>
 #include<map>
+#include"Logger.h"
 #include"CSimpleFS.h"
 #include"CDirectory.h"
 
@@ -84,70 +85,71 @@ Dokan_CreateFile(
     PDOKAN_FILE_INFO DokanFileInfo)
 {
     std::string path = wstring_to_utf8(FileName);
+    std::ostringstream os;
 
-    printf("\nCreateFile '%s' (new handle id %lu) ", path.c_str(), handleid);
+    os << "Dokan: CreateFile '" << path << "' (new handle id " << handleid << ") ";
 
     if (path == "") return STATUS_OBJECT_NAME_NOT_FOUND;
 
-    if (CreateOptions&FILE_DIRECTORY_FILE) printf(" (isdir) ");
+    if (CreateOptions&FILE_DIRECTORY_FILE) os << " (isdir) ";
 
     // Specifies the action to perform if the file does or does not exist.
     switch(CreateDisposition)
     {
     case CREATE_NEW:
-        printf("(create new)");
+        os << "(create new)";
         break;
 
     case OPEN_ALWAYS:
-        printf("(open always)");
+        os << "(open always)";
         break;
 
     case CREATE_ALWAYS:
-        printf("(create always)");
+        os << "(create always)";
         break;
 
     case OPEN_EXISTING:
-        printf("(open existing)");
+        os << "(open existing)";
         break;
 
     case TRUNCATE_EXISTING:
-        printf("(Truncate existing)");
+        os << "(Truncate existing)";
         break;
 
     default:
-        printf("(unknown)");
+        os << "(unknown)";
         break;
     }
 
-    if ((DesiredAccess&GENERIC_READ)) printf("(generic read)");
-    if ((DesiredAccess&GENERIC_WRITE)) printf("(generic write)");
-    if ((DesiredAccess&GENERIC_EXECUTE)) printf("(generic execute)");
+    if ((DesiredAccess&GENERIC_READ)) os << "(generic read)";
+    if ((DesiredAccess&GENERIC_WRITE)) os << "(generic write)";
+    if ((DesiredAccess&GENERIC_EXECUTE)) os << "(generic execute)";
 
-    if ((DesiredAccess&DELETE)) printf("(delete)");
-    if ((DesiredAccess&FILE_READ_DATA)) printf("(read data)");
-    if ((DesiredAccess&FILE_READ_ATTRIBUTES)) printf("(read attributes)");
-    if ((DesiredAccess&FILE_READ_EA)) printf("(read ea)");
-    //if ((DesiredAccess&FILE_READ_CONTROL)) printf("(read control)");
-    if ((DesiredAccess&FILE_WRITE_DATA)) printf("(write data)");
-    if ((DesiredAccess&FILE_WRITE_ATTRIBUTES)) printf("(write attributes)");
-    if ((DesiredAccess&FILE_WRITE_EA)) printf("(write ea)");
-    if ((DesiredAccess&FILE_APPEND_DATA)) printf("(append data)");
-    //if ((DesiredAccess&FILE_WRITE_DAC)) printf("(write dac)");
-    //if ((DesiredAccess&FILE_WRITE_OWNER)) printf("(write owner)");
-    if ((DesiredAccess&SYNCHRONIZE)) printf("(synchronize)");
-    if ((DesiredAccess&FILE_EXECUTE)) printf("(file execute)");
-    if ((DesiredAccess&STANDARD_RIGHTS_READ)) printf("(standard rights read)");
-    if ((DesiredAccess&STANDARD_RIGHTS_WRITE)) printf("(standard rights write)");
-    if ((DesiredAccess&STANDARD_RIGHTS_EXECUTE)) printf("(standard rights execute)");
-    if ((DesiredAccess&FILE_LIST_DIRECTORY)) printf("(file list directory)");
-    if ((DesiredAccess&FILE_TRAVERSE)) printf("(file traverse)");
-    printf("\n");
+    if ((DesiredAccess&DELETE)) os << "(delete)";
+    if ((DesiredAccess&FILE_READ_DATA)) os << "(read data)";
+    if ((DesiredAccess&FILE_READ_ATTRIBUTES)) os << "(read attributes)";
+    if ((DesiredAccess&FILE_READ_EA)) os << "(read ea)";
+    //if ((DesiredAccess&FILE_READ_CONTROL)) os << "(read control)";
+    if ((DesiredAccess&FILE_WRITE_DATA)) os << "(write data)";
+    if ((DesiredAccess&FILE_WRITE_ATTRIBUTES)) os << "(write attributes)";
+    if ((DesiredAccess&FILE_WRITE_EA)) os << "(write ea)";
+    if ((DesiredAccess&FILE_APPEND_DATA)) os << "(append data)";
+    //if ((DesiredAccess&FILE_WRITE_DAC)) os << "(write dac)";
+    //if ((DesiredAccess&FILE_WRITE_OWNER)) os << "(write owner)";
+    if ((DesiredAccess&SYNCHRONIZE)) os << "(synchronize)";
+    if ((DesiredAccess&FILE_EXECUTE)) os << "(file execute)";
+    if ((DesiredAccess&STANDARD_RIGHTS_READ)) os << "(standard rights read)";
+    if ((DesiredAccess&STANDARD_RIGHTS_WRITE)) os << "(standard rights write)";
+    if ((DesiredAccess&STANDARD_RIGHTS_EXECUTE)) os << "(standard rights execute)";
+    if ((DesiredAccess&FILE_LIST_DIRECTORY)) os << "(file list directory)";
+    if ((DesiredAccess&FILE_TRAVERSE)) os << "(file traverse)";
+    LOG(INFO) << os.str();
     
     if ((CreateOptions & FILE_DIRECTORY_FILE) == FILE_DIRECTORY_FILE)
     {
         if (CreateDisposition == FILE_CREATE || CreateDisposition == FILE_OPEN_IF)
         {
-            //printf("command: create directory\n");
+            //LOG(INFO) << "command: create directory";
 
             std::vector<std::string> splitpath;
             splitpath = SplitPath(path);
@@ -181,7 +183,7 @@ Dokan_CreateFile(
         {
             DokanFileInfo->IsDirectory = TRUE;
 
-            //printf("command: open directory\n");
+            //LOG(INFO) << "command: open directory";
             try
             {
                 INODEPTR node = fs->OpenNode(path.c_str());
@@ -197,7 +199,7 @@ Dokan_CreateFile(
 
     if (CreateDisposition == FILE_CREATE || CreateDisposition == FILE_OPEN_IF)
     {
-        //printf("command: create file\n");
+        //LOG(INFO) << "Dokan: command: create file";
 
         std::vector<std::string> splitpath;
         splitpath = SplitPath(path);
@@ -221,7 +223,7 @@ Dokan_CreateFile(
     } else
     if (CreateDisposition == FILE_OPEN)
     {
-        //printf("command: open file\n");
+        //LOG(INFO) << "Dokan: command: open file";
         try
         {
             INODEPTR node = fs->OpenNode(path.c_str());
@@ -242,19 +244,19 @@ Dokan_CreateFile(
 static NTSTATUS DOKAN_CALLBACK Dokan_GetFileInformation(LPCWSTR FileName, LPBY_HANDLE_FILE_INFORMATION HandleFileInformation, PDOKAN_FILE_INFO DokanFileInfo)
 {
     std::string path = GetFilePath(FileName, DokanFileInfo);
-    printf("GetFileInformation '%s' of handle %lli\n", path.c_str(), DokanFileInfo->Context);
+    LOG(INFO) << "Dokan: GetFileInformation '" << path << "' of handle " << DokanFileInfo->Context;
 
     HANDLE handle = (HANDLE)DokanFileInfo->Context;
     if (!handle || handle == INVALID_HANDLE_VALUE)
     {
-        printf("Invalid handle?\n");
+        LOG(INFO) << "Dokan: Invalid handle?";
     }
 
     //memset(HandleFileInformation, 0, sizeof(struct BY_HANDLE_FILE_INFORMATION));
     try
     {
         INODEPTR node = fs->OpenNode(path.c_str());
-        //printf("open succesful\n");
+        //LOG(INFO) << "open succesful";
         node->Lock();
         HandleFileInformation->nFileSizeLow = node->size&0xFFFFFFFF;
         HandleFileInformation->nFileSizeHigh = node->size >> 32;
@@ -288,7 +290,7 @@ static NTSTATUS DOKAN_CALLBACK Dokan_SetFileAttributes(
 LPCWSTR FileName, DWORD FileAttributes, PDOKAN_FILE_INFO DokanFileInfo)
 {
     std::string path = GetFilePath(FileName, DokanFileInfo);
-    printf("SetFileAttributes '%s' FileAttributes: 0x%08x\n", path.c_str(), FileAttributes);
+    LOG(INFO) << "Dokan: SetFileAttributes '" << path << "' FileAttributes: " << FileAttributes;
     return STATUS_SUCCESS;
 }
 /*
@@ -327,7 +329,7 @@ Dokan_FindStreams(LPCWSTR FileName, PFillFindStreamData FillFindStreamData,
                 PDOKAN_FILE_INFO DokanFileInfo)
 {
     std::string path = wstring_to_utf8(FileName);
-    printf("FindStreams '%s'\n", path.c_str());
+    LOG(INFO) << "FindStreams '" << path << "'";
     return STATUS_SUCCESS;
 }
 */
@@ -338,7 +340,7 @@ static NTSTATUS DOKAN_CALLBACK Dokan_SetEndOfFile(
     LPCWSTR FileName, LONGLONG ByteOffset, PDOKAN_FILE_INFO DokanFileInfo)
 {
     std::string path = GetFilePath(FileName, DokanFileInfo);
-    printf("SetEndOfFile '%s' size=%lli\n", path.c_str(), ByteOffset);
+    LOG(INFO) << "Dokan: SetEndOfFile '" << path << "' size=" <<  ByteOffset;
 
     try
     {
@@ -362,7 +364,7 @@ LONGLONG Offset,
 PDOKAN_FILE_INFO DokanFileInfo)
 {
     std::string path = GetFilePath(FileName, DokanFileInfo);
-    printf("ReadFile '%s' size=%i\n", path.c_str(), BufferLength);
+    LOG(INFO) << "Dokan: ReadFile '" << path << "' size=" << BufferLength;
     try
     {
         INODEPTR node = fs->OpenFile(path.c_str());
@@ -382,7 +384,7 @@ LONGLONG Offset,
 PDOKAN_FILE_INFO DokanFileInfo)
 {
     std::string path = GetFilePath(FileName, DokanFileInfo);
-    printf("WriteFile '%s' size=%i\n", path.c_str(), NumberOfBytesToWrite);
+    LOG(INFO) << "Dokan: WriteFile '" << path << "' size=" << NumberOfBytesToWrite;
     try
     {
         INODEPTR node = fs->OpenFile(path.c_str());
@@ -400,7 +402,7 @@ static NTSTATUS DOKAN_CALLBACK
 Dokan_FindFiles(LPCWSTR FileName, PFillFindData FillFindData, PDOKAN_FILE_INFO DokanFileInfo)
 {
     std::string path = GetFilePath(FileName, DokanFileInfo);
-    printf("FindFiles '%s'\n", path.c_str());
+    LOG(INFO) << "Dokan: FindFiles '" << path << "'";
 
     try
     {
@@ -446,7 +448,7 @@ LPCWSTR NewFileName, BOOL ReplaceIfExisting, PDOKAN_FILE_INFO DokanFileInfo)
 {
     std::string oldpath = GetFilePath(FileName, DokanFileInfo);
     std::string newpath = wstring_to_utf8(NewFileName);
-    printf("MoveFile '%s' to '%s'\n", oldpath.c_str(), newpath.c_str());
+    LOG(INFO) << "Dokan: MoveFile '" << oldpath << "' to '" << newpath << "'";
 
     std::vector<std::string> splitpath;
     splitpath = SplitPath(newpath);
@@ -509,7 +511,7 @@ LPCWSTR NewFileName, BOOL ReplaceIfExisting, PDOKAN_FILE_INFO DokanFileInfo)
 static void DOKAN_CALLBACK Dokan_CloseFile(LPCWSTR FileName, PDOKAN_FILE_INFO DokanFileInfo)
 {
     std::string path = GetFilePath(FileName, DokanFileInfo);
-    printf("CloseFile '%s' of handle %lli\n", path.c_str(), DokanFileInfo->Context);
+    LOG(INFO) << "Dokan: CloseFile '" << path << "' of handle " << DokanFileInfo->Context;
     if (DokanFileInfo)
     if (DokanFileInfo->Context)
     {
@@ -520,19 +522,19 @@ static void DOKAN_CALLBACK Dokan_CloseFile(LPCWSTR FileName, PDOKAN_FILE_INFO Do
 static void DOKAN_CALLBACK Dokan_Cleanup(LPCWSTR FileName, PDOKAN_FILE_INFO DokanFileInfo)
 {
     std::string path = GetFilePath(FileName, DokanFileInfo);
-    printf("Cleanup '%s' of handle %lli\n", path.c_str(), DokanFileInfo->Context);
+    LOG(INFO) << "Dokan: Cleanup '" << path << "' of handle " << DokanFileInfo->Context;
 
     if (!DokanFileInfo->Context) return;
 
     if (!DokanFileInfo->DeleteOnClose) return;
-    printf("remove file\n");
+    LOG(INFO) << "Dokan: remove file";
     try
     {
         INODEPTR node = fs->OpenNode(path);
         node->Remove();
     } catch(const int &err)
     {
-        printf("Cannot remove file\n");
+        LOG(INFO) << "Dokan: Cannot remove file";
         return;
     }
 }
@@ -561,7 +563,7 @@ PDOKAN_FILE_INFO DokanFileInfo)
 {
     UNREFERENCED_PARAMETER(DokanFileInfo);
 
-    printf("GetVolumeInformation\n");
+    LOG(INFO) << "Dokan: GetVolumeInformation";
     wcsncpy(VolumeNameBuffer, L"CoverFS", VolumeNameSize);
 
     *VolumeSerialNumber = 0x53281900;
@@ -592,7 +594,7 @@ static NTSTATUS DOKAN_CALLBACK Dokan_Mounted(PDOKAN_FILE_INFO DokanFileInfo)
 {
     UNREFERENCED_PARAMETER(DokanFileInfo);
 
-    printf("Mounted\n");
+    LOG(INFO) << "Dokan: Mounted";
     return STATUS_SUCCESS;
 }
 
@@ -600,11 +602,12 @@ static NTSTATUS DOKAN_CALLBACK Dokan_Unmounted(PDOKAN_FILE_INFO DokanFileInfo)
 {
     UNREFERENCED_PARAMETER(DokanFileInfo);
 
-    printf("Unmounted\n");
+    LOG(INFO) << "Dokan: Unmounted";
     return STATUS_SUCCESS;
 }
 
 // -----------------------------------------------
+#undef ERROR
 
 int StartDokan(int argc, char *argv[], const char* mountpoint, SimpleFilesystem &_fs)
 {
@@ -656,31 +659,31 @@ int StartDokan(int argc, char *argv[], const char* mountpoint, SimpleFilesystem 
     switch (status)
     {
     case DOKAN_SUCCESS:
-        fprintf(stderr, "Success\n");
+        LOG(INFO) << "Dokan: Success";
         break;
     case DOKAN_ERROR:
-        fprintf(stderr, "Error\n");
+        LOG(ERROR) << "Dokan: Error";
         break;
     case DOKAN_DRIVE_LETTER_ERROR:
-        fprintf(stderr, "Bad Drive letter\n");
+        LOG(ERROR) << "Dokan: Bad Drive letter";
         break;
     case DOKAN_DRIVER_INSTALL_ERROR:
-        fprintf(stderr, "Can't install driver\n");
+        LOG(ERROR) << "Dokan: Can't install driver";
         break;
     case DOKAN_START_ERROR:
-        fprintf(stderr, "Driver something wrong\n");
+        LOG(ERROR) << "Dokan: Driver something wrong";
         break;
     case DOKAN_MOUNT_ERROR:
-        fprintf(stderr, "Can't assign a drive letter\n");
+        LOG(ERROR) << "Dokan: Can't assign a drive letter";
         break;
     case DOKAN_MOUNT_POINT_ERROR:
-        fprintf(stderr, "Mount point error\n");
+        LOG(ERROR) << "Dokan: Mount point error";
         break;
     case DOKAN_VERSION_ERROR:
-        fprintf(stderr, "Version error\n");
+        LOG(ERROR) << "Dokan: Version error";
         break;
     default:
-        fprintf(stderr, "Unknown error: %d\n", status);
+        LOG(ERROR) << "Dokan: Unknown error: " << status;
         break;
     }
 
