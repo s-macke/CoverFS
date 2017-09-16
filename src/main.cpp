@@ -3,9 +3,8 @@
 #include<unistd.h>
 #include<getopt.h>
 #include<memory>
-#include<memory>
 
-#include"debug.h"
+#include"Logger.h"
 #include"CBlockIO.h"
 #include"CNetBlockIO.h"
 

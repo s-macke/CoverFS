@@ -25,7 +25,7 @@ set(CPP_FILES
     src/CPrintCheckRepair.cpp
     src/CNetReadWriteBuffer.cpp
     src/INode.cpp
-    src/debug.cpp
+    src/Logger.cpp
     src/ParallelTest.cpp
     src/CStatusView.cpp
     src/main.cpp

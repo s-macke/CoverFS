@@ -1,4 +1,4 @@
-#include "debug.h"
+#include "Logger.h"
 #include <iostream>
 
 static int _currentlevel = 0;
