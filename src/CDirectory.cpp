@@ -1,7 +1,6 @@
 #include "Logger.h"
 #include "CDirectory.h"
 
-
 CDirectory::CDirectory(INODEPTR node, SimpleFilesystem &_fs) : dirnode(node), fs(_fs) 
 {
     blocksize = fs.bio->blocksize;
@@ -67,12 +66,12 @@ int CDirectory::CreateFile(const std::string &name)
 
 void CDirectory::AddEntry(const DIRENTRY &denew)
 {
-    LOG(DEEP) << "AddDirEntry '" << denew.name << "' type=" << denew.type;
+    LOG(DEEP) << "AddDirEntry '" << denew.name << "' id=" << denew.id;
     bool written = false;
     std::lock_guard<std::mutex> lock(dirnode->GetMutex());
     ForEachEntryNonBlocking([&](DIRENTRY &de)
     {
-        if ((INODETYPE)de.type == INODETYPE::undefined)
+        if (de.id == CFragmentDesc::INVALIDID)
         {
             memcpy(&de, &denew, sizeof(DIRENTRY));
             written = true;
@@ -95,11 +94,11 @@ void CDirectory::RemoveEntry(const std::string &name, DIRENTRY &e)
     LOG(DEEP) << "RemoveDirEntry '" << name << "' in dir '" << dirnode->name << "'";
     ForEachEntry([&](DIRENTRY &de)
     {
-        if ((INODETYPE)de.type == INODETYPE::undefined) return FOREACHENTRYRET::OK;
+        if (de.id == CFragmentDesc::INVALIDID) return FOREACHENTRYRET::OK;
         if (strncmp(de.name, name.c_str(), 64+32) == 0)
         {
             memcpy(&e, &de, sizeof(DIRENTRY));
-            de.type = (int32_t)INODETYPE::undefined;
+            de.id = CFragmentDesc::INVALIDID;
             return FOREACHENTRYRET::WRITEANDQUIT;
         }
         return FOREACHENTRYRET::OK;
@@ -111,7 +110,7 @@ void CDirectory::Find(const std::string &s, DIRENTRY &e)
     e.id = CFragmentDesc::INVALIDID;
     ForEachEntry([&](DIRENTRY &de)
     {
-        if ((INODETYPE)de.type == INODETYPE::undefined) return FOREACHENTRYRET::OK;
+        if (de.id == CFragmentDesc::INVALIDID) return FOREACHENTRYRET::OK;
         if (strncmp(de.name, s.c_str(), 64+32) == 0)
         {
             memcpy(&e, &de, sizeof(DIRENTRY));
@@ -126,7 +125,7 @@ bool CDirectory::IsEmpty()
     bool empty = true;
     ForEachEntry([&](DIRENTRY &de)
     {
-        if ((INODETYPE)de.type == INODETYPE::undefined) return FOREACHENTRYRET::OK;
+        if (de.id == CFragmentDesc::INVALIDID) return FOREACHENTRYRET::OK;
         empty = false;
         return FOREACHENTRYRET::QUIT;
     });
@@ -137,12 +136,12 @@ void CDirectory::List()
 {
     printf("  Listing of id=%i, name='%s', with size=%lli\n", dirnode->id, dirnode->name.c_str(), (long long int)dirnode->size);
     int n = -1;
-    const char *typestr[] = {"UNK", "DIR", "FILE"};
+    //const char *typestr[] = {"UNK", "DIR", "FILE"};
     ForEachEntry([&](DIRENTRY &de)
     {
         n++;
-        if ((INODETYPE)de.type == INODETYPE::undefined) return FOREACHENTRYRET::OK;
-        printf("  %3i: %4s %4i %s\n", n, typestr[de.type], de.id, de.name);
+        if (de.id == CFragmentDesc::INVALIDID) return FOREACHENTRYRET::OK;
+        printf("  %3i: %7i '%s'\n", n, de.id, de.name);
         return FOREACHENTRYRET::OK;
     });
 }

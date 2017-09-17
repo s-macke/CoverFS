@@ -36,7 +36,8 @@ void CBlock::ReleaseBuf()
 
 // -----------------------------------------------------------------
 
-CCacheIO::CCacheIO(const std::shared_ptr<CAbstractBlockIO> &_bio, CEncrypt &_enc, bool _cryptcache) : bio(_bio), enc(_enc), ndirty(0), lastdirtyidx(-1), terminatesyncthread(false), cryptcache(_cryptcache)
+CCacheIO::CCacheIO(const std::shared_ptr<CAbstractBlockIO> &_bio, CEncrypt &_enc, bool _cryptcache) :
+    bio(_bio), enc(_enc), ndirty(0), lastdirtyidx(-1), terminatesyncthread(false), cryptcache(_cryptcache)
 {
     blocksize = bio->blocksize;
     syncthread = std::thread(&CCacheIO::Async_Sync, this);
@@ -227,9 +228,9 @@ void CCacheIO::Read(int64_t ofs, int64_t size, int8_t *d)
     int64_t dofs = 0;
     for(int64_t j=firstblock; j<=lastblock; j++)
     {
-        //printf("GetBlock %i\n", j);
+        //printf("GetBlock %li\n", j);
         block = GetBlock(j, true);
-        //printf("GetBuf %i\n", j);
+        //printf("GetBuf %li\n", j);
         buf = block->GetBufRead();
         int bsize = blocksize - (ofs%blocksize);
         bsize = std::min((int64_t)bsize, size);

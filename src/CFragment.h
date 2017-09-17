@@ -63,6 +63,7 @@ class CFragmentList
     int  ReserveNewFragment(INODETYPE type);
     int  ReserveNextFreeFragment(int lastidx, int32_t id, INODETYPE type, int64_t maxsize);
     void GetFragmentIdxList(int32_t id, std::vector<int> &list, int64_t &size);
+    INODETYPE GetType(int32_t id);
     void SortOffsets();
 };
 

@@ -206,7 +206,6 @@ INODEPTR SimpleFilesystem::OpenNode(const std::vector<std::string> splitpath)
 
     int dirid = 0;
     e.id = 0;
-    e.type = (int32_t)INODETYPE::dir;
     for(unsigned int i=0; i<splitpath.size(); i++)
     {
         dirid = e.id;
@@ -216,7 +215,7 @@ INODEPTR SimpleFilesystem::OpenNode(const std::vector<std::string> splitpath)
         {
             throw ENOENT;
         }
-        if (i<splitpath.size()-1) assert((INODETYPE)e.type == INODETYPE::dir);
+        if (i<splitpath.size()-1) assert(node->type == INODETYPE::dir);
     }
 
     node = OpenNode(e.id);
@@ -448,7 +447,7 @@ int SimpleFilesystem::CreateNode(CDirectory &dir, const std::string &name, INODE
     int id = fragmentlist.ReserveNewFragment(t);
     bio->Sync();
     if (dir.dirnode->id == CFragmentDesc::INVALIDID) return id; // this is the root directory and does not have a parent
-    dir.AddEntry(DIRENTRY(name, id, t));
+    dir.AddEntry(DIRENTRY(name, id));
     return id;
 }
 
@@ -483,6 +482,11 @@ void SimpleFilesystem::Remove(INODE &node)
     dir.RemoveEntry(node.name, e);
     std::lock_guard<std::mutex> lock(inodescachemtx);
     inodes.erase(node.id); // remove from map
+}
+
+INODETYPE SimpleFilesystem::GetType(int32_t type)
+{
+    return fragmentlist.GetType(type);
 }
 
 void SimpleFilesystem::StatFS(struct statvfs *buf)

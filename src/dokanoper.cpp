@@ -410,14 +410,14 @@ Dokan_FindFiles(LPCWSTR FileName, PFillFindData FillFindData, PDOKAN_FILE_INFO D
 
         dir.ForEachEntry([&](DIRENTRY &de)
         {
-            if ((INODETYPE)de.type == INODETYPE::undefined) return FOREACHENTRYRET::OK;
+            if (de.id == CFragmentDesc::INVALIDID) return FOREACHENTRYRET::OK;
             WIN32_FIND_DATAW findData = {0};
 
             INODEPTR node = fs->OpenNode(de.id);
             node->Lock();
             findData.nFileSizeHigh = node->size >> 32;
             findData.nFileSizeLow = node->size & 0xFFFFFFFF;
-            if ((INODETYPE)de.type == INODETYPE::dir)
+            if (fs->GetType(de.id) == INODETYPE::dir)
             {
                 findData.dwFileAttributes = FILE_ATTRIBUTE_DIRECTORY | FILE_ATTRIBUTE_NOT_CONTENT_INDEXED;
             } else

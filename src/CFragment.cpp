@@ -92,16 +92,26 @@ void CFragmentList::GetFragmentIdxList(int32_t id, std::vector<int> &list, int64
 {
     size = 0;
     list.clear();
-    
-    fragmentsmtx.lock();
+    std::lock_guard<std::mutex> lock(fragmentsmtx);
     for(unsigned int i=0; i<fragments.size(); i++)
     {
         if (fragments[i].id != id) continue;
         size += fragments[i].size;
         list.push_back(i);
     }
-    fragmentsmtx.unlock();
 }
+
+INODETYPE CFragmentList::GetType(int32_t id)
+{
+    std::lock_guard<std::mutex> lock(fragmentsmtx);
+    for(unsigned int i=0; i<fragments.size(); i++)
+    {
+        if (fragments[i].id != id) continue;
+        return fragments[i].type;
+    }
+    return INODETYPE::undefined;
+}
+
 
 int CFragmentList::ReserveNewFragment(INODETYPE type)
 {
@@ -127,7 +137,6 @@ int CFragmentList::ReserveNewFragment(INODETYPE type)
     exit(1);
     return id;
 }
-
 
 
 int CFragmentList::ReserveNextFreeFragment(int lastidx, int32_t id, INODETYPE type, int64_t maxsize)
@@ -188,8 +197,6 @@ int CFragmentList::ReserveNextFreeFragment(int lastidx, int32_t id, INODETYPE ty
 
     return storeidx;
 }
-
-
 
 void CFragmentList::SortOffsets()
 {

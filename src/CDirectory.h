@@ -14,17 +14,16 @@ enum class FOREACHENTRYRET {OK, QUIT, WRITEANDQUIT};
 class DIRENTRY
 {
 public:
-    DIRENTRY(std::string _name="", int32_t _id=-1, INODETYPE _type=INODETYPE::undefined) : type((int32_t)_type), id(_id)
+    DIRENTRY(std::string _name="", int32_t _id=CFragmentDesc::INVALIDID) : id(_id)
     {
         memset(name, 0, 64+32);
         memset(dummy, 0, 16+8);
         _name.copy(name, sizeof name);
     }
 
-    int32_t type;
     int32_t id;
     char name[64+32];
-    char dummy[16+8];
+    char dummy[16+12];
 };
 
 

@@ -90,6 +90,7 @@ int main(int argc, char *argv[])
             {"check",      no_argument,       0,  0 },
             {"backend",    required_argument, 0,  0 },
             {"debug",      no_argument,       0,  0 },
+            {"debugdeep",  no_argument,       0,  0 },
             {"cryptcache", no_argument,       0,  0 },
             {"test",       no_argument,       0,  0 },
             {0,            0,                 0,  0 }
@@ -139,10 +140,14 @@ int main(int argc, char *argv[])
                     break;
 
                 case 9:
-                    cryptcache = true;
+                    Logger().Set(DEEP);
                     break;
 
                 case 10:
+                    cryptcache = true;
+                    break;
+
+                case 11:
                     testfs = true;
                     break;
 
@@ -160,6 +165,8 @@ int main(int argc, char *argv[])
             return EXIT_FAILURE;
         }
     }
+
+    LOG(INFO) << "Start CoverFS";
 
     if ((!check) && (!info) && (!showfragments) && (!rootdir) && (!testfs))
     {
@@ -235,6 +242,7 @@ int main(int argc, char *argv[])
 
     if ((info) || (showfragments) || (check) || (rootdir) || (testfs))
     {
+        LOG(INFO) << "Stop CoverFS";
         return EXIT_SUCCESS;
     }
 
@@ -252,4 +260,5 @@ int main(int argc, char *argv[])
     return StartDokan(argc, argv, mountpoint, *fs);
 #endif
 
+    LOG(INFO) << "Stop CoverFS";
 }

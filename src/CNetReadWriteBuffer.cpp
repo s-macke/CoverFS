@@ -108,7 +108,7 @@ void CNetReadWriteBuffer::Push(int8_t *d, int n)
         // ringbuffer full. Block all further evaluations
         if (bufsize.load() > buf.size()-2)
         {
-            LOG(DEBUG) << "Ringbuffer full: blocking";
+            LOG(DEEP) << "Ringbuffer full: blocking";
             AsyncWrite();
             std::unique_lock<std::mutex> lock(condmtx);
             while(bufsize.load() > buf.size()-2)

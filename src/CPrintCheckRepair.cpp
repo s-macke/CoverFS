@@ -7,25 +7,26 @@
 
 void CPrintCheckRepair::GetRecursiveDirectories(std::map<int32_t, std::string> &direntries, int id, const std::string &path)
 {
+    //printf("recursive: %i %li\n", id, fs.GetNInodes());
     std::string newpath;
     try
     {
         INODEPTR node = fs.OpenNode(id);
-        node->type = INODETYPE::dir; // if opened with the id, the type might not be set
+        //printf("recursive opened: %i\n", id);
         CDirectory dir = CDirectory(node, fs);
 
         dir.ForEachEntry([&](DIRENTRY &de)
         {
-            if ((INODETYPE)de.type == INODETYPE::undefined) return FOREACHENTRYRET::OK;
             //printf("id=%9i: '%s/%s'\n", de.id, path.c_str(), de.name);
+            if (de.id == CFragmentDesc::INVALIDID) return FOREACHENTRYRET::OK;
             auto it = direntries.find(de.id);
             if (it != direntries.end())
             {
                 printf("Warning: Found two directory entries with the same id id=%i in directory '%s' and directory '%s'\n",
-                de.id,	path.c_str(), it->second.c_str());
+                de.id, path.c_str(), it->second.c_str());
             }
             direntries[de.id] = path + "/" + de.name;
-            if ((INODETYPE)de.type == INODETYPE::dir)
+            if (fs.fragmentlist.GetType(de.id) == INODETYPE::dir)
             {
                 newpath = path + "/" + de.name;
                 GetRecursiveDirectories(direntries, de.id, newpath);
@@ -52,7 +53,7 @@ void  CPrintCheckRepair::PrintFragments()
     {
         //int idx1 = ofssort[i];
         int idx1 = i;
-        //if (fragments[idx1].id == CFragmentDesc::FREEID) continue;
+        if (fragments[idx1].id == CFragmentDesc::FREEID) continue;
         printf("frag=%6i type=%2i id=%6i ofs=%7llu size=%10llu '%s'\n",
             idx1,
             (int)fragments[idx1].type,

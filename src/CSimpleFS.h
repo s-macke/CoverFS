@@ -30,6 +30,8 @@ class SimpleFilesystem
 public:
     SimpleFilesystem(const std::shared_ptr<CCacheIO> &_bio);
     ~SimpleFilesystem();
+    INODETYPE GetType(int id);
+
     INODEPTR OpenNode(int id);
     INODEPTR OpenNode(const std::string &path);
     INODEPTR OpenNode(const std::vector<std::string> splitpath);
