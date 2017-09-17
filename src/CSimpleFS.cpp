@@ -48,6 +48,16 @@ SimpleFilesystem::SimpleFilesystem(const std::shared_ptr<CCacheIO> &_bio) : bio(
     assert(sizeof(DIRENTRY) == 128);
     assert(CFragmentDesc::SIZEONDISK == 16);
 
+    nopendir = 0;
+    nopenfiles = 0;
+    ncreatedir = 0;
+    ncreatefiles = 0;
+    nread = 0;
+    nwritten = 0;
+    nrenamed = 0;
+    nremoved = 0;
+    ntruncated = 0;
+
     LOG(INFO) << "container info:";
     LOG(INFO) << "  size: " << int(bio->GetFilesize()/(1024*1024)) << " MB";
     LOG(INFO) << "  blocksize: " << bio->blocksize << " bytes";
@@ -70,6 +80,17 @@ SimpleFilesystem::SimpleFilesystem(const std::shared_ptr<CCacheIO> &_bio) : bio(
 SimpleFilesystem::~SimpleFilesystem()
 {
     LOG(DEBUG) << "SimpleFilesystem: Destruct";
+    LOG(INFO) << "Opened files:        " << nopenfiles;
+    LOG(INFO) << "Opened directories:  " << nopendir;
+    LOG(INFO) << "Created files:       " << ncreatefiles;
+    LOG(INFO) << "Created directories: " << ncreatedir;
+    LOG(INFO) << "Read commands:       " << nread;
+    LOG(INFO) << "Write commands:      " << nwritten;
+    LOG(INFO) << "Renamed nodes:       " << nrenamed;
+    LOG(INFO) << "Removed nodes:       " << nremoved;
+    LOG(INFO) << "Truncated nodes:     " << ntruncated;
+
+
     std::lock_guard<std::mutex> lock(inodescachemtx);
     for (auto &inode : inodes)
     {
@@ -158,6 +179,9 @@ INODEPTR SimpleFilesystem::OpenNode(int id)
     node->type = fragmentlist.fragments[node->fragments[0]].type;
     inodes[id] = node;
     LOG(DEEP) << "Open File with id=" << id << " size=" << node->size;
+
+    if (node->type == INODETYPE::dir) nopendir++; else nopenfiles++;
+
     return node;
 }
 
@@ -339,6 +363,7 @@ void SimpleFilesystem::ShrinkNode(INODE &node, int64_t size)
 
 void SimpleFilesystem::Truncate(INODE &node, int64_t size, bool dozero)
 {
+    ntruncated++;
     LOG(DEEP) << "Truncate of id=" << node.id << " from:" << node.size << "to:" << size;
     assert(node.id != CFragmentDesc::INVALIDID);
     if (size == node.size) return;
@@ -377,9 +402,10 @@ void SimpleFilesystem::Truncate(INODE &node, int64_t size, bool dozero)
 int64_t SimpleFilesystem::Read(INODE &node, int8_t *d, int64_t ofs, int64_t size)
 {
     int64_t s = 0;
-    //printf("read node.id=%i node.size=%li read_ofs=%li read_size=%li\n", node.id, node.size, ofs, size);
+    nread++;
 
     if (size == 0) return size;
+    //printf("read node.id=%i node.size=%li read_ofs=%li read_size=%li\n", node.id, node.size, ofs, size);
 
     int64_t fragmentofs = 0x0;
     for(unsigned int i=0; i<node.fragments.size(); i++)
@@ -405,7 +431,9 @@ int64_t SimpleFilesystem::Read(INODE &node, int8_t *d, int64_t ofs, int64_t size
 
 void SimpleFilesystem::Write(INODE &node, const int8_t *d, int64_t ofs, int64_t size)
 {
+    nwritten++;
     if (size == 0) return;
+
 
     //printf("write node.id=%i node.size=%li write_ofs=%li write_size=%li\n", node.id, node.size, ofs, size);
 
@@ -434,6 +462,7 @@ void SimpleFilesystem::Write(INODE &node, const int8_t *d, int64_t ofs, int64_t 
 
 void SimpleFilesystem::Rename(INODEPTR &node, CDirectory &newdir, const std::string &filename)
 {
+    nrenamed++;
     DIRENTRY e(filename);
     CDirectory olddir = OpenDir(node->parentid);
     olddir.RemoveEntry(node->name, e);
@@ -444,6 +473,7 @@ void SimpleFilesystem::Rename(INODEPTR &node, CDirectory &newdir, const std::str
 int SimpleFilesystem::CreateNode(CDirectory &dir, const std::string &name, INODETYPE t)
 {
     // Reserve one block. Necessary even for empty files
+    if (t == INODETYPE::dir) ncreatedir++; else ncreatefiles++;
     int id = fragmentlist.ReserveNewFragment(t);
     bio->Sync();
     if (dir.dirnode->id == CFragmentDesc::INVALIDID) return id; // this is the root directory and does not have a parent
@@ -474,6 +504,7 @@ int SimpleFilesystem::CreateDirectory(CDirectory &dir, const std::string &name)
 
 void SimpleFilesystem::Remove(INODE &node)
 {
+    nremoved++;
     // maybe, we have to check the shared_ptr here
     DIRENTRY e("");
     CDirectory dir = OpenDir(node.parentid);

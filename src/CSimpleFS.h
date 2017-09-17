@@ -73,6 +73,17 @@ private:
     CFragmentList fragmentlist;
 
     std::map<int32_t, INODEPTR > inodes;
+
+    // Statistics
+    std::atomic<int> nopendir;
+    std::atomic<int> nopenfiles;
+    std::atomic<int> ncreatedir;
+    std::atomic<int> ncreatefiles;
+    std::atomic<int> nread;
+    std::atomic<int> nwritten;
+    std::atomic<int> nrenamed;
+    std::atomic<int> nremoved;
+    std::atomic<int> ntruncated;
 };
 
 std::vector<std::string> SplitPath(const std::string &path);
