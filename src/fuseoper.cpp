@@ -3,7 +3,7 @@
 #include<errno.h>
 #include<assert.h>
 
-#include"debug.h"
+#include"Logger.h"
 #include"CSimpleFS.h"
 #include"CDirectory.h"
 
