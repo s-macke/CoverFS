@@ -16,7 +16,7 @@ void CPrintCheckRepair::GetRecursiveDirectories(std::map<int32_t, std::string> &
 
         dir.ForEachEntry([&](DIRENTRY &de)
         {
-            if ((INODETYPE)de.type == INODETYPE::free) return FOREACHENTRYRET::OK;
+            if ((INODETYPE)de.type == INODETYPE::undefined) return FOREACHENTRYRET::OK;
             //printf("id=%9i: '%s/%s'\n", de.id, path.c_str(), de.name);
             auto it = direntries.find(de.id);
             if (it != direntries.end())
@@ -42,6 +42,7 @@ void CPrintCheckRepair::GetRecursiveDirectories(std::map<int32_t, std::string> &
 void  CPrintCheckRepair::PrintFragments()
 {
     auto &fragments = fs.fragmentlist.fragments;
+
     printf("Receive List of all directories\n");
     std::map<int32_t, std::string> direntries;
     GetRecursiveDirectories(direntries, 0, "");
@@ -51,7 +52,7 @@ void  CPrintCheckRepair::PrintFragments()
     {
         //int idx1 = ofssort[i];
         int idx1 = i;
-        if (fragments[idx1].id == CFragmentDesc::FREEID) continue;
+        //if (fragments[idx1].id == CFragmentDesc::FREEID) continue;
         printf("frag=%6i type=%2i id=%6i ofs=%7llu size=%10llu '%s'\n",
             idx1,
             (int)fragments[idx1].type,
@@ -90,12 +91,13 @@ void  CPrintCheckRepair::Check()
     for(unsigned int i=0; i<fs.fragmentlist.fragments.size(); i++)
     {
         int32_t id = fs.fragmentlist.fragments[i].id;
+
         auto it = mapping.find(id);
         if (it != mapping.end())
         {
             if (it->second != fs.fragmentlist.fragments[i].type)
             {
-                printf("Type mismatch for node id: %i\n", id);
+                printf("Fragment %i Type mismatch for node id=%i: type %i vs %i\n", i, id, (int)it->second, (int)fs.fragmentlist.fragments[i].type);
             }
         } else
         {

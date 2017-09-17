@@ -18,7 +18,7 @@ void CFragmentList::Load()
     ofssort.assign(nentries, 0);
     for(unsigned int i=0; i<nentries; i++) ofssort[i] = i;
 
-    fragments.assign(nentries, CFragmentDesc(INODETYPE::free, CFragmentDesc::FREEID, 0, 0));
+    fragments.assign(nentries, CFragmentDesc(INODETYPE::undefined, CFragmentDesc::FREEID, 0, 0));
 
     for(unsigned int i=0; i<nfragmentblocks; i++)
     {
@@ -53,9 +53,9 @@ void CFragmentList::Create()
         ofssort[i] = i;
     }
 
-    fragments.assign(nentries, CFragmentDesc(INODETYPE::unknown, CFragmentDesc::FREEID, 0, 0));
-    fragments[0] = CFragmentDesc(INODETYPE::unknown, CFragmentDesc::SUPERID, 0, bio->blocksize*2);
-    fragments[1] = CFragmentDesc(INODETYPE::unknown, CFragmentDesc::TABLEID, 2, bio->blocksize*nfragmentblocks);
+    fragments.assign(nentries, CFragmentDesc(INODETYPE::undefined, CFragmentDesc::FREEID, 0, 0));
+    fragments[0] = CFragmentDesc(INODETYPE::special, CFragmentDesc::SUPERID, 0, bio->blocksize*2);
+    fragments[1] = CFragmentDesc(INODETYPE::special, CFragmentDesc::TABLEID, 2, bio->blocksize*nfragmentblocks);
 
     SortOffsets();
 
@@ -81,7 +81,7 @@ void CFragmentList::FreeAllFragments(std::vector<int> &ff)
     for(unsigned int i=0; i<ff.size(); i++)
     {
         fragments[ff[i]].id = CFragmentDesc::FREEID;
-        fragments[ff[i]].type = INODETYPE::free;
+        fragments[ff[i]].type = INODETYPE::undefined;
         StoreFragment(ff[i]);
     }
     SortOffsets();
@@ -113,14 +113,14 @@ int CFragmentList::ReserveNewFragment(INODETYPE type)
         if (fragments[i].id > idmax) idmax = fragments[i].id;
     }
     int id = idmax+1;
-    //printf("get free id %i\n", id);
+    LOG(DEEP) << "Reserve new id " << id << " of type " << (int)type;
 
     for(unsigned int i=0; i<fragments.size(); i++)
     {
         if (fragments[i].id != CFragmentDesc::FREEID) continue;
         fragments[i] = CFragmentDesc(type, id, 0, 0);
         StoreFragment(i);
-        // SortOffsets(); // Sorting is not necessary, because a FREEID and ofs=0 are treated the same way
+        //SortOffsets(); // Sorting is not necessary, because a FREEID and ofs=0 are treated the same way
         return id;
     }
     LOG(ERROR) << "No free fragments available\n";
@@ -132,6 +132,7 @@ int CFragmentList::ReserveNewFragment(INODETYPE type)
 
 int CFragmentList::ReserveNextFreeFragment(int lastidx, int32_t id, INODETYPE type, int64_t maxsize)
 {
+    LOG(DEEP) << "Reserve next free fragment " << id;
     //assert(node.fragments.size() != 0);
     //int lastidx = node.fragments.back();
 

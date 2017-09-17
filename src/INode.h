@@ -7,7 +7,7 @@
 
 class SimpleFilesystem;
 
-enum class INODETYPE : int32_t {unknown=0, dir=1, file=2, free=-1};
+enum class INODETYPE : int32_t {undefined=0, dir=1, file=2, special=3};
 
 class INODE
 {
@@ -20,7 +20,7 @@ public:
     INODETYPE type;
     std::string name;
     std::vector<int> fragments;
-    INODE(SimpleFilesystem &_fs) : id(-4), parentid(-4), size(0), type(INODETYPE::unknown), fs(_fs) {}
+    INODE(SimpleFilesystem &_fs) : id(-4), parentid(-4), size(0), type(INODETYPE::undefined), fs(_fs) {}
     std::mutex& GetMutex() { return mtx; } // for lock_guard
     void Lock();
     void Unlock();

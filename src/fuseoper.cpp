@@ -114,7 +114,7 @@ static int fuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off
 
         dir.ForEachEntry([&](DIRENTRY &de)
         {
-            if ((INODETYPE)de.type == INODETYPE::free) return FOREACHENTRYRET::OK;
+            if ((INODETYPE)de.type == INODETYPE::undefined) return FOREACHENTRYRET::OK;
             filler(buf, de.name, NULL, 0);
             return FOREACHENTRYRET::OK;
         });

@@ -43,10 +43,8 @@ typedef struct
     int32_t version;
 } SUPER;
 
-SimpleFilesystem::SimpleFilesystem(const std::shared_ptr<CCacheIO> &_bio) : bio(_bio), fragmentlist(_bio), nodeinvalid(new INODE(*this))
+SimpleFilesystem::SimpleFilesystem(const std::shared_ptr<CCacheIO> &_bio) : bio(_bio), fragmentlist(_bio)
 {
-    nodeinvalid->id = CFragmentDesc::INVALIDID;
-
     assert(sizeof(DIRENTRY) == 128);
     assert(CFragmentDesc::SIZEONDISK == 16);
 
@@ -106,18 +104,22 @@ void SimpleFilesystem::CreateFS()
 
     // Create root directory
 
-    nodeinvalid->id = CFragmentDesc::INVALIDID;
-    nodeinvalid->type = INODETYPE::dir;
-    CDirectory rootdir = CDirectory(nodeinvalid, *this);
+    INODEPTR rootinode(new INODE(*this));
+    rootinode->id = CFragmentDesc::INVALIDID;
+    rootinode->type = INODETYPE::dir;
+    CDirectory rootdir = CDirectory(rootinode, *this);
     int id = rootdir.CreateDirectory(std::string("root"));
-    nodeinvalid->id = CFragmentDesc::INVALIDID;
-    nodeinvalid->type = INODETYPE::unknown;
 
     if (id != CFragmentDesc::ROOTID)
     {
         LOG(ERROR) << "Error: Cannot create root directory";
         exit(1);
     }
+/*
+    int id = fragmentlist.ReserveNewFragment(INODETYPE::file);
+    INODEPTR node = OpenNode(id);
+    GrowNode(*node, 1);
+*/
 
     CDirectory dir = OpenDir("/");
     dir.CreateDirectory("mydir");
@@ -280,13 +282,13 @@ void SimpleFilesystem::GrowNode(INODE &node, int64_t size)
         int storeidx = fragmentlist.ReserveNextFreeFragment(node.fragments.back(), node.id, node.type, size-node.size);
         assert(node.fragments.back() != storeidx);
         CFragmentDesc &fd = fragmentlist.fragments[storeidx];
-
         uint64_t nextofs = fragmentlist.fragments[node.fragments.back()].GetNextFreeBlock(bio->blocksize);
         if (fragmentlist.fragments[node.fragments.back()].size == 0) // empty fragment can be overwritten
         {
             storeidx = node.fragments.back();
             fragmentlist.fragments[storeidx] = fd;
-            fd.id = CFragmentDesc::FREEID;
+            node.size += fd.size;
+            fd = CFragmentDesc(INODETYPE::undefined, CFragmentDesc::FREEID, 0, 0);
         } else
         if (nextofs == fd.ofs) // merge
         {
@@ -298,18 +300,18 @@ void SimpleFilesystem::GrowNode(INODE &node, int64_t size)
                 // TODO: check for 4GB bouondary
             }
             fragmentlist.fragments[storeidx].size += fd.size;
-            fd.id = CFragmentDesc::FREEID;
+            node.size += fd.size;
+            fd = CFragmentDesc(INODETYPE::undefined, CFragmentDesc::FREEID, 0, 0);
         } else
         {
             node.fragments.push_back(storeidx);
+            node.size += fd.size;
         }
 
-        node.size += fd.size;
         fragmentlist.StoreFragment(storeidx);
         fragmentlist.SortOffsets();
     }
 }
-
 
 void SimpleFilesystem::ShrinkNode(INODE &node, int64_t size)
 {
@@ -324,7 +326,7 @@ void SimpleFilesystem::ShrinkNode(INODE &node, int64_t size)
 
         if ((r.size == 0) && (node.size != 0)) // don't remove last element
         {
-            r.id = CFragmentDesc::FREEID;
+            r = CFragmentDesc(INODETYPE::undefined, CFragmentDesc::FREEID, 0, 0);
             fragmentlist.StoreFragment(lastidx);
             node.fragments.pop_back();
         } else
@@ -363,7 +365,6 @@ void SimpleFilesystem::Truncate(INODE &node, int64_t size, bool dozero)
             }
             fragmentofs += fragmentlist.fragments[idx].size;
         }
-
     } else
     if (size < node.size)
     {

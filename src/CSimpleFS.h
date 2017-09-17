@@ -71,7 +71,6 @@ private:
     CFragmentList fragmentlist;
 
     std::map<int32_t, INODEPTR > inodes;
-    INODEPTR nodeinvalid;
 };
 
 std::vector<std::string> SplitPath(const std::string &path);

@@ -410,7 +410,7 @@ Dokan_FindFiles(LPCWSTR FileName, PFillFindData FillFindData, PDOKAN_FILE_INFO D
 
         dir.ForEachEntry([&](DIRENTRY &de)
         {
-            if ((INODETYPE)de.type == INODETYPE::free) return FOREACHENTRYRET::OK;
+            if ((INODETYPE)de.type == INODETYPE::undefined) return FOREACHENTRYRET::OK;
             WIN32_FIND_DATAW findData = {0};
 
             INODEPTR node = fs->OpenNode(de.id);
