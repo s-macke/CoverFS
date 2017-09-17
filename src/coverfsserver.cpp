@@ -44,6 +44,8 @@ void ParseCommand(char *commandbuf, ssl_socket &sock)
 {
     //COMMANDSTRUCT *cmd = reinterpret_cast<COMMANDSTRUCT*>(commandbuf);
     COMMANDSTRUCT *cmd = (COMMANDSTRUCT*)commandbuf;
+    LOG(INFO) << "received command " << cmd->cmd << " with len=" << cmd->cmdlen;
+
     assert(cmd->cmdlen >= 8);
     switch((COMMAND)cmd->cmd)
     {
@@ -120,7 +122,6 @@ void ParseStream(char *data, int length, ssl_socket &sock, char *commandbuf, int
         memcpy(&len, commandbuf, 4); // to prevent the aliasing warning
         if (len <= commandbuflen)
         {
-            LOG(INFO) << "received command with len=" << len;
             ParseCommand(commandbuf, sock);
             memset(commandbuf, 0xFF, commandbuflen);
             commandbuflen = 0;
