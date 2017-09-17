@@ -4,7 +4,7 @@
 
 // -----------------------------------------------------------------
 
-CBlock::CBlock(CCacheIO &_cio, CEncrypt &_enc, int _blockidx, int8_t *_buf) : nextdirtyidx(-1), blockidx(_blockidx), cio(_cio), enc(_enc), buf(_buf), count(0)
+CBlock::CBlock(CCacheIO &_cio, CEncrypt &_enc, int _blockidx, int size) : nextdirtyidx(-1), blockidx(_blockidx), cio(_cio), enc(_enc), buf(size), count(0)
 {}
 
 int8_t* CBlock::GetBufRead()
@@ -12,8 +12,8 @@ int8_t* CBlock::GetBufRead()
     mutex.lock();
     count++;
     if (cio.cryptcache)
-        enc.Decrypt(blockidx, buf);
-    return buf;
+        enc.Decrypt(blockidx, &buf[0]);
+    return &buf[0];
 }
 
 int8_t* CBlock::GetBufReadWrite()
@@ -27,10 +27,16 @@ int8_t* CBlock::GetBufReadWrite()
     return buf;
 }
 
+int8_t* CBlock::GetBufUnsafe()
+{
+    return &buf[0];
+}
+
+
 void CBlock::ReleaseBuf()
 {
     if (cio.cryptcache)
-        enc.Encrypt(blockidx, buf);
+        enc.Encrypt(blockidx, &buf[0]);
     mutex.unlock();
 }
 
@@ -69,7 +75,6 @@ CCacheIO::~CCacheIO()
             continue;
         }
         iter = cache.erase(iter);
-        delete[] block->buf;
         block->mutex.unlock();
     }
     LOG(DEBUG) << "Cache erased";
@@ -90,16 +95,15 @@ CBLOCKPTR CCacheIO::GetBlock(const int blockidx, bool read)
         cachemtx.unlock();
         return cacheblock->second;
     }
-    int8_t *buf = new int8_t[blocksize];
-    CBLOCKPTR block(new CBlock(*this, enc, blockidx, buf));
+    CBLOCKPTR block(new CBlock(*this, enc, blockidx, blocksize));
     cache[blockidx] = block;
     block->mutex.lock();
     cachemtx.unlock();
     if (read)
     {
-        bio->Read(blockidx, 1, buf);
+        bio->Read(blockidx, 1, block->GetBufUnsafe());
         if (!cryptcache)
-            enc.Decrypt(blockidx, buf);
+            enc.Decrypt(blockidx, block->GetBufUnsafe());
     }
     block->mutex.unlock();
 
@@ -117,9 +121,9 @@ void CCacheIO::BlockReadForce(const int blockidx, const int n)
         auto cacheblock = cache.find(blockidx+i);
         assert(cacheblock != cache.end()); // block created in CacheBlocks
         CBLOCKPTR block = cacheblock->second;
-        memcpy(block->buf, &buf[i*blocksize], blocksize);
+        memcpy(block->GetBufUnsafe(), &buf[i*blocksize], blocksize);
         if (!cryptcache)
-            enc.Decrypt(blockidx+i, block->buf);
+            enc.Decrypt(blockidx+i, block->GetBufUnsafe());
         block->mutex.unlock();
     }
     cachemtx.unlock();
@@ -143,8 +147,7 @@ void CCacheIO::CacheBlocks(const int blockidx, const int n)
             istart = i+1;
         } else
         {
-            int8_t *buf = new int8_t[blocksize];
-            CBLOCKPTR block(new CBlock(*this, enc, blockidx+i, buf));
+            CBLOCKPTR block(new CBlock(*this, enc, blockidx+i, blocksize));
             cache[blockidx+i] = block;
             block->mutex.lock();
         }
@@ -193,7 +196,7 @@ void CCacheIO::Async_Sync()
             block->mutex.lock(); // TODO trylock and put back on the list
             cachemtx.unlock();
             nextblockidx = block->nextdirtyidx;
-            memcpy(buf, block->buf, blocksize);
+            memcpy(buf, block->GetBufUnsafe(), blocksize);
             block->nextdirtyidx = -1;
             ndirty--;
             block->mutex.unlock();

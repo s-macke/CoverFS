@@ -17,9 +17,10 @@ class CBlock
 {
     friend class CCacheIO;
 public:
-    CBlock(CCacheIO &_bio, CEncrypt &_enc, int _blockidx, int8_t *_buf); 
+    CBlock(CCacheIO &_bio, CEncrypt &_enc, int _blockidx, int size);
     int8_t* GetBufRead();
     int8_t* GetBufReadWrite();
+    int8_t* GetBufUnsafe();
     void ReleaseBuf();
 
 
@@ -29,7 +30,7 @@ private:
     std::mutex mutex;
     CCacheIO &cio;
     CEncrypt &enc;
-    int8_t *buf;
+    std::vector<int8_t> buf;
     uint32_t count;
 };
 
