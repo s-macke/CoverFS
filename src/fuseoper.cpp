@@ -18,6 +18,7 @@ extern "C" {
 }
 
 static SimpleFilesystem *fs;
+std::string mountpoint;
 
 static int fuse_getattr(const char *path, struct stat *stbuf)
 {
@@ -300,11 +301,20 @@ static int fuse_statfs(const char *path, struct statvfs *buf)
 }
 
 
+int StopFuse()
+{
+    // TODO
+    if (fs == NULL) return EXIT_SUCCESS;
+    //if (mounted == false) return EXIT_SUCCESS;
+    LOG(INFO) << "Unmount Fuse mountpoint " << mountpoint;
+    //fuse_unmount(struct fuse *f);
 
+}
 
-int StartFuse(int argc, char *argv[], const char* mountpoint, SimpleFilesystem &_fs)
+int StartFuse(int argc, char *argv[], const char* _mountpoint, SimpleFilesystem &_fs)
 {
     fs = &_fs;
+    mountpoint = std::string(_mountpoint);
 
     struct fuse_args args = FUSE_ARGS_INIT(0, NULL);
 

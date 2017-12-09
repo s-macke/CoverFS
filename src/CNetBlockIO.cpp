@@ -46,9 +46,17 @@ CNetBlockIO::CNetBlockIO(int _blocksize, const std::string &host, const std::str
   cmdid(0)
 {
     assert(sizeof(CommandDesc) == 32);
+    LOG(INFO) << "Try to connect to " << host << ":" << port;
 
     ctx.set_verify_mode(boost::asio::ssl::context::verify_peer);
-    ctx.load_verify_file("ssl/server.crt");
+    try
+    {
+        ctx.load_verify_file("ssl/server.crt");
+    } catch(boost::system::system_error e)
+    {
+        LOG(ERROR) << "Error during loading or parsing of ssl/server.crt: " << e.what();
+        throw std::exception();
+    }
 
     sctrl.set_verify_mode(boost::asio::ssl::verify_peer);
     sctrl.set_verify_callback(verify_certificate);
@@ -63,7 +71,7 @@ CNetBlockIO::CNetBlockIO(int _blocksize, const std::string &host, const std::str
     if (ec)
     {
         LOG(ERROR) << "Cannot resolve host";
-        exit(1);
+        throw std::exception();
     }
     LOG(INFO) << "Connect to " << host;
 
@@ -71,7 +79,7 @@ CNetBlockIO::CNetBlockIO(int _blocksize, const std::string &host, const std::str
     if (ec)
     {
         LOG(ERROR) << "Cannot connect to server. (Control Stream)\n";
-        exit(1);
+        throw std::exception();
     }
     sctrl.handshake(boost::asio::ssl::stream_base::client);
 
@@ -79,7 +87,7 @@ CNetBlockIO::CNetBlockIO(int _blocksize, const std::string &host, const std::str
     if (ec)
     {
         LOG(ERROR) << "Cannot connect to server. (Data Stream)";
-        exit(1);
+        throw std::exception();
     }
     sdata.handshake(boost::asio::ssl::stream_base::client);
 

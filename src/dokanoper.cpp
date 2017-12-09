@@ -22,6 +22,7 @@ extern "C" {
 
 static SimpleFilesystem *fs;
 static uint64_t handleid = 1;
+bool mounted = false;
 
 static std::map<ULONG64, std::string> handle2path;
 
@@ -595,6 +596,7 @@ static NTSTATUS DOKAN_CALLBACK Dokan_Mounted(PDOKAN_FILE_INFO DokanFileInfo)
     UNREFERENCED_PARAMETER(DokanFileInfo);
 
     LOG(INFO) << "Dokan: Mounted";
+    mounted = true;
     return STATUS_SUCCESS;
 }
 
@@ -603,18 +605,38 @@ static NTSTATUS DOKAN_CALLBACK Dokan_Unmounted(PDOKAN_FILE_INFO DokanFileInfo)
     UNREFERENCED_PARAMETER(DokanFileInfo);
 
     LOG(INFO) << "Dokan: Unmounted";
+    mounted = false;
     return STATUS_SUCCESS;
 }
 
 // -----------------------------------------------
 #undef ERROR
 
-int StartDokan(int argc, char *argv[], const char* mountpoint, SimpleFilesystem &_fs)
+DOKAN_OPERATIONS dokanOperations = {0};
+DOKAN_OPTIONS dokanOptions = {0};
+std::string mountpoint;
+
+int StopDokan()
+{
+    if (fs == NULL) return EXIT_SUCCESS;
+    if (mounted == false) return EXIT_SUCCESS;
+    LOG(INFO) << "Unmount Dokan mountpoint " << mountpoint;
+    if (DokanUnmount(*utf8_to_wstring(mountpoint).data()))
+        return EXIT_SUCCESS;
+    else
+    {
+        LOG(ERROR) << "Unmount failed";
+        return EXIT_FAILURE;
+    }
+}
+
+int StartDokan(int argc, char *argv[], const char* _mountpoint, SimpleFilesystem &_fs)
 {
     fs = &_fs;
+    mountpoint = std::string(_mountpoint);
 
-    DOKAN_OPERATIONS dokanOperations = {0};
-    DOKAN_OPTIONS dokanOptions = {0};
+    LOG(INFO) << "Dokan Version: " << DokanVersion();
+    LOG(INFO) << "Dokan Driver Version: " << DokanDriverVersion();;
 
     dokanOptions.Version = DOKAN_VERSION;
     dokanOptions.ThreadCount = 1; // use default = 0 is default
@@ -650,10 +672,9 @@ int StartDokan(int argc, char *argv[], const char* mountpoint, SimpleFilesystem 
     dokanOperations.MoveFile             = Dokan_MoveFile;
     dokanOperations.GetDiskFreeSpace     = NULL;
     //dokanOperations.FindStreams        = Dokan_FindStreams;
-    //dokanOperations.GetFileSecurity      = Dokan_GetFileSecurity;
+    //dokanOperations.GetFileSecurity    = Dokan_GetFileSecurity;
     //dokanOperations.LockFile           = Dokan_LockFile;
     dokanOperations.FindFilesWithPattern = NULL;
-
 
     int status = DokanMain(&dokanOptions, &dokanOperations);
     switch (status)
@@ -663,28 +684,28 @@ int StartDokan(int argc, char *argv[], const char* mountpoint, SimpleFilesystem 
         break;
     case DOKAN_ERROR:
         LOG(ERROR) << "Dokan: Error";
-        break;
+        return EXIT_FAILURE;
     case DOKAN_DRIVE_LETTER_ERROR:
         LOG(ERROR) << "Dokan: Bad Drive letter";
-        break;
+        return EXIT_FAILURE;
     case DOKAN_DRIVER_INSTALL_ERROR:
         LOG(ERROR) << "Dokan: Can't install driver";
-        break;
+        return EXIT_FAILURE;
     case DOKAN_START_ERROR:
         LOG(ERROR) << "Dokan: Driver something wrong";
-        break;
+        return EXIT_FAILURE;
     case DOKAN_MOUNT_ERROR:
         LOG(ERROR) << "Dokan: Can't assign a drive letter";
-        break;
+        return EXIT_FAILURE;
     case DOKAN_MOUNT_POINT_ERROR:
         LOG(ERROR) << "Dokan: Mount point error";
-        break;
+        return EXIT_FAILURE;
     case DOKAN_VERSION_ERROR:
         LOG(ERROR) << "Dokan: Version error";
-        break;
+        return EXIT_FAILURE;
     default:
         LOG(ERROR) << "Dokan: Unknown error: " << status;
-        break;
+        return EXIT_FAILURE;
     }
 
     return EXIT_SUCCESS;

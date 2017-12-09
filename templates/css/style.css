@@ -1,0 +1,38 @@
+body {
+  padding-top: 50px;
+}
+
+svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* footer */
+/*
+#footer {
+	background: #fd680e;
+	padding: 20px 0 5px;
+    position: absolute;
+    left: 0;
+    right: 0;
+    width: 100%;
+    height: 50px;
+}
+*/
+
+#footer {
+   position: fixed;
+   left: 0;
+   bottom: 0;
+   width: 100%;
+   height: 20px;
+   background-color: #fd680e;
+}
+
+.alert-fixed {
+     margin-bottom: 0px;
+     /*
+     width: 100%;
+     position: fixed;
+     */
+}

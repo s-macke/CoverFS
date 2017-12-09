@@ -5,23 +5,19 @@
 #include<memory>
 
 #include"Logger.h"
-#include"CBlockIO.h"
-#include"CNetBlockIO.h"
-
-#include"CEncrypt.h"
+#include"CFSHandler.h"
 #include"ParallelTest.h"
 
-#include"CCacheIO.h"
-#include"CSimpleFS.h"
 #include"CDirectory.h"
 #include"CStatusView.h"
 #include"CPrintCheckRepair.h"
 
-#if !defined(_WIN32) && !defined(_WIN64) && !defined(__CYGWIN__)
-#include"fuseoper.h"
-#else
-#include"dokanoper.h"
-#endif
+#include"webapp/webapp.h"
+
+// -----------------------------------------------------------------
+
+CFSHandler handler;
+std::unique_ptr<CStatusView> statusview;
 
 // -----------------------------------------------------------------
 
@@ -41,6 +37,7 @@ void PrintUsage(int argc, char *argv[])
     printf("  --check             Check filesystem\n");
     printf("  --test              Tests filesystem and multi-threading\n");
     printf("  --debug             Debug output\n");
+    printf("  --web               Start Webinterface\n");
 }
 
 
@@ -48,8 +45,9 @@ void PrintUsage(int argc, char *argv[])
 
 static void catch_function(int signo)
 {
-    puts("Terminate Signal received");
-    exit(EXIT_SUCCESS);
+    LOG(INFO) << "Terminate Signal received";
+    handler.Unmount().get();
+    return;
 }
 
 // -----------------------------------------------------------------
@@ -64,8 +62,9 @@ int main(int argc, char *argv[])
     bool info = false;
     bool showfragments = false;
     bool rootdir = false;
-    bool cryptcache = false;
+    //bool cryptcache = false;
     bool testfs = false;
+    bool webinterface = false;
 
     strncpy(hostname,   "localhost", 255);
     strncpy(port,       "62000",     255);
@@ -93,6 +92,7 @@ int main(int argc, char *argv[])
             {"debugdeep",  no_argument,       0,  0 },
             {"cryptcache", no_argument,       0,  0 },
             {"test",       no_argument,       0,  0 },
+            {"web",        no_argument,       0,  0 },
             {0,            0,                 0,  0 }
         };
 
@@ -144,11 +144,15 @@ int main(int argc, char *argv[])
                     break;
 
                 case 10:
-                    cryptcache = true;
+                    //cryptcache = true;
                     break;
 
                 case 11:
                     testfs = true;
+                    break;
+                    
+                case 12:
+                    webinterface = true;
                     break;
 
                 case 0: // help
@@ -168,6 +172,12 @@ int main(int argc, char *argv[])
 
     LOG(INFO) << "Start CoverFS";
 
+    if (webinterface)
+    {
+        return StartWebApp();
+        //return EXIT_SUCCESS;
+    }
+
     if ((!check) && (!info) && (!showfragments) && (!rootdir) && (!testfs))
     {
         if (optind < argc)
@@ -180,54 +190,51 @@ int main(int argc, char *argv[])
         }
     }
 
-    std::shared_ptr<CAbstractBlockIO> bio;
+    bool success = true;
     if (strcmp(backend, "ram") == 0)
     {
-        bio.reset(new CRAMBlockIO(4096));
+        success = handler.ConnectRAM().get();
     } else
     if (strncmp(backend, "file", 255) == 0)
     {
-        fprintf(stderr, "Error: Backend 'file' not supported\n");
+        LOG(ERROR) << "Backend 'file' not supported";
         return EXIT_FAILURE;
     } else
     if (strncmp(backend, "cvfsserver", 255) == 0)
     {
-        bio.reset(new CNetBlockIO(4096, hostname, port));
+        success = handler.ConnectNET(hostname, port).get();
     } else
     {
-        fprintf(stderr, "Error: Backend '%s' not found\n", backend);
+        LOG(ERROR) << "Backend '" << backend << "' not supported";
         return EXIT_FAILURE;
     }
+    if (!success) return EXIT_FAILURE;
 
-    std::unique_ptr<CStatusView> statusview;
-    CEncrypt enc(*bio);
-    std::shared_ptr<CCacheIO> cbio(new CCacheIO(bio, enc, cryptcache));
-    std::shared_ptr<SimpleFilesystem> fs(new SimpleFilesystem(cbio));
 
     if (info)
     {
         printf("==============================\n");
         printf("============ INFO ============\n");
         printf("==============================\n");
-        CPrintCheckRepair(*fs).PrintInfo();
+        CPrintCheckRepair(*handler.fs).PrintInfo();
     }
     if (showfragments)
     {
         printf("==============================\n");
         printf("========= FRAGMENTS ==========\n");
         printf("==============================\n");
-        CPrintCheckRepair(*fs).PrintFragments();
+        CPrintCheckRepair(*handler.fs).PrintFragments();
     }
     if (check)
     {
         printf("==============================\n");
         printf("=========== CHECK ============\n");
         printf("==============================\n");
-        CPrintCheckRepair(*fs).Check();
+        CPrintCheckRepair(*handler.fs).Check();
     }
     if (rootdir)
     {
-        CDirectory dir = fs->OpenDir("/");
+        CDirectory dir = handler.fs->OpenDir("/");
         dir.List();
     }
     if (testfs)
@@ -235,8 +242,8 @@ int main(int argc, char *argv[])
         printf("==============================\n");
         printf("============ TEST ============\n");
         printf("==============================\n");
-        ParallelTest(10, 10, 2000, *fs);
-        statusview.reset(new CStatusView(fs, cbio, bio));
+        ParallelTest(10, 10, 2000, *handler.fs);
+        statusview.reset(new CStatusView(handler.fs, handler.cbio, handler.bio));
         //std::this_thread::sleep_for(std::chrono::seconds(20));
     }
 
@@ -246,19 +253,14 @@ int main(int argc, char *argv[])
         return EXIT_SUCCESS;
     }
 
-    statusview.reset(new CStatusView(fs, cbio, bio));
+    statusview.reset(new CStatusView(handler.fs, handler.cbio, handler.bio));
 
     if (signal(SIGINT, catch_function) == SIG_ERR)
     {
         LOG(ERROR) << "An error occurred while setting a signal handler.";
         return EXIT_FAILURE;
     }
-
-#if !defined(_WIN32) && !defined(_WIN64) && !defined(__CYGWIN__)
-    return StartFuse(argc, argv, mountpoint, *fs);
-#else
-    return StartDokan(argc, argv, mountpoint, *fs);
-#endif
+    handler.Mount(argc, argv, mountpoint).get();
 
     LOG(INFO) << "Stop CoverFS";
 }

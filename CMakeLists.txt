@@ -6,11 +6,14 @@ cmake_minimum_required(VERSION 3.0.0)
 cmake_policy(SET CMP0054 NEW)
 
 set(PROJECT_VERSION "0.9")
+
+enable_language(CXX)
+
 set(ARCHIVE_NAME ${CMAKE_PROJECT_NAME}-${PROJECT_VERSION})
 
 MESSAGE( STATUS "CMAKE_SYSTEM_NAME: " ${CMAKE_SYSTEM_NAME} )
 
-set( CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake )
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake )
 
 add_definitions(-std=c++11 -Wall -O2 -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE)
 
@@ -29,6 +32,7 @@ set(CPP_FILES
     src/ParallelTest.cpp
     src/CStatusView.cpp
     src/main.cpp
+    src/CFSHandler.cpp
 )
 
 set(THREADS_PREFER_PTHREAD_FLAG ON)
@@ -36,6 +40,7 @@ find_package(Threads REQUIRED)
 find_package(Boost COMPONENTS system REQUIRED)
 find_package(OpenSSL REQUIRED)
 find_package(Libgcrypt REQUIRED)
+find_package(POCO REQUIRED)
 
 
 if ("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
@@ -54,11 +59,22 @@ endif ()
 
 include_directories(${Boost_INCLUDE_DIRS})
 
+if (POCO_FOUND)
+    set(HAVE_POCO TRUE)
+    set(POCO_LIB PocoNet PocoUtil PocoFoundation PocoXML)
+    set(CPP_FILES ${CPP_FILES} src/webapp/CConfigFile.cpp src/webapp/webapp.cpp)
+endif ()
+
+configure_file(
+    ${PROJECT_SOURCE_DIR}/cmake/config.h.in
+    ${PROJECT_BINARY_DIR}/config.h
+)
+
 add_executable(coverfsserver src/coverfsserver.cpp src/Logger.cpp)
 add_executable(coverfs ${CPP_FILES})
 add_executable(checkfragment tests/checkfragment.cpp)
 
-target_link_libraries (coverfs ${Boost_SYSTEM_LIBRARY_RELEASE} pthread ssl crypto gcrypt ${FUSE_LIB})
+target_link_libraries (coverfs ${Boost_SYSTEM_LIBRARY_RELEASE} pthread ssl crypto gcrypt ${FUSE_LIB} ${POCO_LIB})
 target_link_libraries (coverfsserver ${Boost_SYSTEM_LIBRARY_RELEASE} pthread ssl crypto)
 target_link_libraries (checkfragment ${Boost_SYSTEM_LIBRARY_RELEASE} boost_thread pthread)
 

@@ -1,0 +1,92 @@
+
+    <div class="container">
+    <div class="row">
+        <div class="col-md-12">
+            <h1>Log</h1>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-12">
+          <table class="table table-condensed">
+            <thead>
+              <tr>
+                <th class="col-md-1">Level</th>
+                <th class="col-md-2">Time</th>
+                <th class="col-md-9">Message</th>
+              </tr>
+            </thead>
+            <tbody id="logbody">
+              <tr class="info">
+                <td><span class="label label-info">Info</span></td>
+                <td>01.01.2017 20:00:00</td>
+                <td>This is a very long text text text text text text text text text text text text text text text text text text text text text text text text text text text text text text text</td>
+              </tr>
+              <tr class="default">
+                <td><span class="label label-default">Debug</span></td>
+                <td>01.01.2017 20:00:00</td>
+                <td>This is text</td>
+              </tr>
+              <tr class="warning">
+                <td><span class="label label-warning">Warn</span></td>
+                <td>01.01.2017 20:00:00</td>
+                <td>This is text</td>
+              </tr>
+              <tr class="danger">
+                <td><span class="label label-danger">Error</span></td>
+                <td>01.01.2017 20:00:00</td>
+                <td>This is text</td>
+              </tr>
+            </tbody>
+          </table>
+      </div>
+    </div>
+    </div>
+    
+    <div id="statusbar">
+    </div>
+    <script>
+        function UpdateLog()
+        {
+        /*
+            $.getJSON("ajax/log",
+            function(data)
+            {
+            */
+                data = {};
+                if (Math.random() < 0.3)
+                    data.status = "info"; 
+                else 
+                    if (Math.random() < 0.3) 
+                    data.status = "warning"; 
+                    else
+                    data.status = "danger";
+
+                data.time = "12.07.2017 10:00:00";
+                data.message = "Everything Ok";
+                var prefix = '';
+                if (!data.status) return;
+                if (data.status === "success") prefix = 'Success';
+                if (data.status === "info") prefix = 'Info';
+                if (data.status === "danger") prefix = 'Error';
+                if (data.status === "warning") prefix = 'Warning';
+                
+                var logentry =  '<tr class="' + data.status + '">' +
+                                '<td><span class="label label-' + data.status + '">' + prefix + '</span></td>' +
+                                '<td>' + data.time + '</td>' +
+                                '<td>' + data.message + '</td>' +
+                                '</tr>'
+                $(logentry).prependTo('#logbody');
+                /*
+            });
+            */
+            setTimeout(UpdateLog, 5000);
+        }
+        
+    function OnLoaded()
+    {
+        UpdateLog();
+    }
+    </script>
+
+

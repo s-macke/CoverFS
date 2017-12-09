@@ -32,7 +32,7 @@ void GCryptCheckError(const char *function, gpg_error_t ret)
     if (ret)
     {
         LOG(ERROR) << function << ": Failure: " << gcry_strsource(ret) << "/" << gcry_strerror (ret);
-        exit(1);
+        throw std::exception();
     }
 }
 
@@ -101,7 +101,7 @@ CEncrypt::CEncrypt(CAbstractBlockIO &bio)
     if (gcryptversion == NULL)
     {
         LOG(ERROR) << "gcrypt version too old";
-        exit(1);
+        throw std::exception();
     }
     LOG(INFO) << "gcrypt version " << gcryptversion;
     ret = gcry_control (GCRYCTL_SET_THREAD_CBS, &gcry_threads_pthread);
@@ -140,7 +140,7 @@ CEncrypt::CEncrypt(CAbstractBlockIO &bio)
     if (memcmp(check, h->user[0].checkbytes, 64) != 0)
     {
         LOG(ERROR) << "Cannot decrypt filesystem. Did you type the right password?";
-        exit(1);
+        throw std::exception();
     }
     uint8_t key[64];
     ret = gcry_cipher_decrypt(hd, key, 64, h->user[0].key, 64);

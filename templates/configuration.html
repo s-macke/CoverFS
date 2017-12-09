@@ -1,0 +1,67 @@
+
+    <div class="container">
+    <div class="row">
+        <div class="col-md-12">
+        <h1>Configuration</h1>
+        </div>
+    </div>
+
+    <div class="col-sm-6">
+          <div class="panel panel-default">
+              <div class="panel-heading">
+                  <h3 class="panel-title">Mount</h3>
+              </div>
+              <div class="panel-body">
+                  <form>
+                      <div class="form-group">
+                          <label>Server address</label>
+                          <input type="text" name="host" placeholder="Server address" class="form-control">
+                          e.g. "localhost"
+                      </div>
+                      <div class="form-group">
+                          <label>Server Port</label>
+                          <input type="text" name="port" placeholder="Server port" class="form-control">
+                          Default port: 1234
+                      </div>
+                      <div class="form-group">
+                          <label>Mountpoint folder</label>
+                          <input type="text" name="mountpoint" placeholder="Mountpoint" class="form-control">
+                           e.g. Drive Letter "H:"
+                      </div>
+                      <div class="form-group">
+                          <label>Password</label>
+                          <input type="password" name="password" placeholder="Password" class="form-control">
+                          8 characters or more
+                      </div>
+                  </form>
+                  <button class="btn btn-success" onclick="OnMount();">Save & Mount</button>
+                  <button class="btn btn-success" onclick="GetSetConfig();">Save Configuration</button>
+              </div>
+          </div>
+    </div>
+    </div>
+<script>
+
+function OnMount()
+{
+    GetSetConfig();
+    $.getJSON("ajax/mount", function(data){});
+}
+
+function GetSetConfig()
+{
+    var data = $('form').serialize();
+    $.getJSON("ajax/config?" + data,
+    function(data)
+    {
+        for (var k in data)
+            $('input[name="' + k + '"]' ).val(data[k]);
+    });
+}
+
+function OnLoaded()
+{
+    GetSetConfig();
+}
+
+</script>
