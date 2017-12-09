@@ -139,11 +139,11 @@ virtual void handleRequest(Poco::Net::HTTPServerRequest &req, Poco::Net::HTTPSer
         resp.setContentType("text/html");
         std::ostream& out = resp.send();
         SendFile("templates/header.html", out);
-        
+
         std::string filename = split(paths[1], '.')[0];
         std::transform(filename.begin(), filename.end(), filename.begin(), ::tolower);
         out << "<script>function SetNavbarActive(){$(\"#" + filename + "navicon.nav-item\").addClass(\"active\");}</script>";
-        
+
         SendFile(std::string("templates/") + paths[1], out);
         SendFile("templates/footer.html", out);
         out.flush();

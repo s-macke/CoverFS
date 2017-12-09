@@ -281,7 +281,7 @@ static int fuse_rename(const char *oldpath, const char *newpath)
     try
     {
         INODEPTR node = fs->OpenNode(oldpath);
-        
+
         std::string filename = splitpath.back();
         splitpath.pop_back();
         CDirectory dir = fs->OpenDir(splitpath);
@@ -289,7 +289,7 @@ static int fuse_rename(const char *oldpath, const char *newpath)
     } catch(const int &err)
     {
         return -err;
-    }        
+    }
     return 0;
 }
 
@@ -308,7 +308,7 @@ int StopFuse()
     //if (mounted == false) return EXIT_SUCCESS;
     LOG(INFO) << "Unmount Fuse mountpoint " << mountpoint;
     //fuse_unmount(struct fuse *f);
-
+    return EXIT_SUCCESS;
 }
 
 int StartFuse(int argc, char *argv[], const char* _mountpoint, SimpleFilesystem &_fs)
@@ -322,7 +322,7 @@ int StartFuse(int argc, char *argv[], const char* _mountpoint, SimpleFilesystem 
     fuse_opt_add_arg(&args, "-obig_writes");
     fuse_opt_add_arg(&args, "-oasync_read");
     fuse_opt_add_arg(&args, "-f");
-    fuse_opt_add_arg(&args, mountpoint);
+    fuse_opt_add_arg(&args, _mountpoint);
 
     struct fuse_operations fuse_oper;
     memset(&fuse_oper, 0, sizeof(struct fuse_operations));

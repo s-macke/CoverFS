@@ -13,6 +13,7 @@
 #include"CPrintCheckRepair.h"
 
 #include"webapp/webapp.h"
+#include<config.h>
 
 // -----------------------------------------------------------------
 
@@ -37,7 +38,9 @@ void PrintUsage(int argc, char *argv[])
     printf("  --check             Check filesystem\n");
     printf("  --test              Tests filesystem and multi-threading\n");
     printf("  --debug             Debug output\n");
+    #ifdef HAVE_POCO
     printf("  --web               Start Webinterface\n");
+    #endif
 }
 
 
@@ -64,7 +67,9 @@ int main(int argc, char *argv[])
     bool rootdir = false;
     //bool cryptcache = false;
     bool testfs = false;
+#ifdef HAVE_POCO
     bool webinterface = false;
+#endif
 
     strncpy(hostname,   "localhost", 255);
     strncpy(port,       "62000",     255);
@@ -150,9 +155,11 @@ int main(int argc, char *argv[])
                 case 11:
                     testfs = true;
                     break;
-                    
+
                 case 12:
+#ifdef HAVE_POCO
                     webinterface = true;
+#endif
                     break;
 
                 case 0: // help
@@ -172,11 +179,13 @@ int main(int argc, char *argv[])
 
     LOG(INFO) << "Start CoverFS";
 
+    #ifdef HAVE_POCO
     if (webinterface)
     {
         return StartWebApp();
         //return EXIT_SUCCESS;
     }
+    #endif
 
     if ((!check) && (!info) && (!showfragments) && (!rootdir) && (!testfs))
     {

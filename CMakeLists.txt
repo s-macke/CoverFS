@@ -5,7 +5,7 @@ project (CoverFS)
 cmake_minimum_required(VERSION 3.0.0)
 cmake_policy(SET CMP0054 NEW)
 
-set(PROJECT_VERSION "0.9")
+set(PROJECT_VERSION "0.91")
 
 enable_language(CXX)
 
@@ -40,7 +40,7 @@ find_package(Threads REQUIRED)
 find_package(Boost COMPONENTS system REQUIRED)
 find_package(OpenSSL REQUIRED)
 find_package(Libgcrypt REQUIRED)
-find_package(POCO REQUIRED)
+find_package(POCO)
 
 
 if ("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
@@ -57,7 +57,7 @@ if ("${CMAKE_SYSTEM_NAME}" STREQUAL "CYGWIN")
     LINK_DIRECTORIES(/cygdrive/c/Program\ Files/Dokan/Dokan\ Library-1.0.3/)
 endif ()
 
-include_directories(${Boost_INCLUDE_DIRS})
+include_directories(${Boost_INCLUDE_DIRS} ${PROJECT_BINARY_DIR})
 
 if (POCO_FOUND)
     set(HAVE_POCO TRUE)
