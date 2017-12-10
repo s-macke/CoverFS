@@ -19,6 +19,8 @@ extern "C" {
 
 static SimpleFilesystem *fs;
 std::string mountpoint;
+struct fuse *fusectx = NULL;
+struct fuse_chan *fuse_chan = NULL;
 
 static int fuse_getattr(const char *path, struct stat *stbuf)
 {
@@ -300,14 +302,12 @@ static int fuse_statfs(const char *path, struct statvfs *buf)
     return 0;
 }
 
-
 int StopFuse()
 {
-    // TODO
     if (fs == NULL) return EXIT_SUCCESS;
-    //if (mounted == false) return EXIT_SUCCESS;
-    LOG(INFO) << "Unmount Fuse mountpoint " << mountpoint;
-    //fuse_unmount(struct fuse *f);
+    if (fusectx == NULL) return EXIT_SUCCESS;
+    LOG(INFO) << "Unmount FUSE mountpoint: " << mountpoint;
+    fuse_unmount(mountpoint.c_str(), fuse_chan);
     return EXIT_SUCCESS;
 }
 
@@ -316,13 +316,15 @@ int StartFuse(int argc, char *argv[], const char* _mountpoint, SimpleFilesystem 
     fs = &_fs;
     mountpoint = std::string(_mountpoint);
 
+    LOG(INFO) << "FUSE Version: " << fuse_version();
+
     struct fuse_args args = FUSE_ARGS_INIT(0, NULL);
 
     fuse_opt_add_arg(&args, "-odirect_io");
     fuse_opt_add_arg(&args, "-obig_writes");
     fuse_opt_add_arg(&args, "-oasync_read");
-    fuse_opt_add_arg(&args, "-f");
-    fuse_opt_add_arg(&args, _mountpoint);
+//    fuse_opt_add_arg(&args, "-f");
+//    fuse_opt_add_arg(&args, _mountpoint);
 
     struct fuse_operations fuse_oper;
     memset(&fuse_oper, 0, sizeof(struct fuse_operations));
@@ -345,6 +347,14 @@ int StartFuse(int argc, char *argv[], const char* _mountpoint, SimpleFilesystem 
     fuse_oper.utimens     = fuse_utimens;
     //fuse_oper.flag_nullpath_ok = 1;
 
-    return fuse_main(args.argc, args.argv, &fuse_oper, NULL);
+    fuse_chan = fuse_mount(_mountpoint, &args);
+    fusectx = fuse_new(fuse_chan, &args, &fuse_oper, sizeof(fuse_oper), NULL);
+
+    int ret =  fuse_loop_mt(fusectx);
+    fuse_destroy(fusectx);
+    return ret;
+
+//    return fuse_loop(fusectx);
+//    return fuse_main(args.argc, args.argv, &fuse_oper, NULL);
 }
 
