@@ -20,21 +20,25 @@ std::future<int> CFSHandler::Unmount()
         {
             return EXIT_FAILURE;
         }
-        
     }));
     return result;
 }
 
-
 std::future<int> CFSHandler::Mount(int argc, char *argv[], const char *mountpoint)
 {
-    std::future<int> result( std::async([this, argc, argv, mountpoint]{
+    std::future<int> result(std::async([this, argc, argv, mountpoint]{
         try
         {
         #if !defined(_WIN32) && !defined(_WIN64) && !defined(__CYGWIN__)
-            return StartFuse(argc, argv, mountpoint, *fs);
+            status = MOUNTED;
+            int ret = StartFuse(argc, argv, mountpoint, *fs);
+            status = UNMOUNTED;
+            return ret;
         #else
-            return StartDokan(argc, argv, mountpoint, *fs);
+            status = MOUNTED;
+            int ret = StartDokan(argc, argv, mountpoint, *fs);
+            status = UNMOUNTED;
+            return ret;
         #endif
         } catch(...)
         {
@@ -51,6 +55,7 @@ std::future<bool> CFSHandler::ConnectNET(const std::string hostname, const std::
         try
         {
             bio.reset(new CNetBlockIO(4096, hostname, port));
+            status = CONNECTED;
             return true;
         } catch(...)
         {
@@ -66,6 +71,7 @@ std::future<bool> CFSHandler::ConnectRAM()
         try
         {
             bio.reset(new CRAMBlockIO(4096));
+            status = CONNECTED;
             return true;
         } catch(...)
         {
@@ -83,6 +89,7 @@ std::future<bool> CFSHandler::Decrypt(char *pass)
             enc.reset(new CEncrypt(*bio, pass));
             cbio.reset(new CCacheIO(bio, *enc, false));
             fs.reset(new SimpleFilesystem(cbio));
+            status = UNMOUNTED;
             return true;
         } catch(...)
         {
