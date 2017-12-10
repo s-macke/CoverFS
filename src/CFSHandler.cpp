@@ -51,7 +51,6 @@ std::future<bool> CFSHandler::ConnectNET(const std::string hostname, const std::
         try
         {
             bio.reset(new CNetBlockIO(4096, hostname, port));
-            Connect();
             return true;
         } catch(...)
         {
@@ -67,7 +66,6 @@ std::future<bool> CFSHandler::ConnectRAM()
         try
         {
             bio.reset(new CRAMBlockIO(4096));
-            Connect();
             return true;
         } catch(...)
         {
@@ -77,11 +75,19 @@ std::future<bool> CFSHandler::ConnectRAM()
     return result;
 }
 
-void CFSHandler::Connect()
+std::future<bool> CFSHandler::Decrypt(char *pass)
 {
-    enc.reset(new CEncrypt(*bio));
-    cbio.reset(new CCacheIO(bio, *enc, false));
-    fs.reset(new SimpleFilesystem(cbio));
+    std::future<bool> result( std::async([this, pass]{
+        try
+        {
+            enc.reset(new CEncrypt(*bio, pass));
+            cbio.reset(new CCacheIO(bio, *enc, false));
+            fs.reset(new SimpleFilesystem(cbio));
+            return true;
+        } catch(...)
+        {
+            return false;
+        }
+    }));
+    return result;
 }
-
-

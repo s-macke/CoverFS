@@ -37,9 +37,8 @@ void GCryptCheckError(const char *function, gpg_error_t ret)
 }
 
 
-void CEncrypt::PassToHash(const std::string &message, uint8_t salt[32], uint8_t passkey[64], int hashreps)
+void CEncrypt::PassToHash(char *pass, uint8_t salt[32], uint8_t passkey[64], int hashreps)
 {
-    char *pass = getpass(message.c_str());
     gpg_error_t ret = gcry_kdf_derive(
     pass, strlen(pass),
     GCRY_KDF_SCRYPT,
@@ -47,11 +46,10 @@ void CEncrypt::PassToHash(const std::string &message, uint8_t salt[32], uint8_t 
     salt, 32,
     hashreps,
     64, passkey);
-    memset(pass, 0, strlen(pass));
     GCryptCheckError("getpass", ret);
 }
 
-void CEncrypt::CreateEnc(int8_t *block)
+void CEncrypt::CreateEnc(int8_t *block, char *pass)
 {
     LOG(INFO) << "Create Encryption block";
     uint8_t key[64];
@@ -70,7 +68,7 @@ void CEncrypt::CreateEnc(int8_t *block)
     gcry_create_nonce (h->user[0].enccheckbytes, 64);
     
     uint8_t passkey[64];
-    PassToHash("Set Password for filesystem: ", h->salt, passkey, h->user[0].hashreps); 
+    PassToHash(pass, h->salt, passkey, h->user[0].hashreps); 
     gpg_error_t ret;
 
     gcry_cipher_hd_t hd;
@@ -90,7 +88,7 @@ void CEncrypt::CreateEnc(int8_t *block)
     gcry_md_hash_buffer(GCRY_MD_CRC32, &h->crc, (int8_t*)h+4, blocksize-4);
 }
 
-CEncrypt::CEncrypt(CAbstractBlockIO &bio)
+CEncrypt::CEncrypt(CAbstractBlockIO &bio, char *pass)
 {
     assert(sizeof(TEncHeader) == 4+8+4+32+(128+64+64+64+4)*4);
     assert(bio.blocksize >= 1024);
@@ -98,12 +96,12 @@ CEncrypt::CEncrypt(CAbstractBlockIO &bio)
     gpg_error_t ret;
 
     const char* gcryptversion = gcry_check_version (GCRYPT_VERSION);
+    LOG(INFO) << "gcrypt version " << gcryptversion;
     if (gcryptversion == NULL)
     {
         LOG(ERROR) << "gcrypt version too old";
         throw std::exception();
     }
-    LOG(INFO) << "gcrypt version " << gcryptversion;
     ret = gcry_control (GCRYCTL_SET_THREAD_CBS, &gcry_threads_pthread);
     GCryptCheckError("gcry_control", ret);
     gcry_control(GCRYCTL_INITIALIZATION_FINISHED, 0);
@@ -115,7 +113,7 @@ CEncrypt::CEncrypt(CAbstractBlockIO &bio)
     TEncHeader *h = (TEncHeader*)block;
     if (strncmp(h->magic, "coverfs", 8) != 0)
     {
-        CreateEnc(block);
+        CreateEnc(block, pass);
         bio.Write(0, 1, block);
     }
 
@@ -126,7 +124,7 @@ CEncrypt::CEncrypt(CAbstractBlockIO &bio)
     assert(h->minorversion == 0);
 
     uint8_t passkey[64];
-    PassToHash("Password: ", h->salt, passkey, h->user[0].hashreps); 
+    PassToHash(pass, h->salt, passkey, h->user[0].hashreps); 
 
     gcry_cipher_hd_t hd;
     ret =  gcry_cipher_open(&hd, GCRY_CIPHER_AES256, GCRY_CIPHER_MODE_ECB, 0);

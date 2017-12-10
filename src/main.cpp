@@ -219,6 +219,11 @@ int main(int argc, char *argv[])
     }
     if (!success) return EXIT_FAILURE;
 
+    char *pass = getpass("Password: ");
+    bool ret = handler.Decrypt(pass).get();
+    memset(pass, 0, strlen(pass));
+    if (!ret) return EXIT_FAILURE;
+
 
     if (info)
     {

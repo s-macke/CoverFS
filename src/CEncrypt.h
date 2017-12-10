@@ -9,11 +9,11 @@
 class CEncrypt
 {
 public:
-    CEncrypt(CAbstractBlockIO &_bio);
-    void PassToHash(const std::string &message, uint8_t salt[32], uint8_t passkey[32], int hashreps);
+    CEncrypt(CAbstractBlockIO &_bio, char* pass);
+    void PassToHash(char* pass, uint8_t salt[32], uint8_t passkey[32], int hashreps);
     void Decrypt(const int blockidx, int8_t *d);
     void Encrypt(const int blockidx, int8_t* d);
-    void CreateEnc(int8_t* block);
+    void CreateEnc(int8_t* block, char *pass);
 
 private:
     int blocksize;

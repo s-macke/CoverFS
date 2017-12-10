@@ -20,11 +20,9 @@ class CFSHandler
     
     std::future<bool> ConnectNET(const std::string hostname, const std::string port);
     std::future<bool> ConnectRAM();
+    std::future<bool> Decrypt(char *pass);
     std::future<int> Mount(int argc, char *argv[], const char *mountpoint);
     std::future<int> Unmount();
-
-    private:
-    void Connect();
 };
 
 
