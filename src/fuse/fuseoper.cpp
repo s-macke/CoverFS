@@ -4,8 +4,8 @@
 #include<assert.h>
 
 #include"Logger.h"
-#include"CSimpleFS.h"
-#include"CDirectory.h"
+#include"../SimpleFS/CSimpleFS.h"
+#include"../SimpleFS/CDirectory.h"
 
 #include"fuseoper.h"
 

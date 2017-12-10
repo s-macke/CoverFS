@@ -8,8 +8,8 @@
 #include<assert.h>
 #include<map>
 #include"Logger.h"
-#include"CSimpleFS.h"
-#include"CDirectory.h"
+#include"../SimpleFS/CSimpleFS.h"
+#include"../SimpleFS/CDirectory.h"
 
 #include"dokanoper.h"
 

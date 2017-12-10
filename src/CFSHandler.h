@@ -2,11 +2,11 @@
 #define CFSHANDLER_H
 
 #include <future>
-#include"CBlockIO.h"
-#include"CNetBlockIO.h"
-#include"CEncrypt.h"
-#include"CCacheIO.h"
-#include"CSimpleFS.h"
+#include"IO/CBlockIO.h"
+#include"IO/CNetBlockIO.h"
+#include"IO/CEncrypt.h"
+#include"IO/CCacheIO.h"
+#include"SimpleFS/CSimpleFS.h"
 
 enum HandlerStatus { DISCONNECTED, CONNECTED, UNMOUNTED, MOUNTED };
 

@@ -18,17 +18,17 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake )
 add_definitions(-std=c++11 -Wall -O2 -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE)
 
 set(CPP_FILES
-    src/CBlockIO.cpp
-    src/CCacheIO.cpp
-    src/CDirectory.cpp
-    src/CEncrypt.cpp
-    src/CNetBlockIO.cpp
-    src/CFragment.cpp
-    src/CSimpleFS.cpp
-    src/CPrintCheckRepair.cpp
-    src/CNetReadWriteBuffer.cpp
-    src/INode.cpp
-    src/Logger.cpp
+    src/utils/Logger.cpp
+    src/IO/CBlockIO.cpp
+    src/IO/CCacheIO.cpp
+    src/IO/CEncrypt.cpp
+    src/IO/CNetBlockIO.cpp
+    src/IO/CNetReadWriteBuffer.cpp
+    src/SimpleFS/CSimpleFS.cpp
+    src/SimpleFS/CDirectory.cpp
+    src/SimpleFS/INode.cpp
+    src/SimpleFS/CFragment.cpp
+    src/SimpleFS/CPrintCheckRepair.cpp
     src/ParallelTest.cpp
     src/CStatusView.cpp
     src/main.cpp
@@ -45,19 +45,19 @@ find_package(POCO)
 
 if ("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
     MESSAGE( STATUS "Add FUSE Library" )
-    set(CPP_FILES ${CPP_FILES} src/fuseoper.cpp)
+    set(CPP_FILES ${CPP_FILES} src/fuse/fuseoper.cpp)
     find_package(fuse REQUIRED)
     set(FUSE_LIB fuse)
 endif ()
 if ("${CMAKE_SYSTEM_NAME}" STREQUAL "CYGWIN")
     MESSAGE( STATUS "Add Dokan Library")
-    set(CPP_FILES ${CPP_FILES} src/dokanoper.cpp)
+    set(CPP_FILES ${CPP_FILES} src/fuse/dokanoper.cpp)
     add_definitions(-I/cygdrive/c/Program\\ Files/Dokan/Dokan\\ Library-1.0.3/include)
     set(FUSE_LIB dokan1)
     LINK_DIRECTORIES(/cygdrive/c/Program\ Files/Dokan/Dokan\ Library-1.0.3/)
 endif ()
 
-include_directories(${Boost_INCLUDE_DIRS} ${PROJECT_BINARY_DIR})
+include_directories(${Boost_INCLUDE_DIRS} ${PROJECT_BINARY_DIR} ${PROJECT_SOURCE_DIR}/src/utils)
 
 if (POCO_FOUND)
     set(HAVE_POCO TRUE)
@@ -70,7 +70,7 @@ configure_file(
     ${PROJECT_BINARY_DIR}/config.h
 )
 
-add_executable(coverfsserver src/coverfsserver.cpp src/Logger.cpp)
+add_executable(coverfsserver src/coverfsserver.cpp src/utils/Logger.cpp)
 add_executable(coverfs ${CPP_FILES})
 add_executable(checkfragment tests/checkfragment.cpp)
 

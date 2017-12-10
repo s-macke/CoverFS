@@ -7,8 +7,8 @@
 #include<mutex>
 
 #include"ParallelTest.h"
-#include"INode.h"
-#include"CDirectory.h"
+#include"SimpleFS/INode.h"
+#include"SimpleFS/CDirectory.h"
 
 
 #define MAXSIZE 0xFFFFF

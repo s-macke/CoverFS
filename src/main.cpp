@@ -8,9 +8,9 @@
 #include"CFSHandler.h"
 #include"ParallelTest.h"
 
-#include"CDirectory.h"
+#include"SimpleFS/CDirectory.h"
 #include"CStatusView.h"
-#include"CPrintCheckRepair.h"
+#include"SimpleFS/CPrintCheckRepair.h"
 
 #include"webapp/webapp.h"
 #include<config.h>
