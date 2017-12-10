@@ -175,9 +175,16 @@ void server(boost::asio::io_service& io_service, unsigned short port)
     | boost::asio::ssl::context::no_sslv2
     | boost::asio::ssl::context::single_dh_use);
     ctx.set_password_callback(get_password);
+    try
+    {
     ctx.use_certificate_chain_file("ssl/server.crt");
     ctx.use_private_key_file("ssl/server.key", boost::asio::ssl::context::pem);
     ctx.use_tmp_dh_file("ssl/dh1024.pem");
+    } catch(...)
+    {
+        LOG(ERROR) << "Cannot open ssl related files";
+        throw std::exception();
+    }
 
     LOG(INFO) << "Start listening on port " << port;
     tcp::acceptor a(io_service, tcp::endpoint(tcp::v4(), port));
@@ -229,6 +236,11 @@ int main(int argc, char *argv[])
     }
     if (argc == 2)
     {
+        if (strcmp(argv[1], "--help") == 0)
+        {
+            PrintUsage(argc, argv);
+            return 0;
+        }
         defaultport = std::atoi(argv[1]);
     }
 
@@ -255,6 +267,17 @@ int main(int argc, char *argv[])
         }
     }
 
-    server(io_service, defaultport);
+    try
+    {
+        server(io_service, defaultport);
+    }
+    catch(std::exception &e)
+    {
+        LOG(ERROR) << e.what();
+    }
+    catch(...)
+    {
+        LOG(ERROR) << "Unknown exception";
+    }
     return 0;
 }

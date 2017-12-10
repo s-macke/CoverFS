@@ -78,6 +78,13 @@ target_link_libraries (coverfs ${Boost_SYSTEM_LIBRARY_RELEASE} pthread ssl crypt
 target_link_libraries (coverfsserver ${Boost_SYSTEM_LIBRARY_RELEASE} pthread ssl crypto)
 target_link_libraries (checkfragment ${Boost_SYSTEM_LIBRARY_RELEASE} boost_thread pthread)
 
+add_custom_command(
+    TARGET coverfs POST_BUILD
+    COMMAND "${CMAKE_COMMAND}" -E create_symlink ${PROJECT_SOURCE_DIR}/ssl ${PROJECT_BINARY_DIR}/ssl
+    COMMAND "${CMAKE_COMMAND}" -E create_symlink ${PROJECT_SOURCE_DIR}/templates ${PROJECT_BINARY_DIR}/templates
+    COMMENT "Copying to build directory"
+)
+
 
 add_custom_target(dist
     COMMAND git archive --prefix=${ARCHIVE_NAME}/ HEAD
