@@ -1,4 +1,6 @@
 language: cpp
 compiler: gcc
 os: linux
+script:
+- mkdir build && cd build && cmake .. && make
 
