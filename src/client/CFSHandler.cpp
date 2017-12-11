@@ -1,9 +1,9 @@
 #include"CFSHandler.h"
 
 #if !defined(_WIN32) && !defined(_WIN64) && !defined(__CYGWIN__)
-#include"fuse/fuseoper.h"
+#include"../fuse/fuseoper.h"
 #else
-#include"fuse/dokanoper.h"
+#include"../fuse/dokanoper.h"
 #endif
 
 std::future<int> CFSHandler::Unmount()

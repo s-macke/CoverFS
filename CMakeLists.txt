@@ -29,10 +29,10 @@ set(CPP_FILES
     src/SimpleFS/INode.cpp
     src/SimpleFS/CFragment.cpp
     src/SimpleFS/CPrintCheckRepair.cpp
-    src/ParallelTest.cpp
-    src/CStatusView.cpp
-    src/main.cpp
-    src/CFSHandler.cpp
+    src/client/ParallelTest.cpp
+    src/client/CStatusView.cpp
+    src/client/CFSHandler.cpp
+    src/client/main.cpp
 )
 
 set(THREADS_PREFER_PTHREAD_FLAG ON)
@@ -70,7 +70,7 @@ configure_file(
     ${PROJECT_BINARY_DIR}/config.h
 )
 
-add_executable(coverfsserver src/coverfsserver.cpp src/utils/Logger.cpp)
+add_executable(coverfsserver src/server/coverfsserver.cpp src/utils/Logger.cpp)
 add_executable(coverfs ${CPP_FILES})
 add_executable(checkfragment tests/checkfragment.cpp)
 

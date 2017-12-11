@@ -1,8 +1,8 @@
 #ifndef CSTATUSVIEW_H
 #define CSTATUSVIEW_H
 
-#include "SimpleFS/CSimpleFS.h"
-#include "IO/CCacheIO.h"
+#include "../SimpleFS/CSimpleFS.h"
+#include "../IO/CCacheIO.h"
 
 #include<memory>
 #include<thread>

@@ -8,11 +8,11 @@
 #include"CFSHandler.h"
 #include"ParallelTest.h"
 
-#include"SimpleFS/CDirectory.h"
+#include"../SimpleFS/CDirectory.h"
+#include"../SimpleFS/CPrintCheckRepair.h"
 #include"CStatusView.h"
-#include"SimpleFS/CPrintCheckRepair.h"
 
-#include"webapp/webapp.h"
+#include"../webapp/webapp.h"
 #include<config.h>
 
 // -----------------------------------------------------------------
