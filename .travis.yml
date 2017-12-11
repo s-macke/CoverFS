@@ -1,6 +1,17 @@
+sudo: false
+
 language: cpp
+
 compiler: gcc
+
 os: linux
+
+addons:
+  apt:
+    packages:
+    - libboost-all-dev
+    - libpoco-dev
+
 script:
 - mkdir build && cd build && cmake .. && make
 
