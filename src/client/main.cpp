@@ -5,12 +5,12 @@
 #include<memory>
 
 #include"Logger.h"
-#include"CFSHandler.h"
-#include"ParallelTest.h"
 
+#include"../interface/CFSHandler.h"
 #include"../SimpleFS/CDirectory.h"
 #include"../SimpleFS/CPrintCheckRepair.h"
 #include"CStatusView.h"
+#include"ParallelTest.h"
 
 #include"../webapp/webapp.h"
 #include<config.h>

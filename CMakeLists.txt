@@ -29,9 +29,9 @@ set(CPP_FILES
     src/SimpleFS/INode.cpp
     src/SimpleFS/CFragment.cpp
     src/SimpleFS/CPrintCheckRepair.cpp
+    src/interface/CFSHandler.cpp
     src/client/ParallelTest.cpp
     src/client/CStatusView.cpp
-    src/client/CFSHandler.cpp
     src/client/main.cpp
 )
 
