@@ -16,7 +16,7 @@
 #include<fstream>
 
 #include"CConfigFile.h"
-#include"StringUtils.h"
+#include"../utils/StringUtils.h"
 
 // compile with g++ main.cpp CConfigFile.cpp -lPocoNet -lPocoUtil -lPocoFoundation -lPocoXML
 
