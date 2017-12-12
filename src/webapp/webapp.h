@@ -1,6 +1,8 @@
 #ifndef WEBAPP_H
 #define WEBAPP_H
 
-int StartWebApp();
+#include"../interface/CFSHandler.h"
+
+int StartWebApp(CFSHandler &_handler);
 
 #endif

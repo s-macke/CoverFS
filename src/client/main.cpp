@@ -17,7 +17,7 @@
 
 // -----------------------------------------------------------------
 
-CFSHandler handler;
+static CFSHandler handler;
 std::unique_ptr<CStatusView> statusview;
 
 // -----------------------------------------------------------------
@@ -182,7 +182,7 @@ int main(int argc, char *argv[])
     #ifdef HAVE_POCO
     if (webinterface)
     {
-        return StartWebApp();
+        return StartWebApp(handler);
         //return EXIT_SUCCESS;
     }
     #endif

@@ -17,6 +17,9 @@
 
 #include"CConfigFile.h"
 #include"../utils/StringUtils.h"
+#include"../interface/CFSHandler.h"
+
+static CFSHandler *handler;
 
 // compile with g++ main.cpp CConfigFile.cpp -lPocoNet -lPocoUtil -lPocoFoundation -lPocoXML
 
@@ -203,8 +206,9 @@ class SimpleHTTPServerApplication : public Poco::Util::ServerApplication
     }
 };
 
-int StartWebApp()
+int StartWebApp(CFSHandler &_handler)
 {
+    handler = &_handler;
     int argc = 1;
     const char* argv_const[] = {"CoverFS", NULL};
     char **argv = const_cast<char**>(argv_const);
