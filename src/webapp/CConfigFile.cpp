@@ -52,7 +52,6 @@ void CConfigFile::Save()
         return;
     }
     Poco::XML::XMLWriter writer(str, Poco::XML::XMLWriter::WRITE_XML_DECLARATION | Poco::XML::XMLWriter::PRETTY_PRINT);
-    writer.setIndent("    ");
     writer.setNewLine("\n");
     writer.startDocument();
     writer.startElement("", "configuration", "");
