@@ -2,6 +2,7 @@
 #include <string.h>
 #include <gcrypt.h>
 #include <unistd.h>
+#include <pthread.h>
 GCRY_THREAD_OPTION_PTHREAD_IMPL;
 
 #include "Logger.h"
