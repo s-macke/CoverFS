@@ -14,7 +14,11 @@ addons:
     - libboost-all-dev
     - libpoco-dev
     - libgcrypt20
-    - libgcrypt-dev
+    - libgcrypt20-dev
+
+before_install:
+  - sudo apt-get -q update
+  - sudo apt-get install -y libgcrypt20 libgcrypt20-dev
 
 script:
 - mkdir build && cd build && cmake .. && make
