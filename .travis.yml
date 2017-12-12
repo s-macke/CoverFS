@@ -18,11 +18,15 @@ addons:
     - libfuse-dev
     - fuse
     - libfuse2
+    - g++-5
 
 before_install:
   - sudo apt-get -q update
   - sudo apt-get install -y libgcrypt20 libgcrypt20-dev
 
+install:
+  - export CXX="g++-5" CC="gcc-5"
+
 script:
-- mkdir build && cd build && cmake .. && make
+  - mkdir build && cd build && cmake .. && make
 
