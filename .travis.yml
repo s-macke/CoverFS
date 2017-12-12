@@ -11,6 +11,8 @@ addons:
     packages:
     - libboost-all-dev
     - libpoco-dev
+    - libgcrypt20
+    - libgcrypt-dev
 
 script:
 - mkdir build && cd build && cmake .. && make
