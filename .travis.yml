@@ -15,6 +15,9 @@ addons:
     - libpoco-dev
     - libgcrypt20
     - libgcrypt20-dev
+    - libfuse-dev
+    - fuse
+    - libfuse2
 
 before_install:
   - sudo apt-get -q update
