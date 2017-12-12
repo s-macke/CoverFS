@@ -1,17 +1,12 @@
 #include <Poco/Util/ServerApplication.h>
 #include <Poco/Net/ServerSocket.h>
 #include <Poco/Net/HTTPServer.h>
-#include <Poco/Net/HTTPRequestHandlerFactory.h>
-#include <Poco/Util/ServerApplication.h>
 
 #include <Poco/Net/HTTPRequestHandler.h>
 #include <Poco/Net/HTTPServerRequest.h>
 #include <Poco/Net/HTTPServerResponse.h>
 
-#include<algorithm>
-#include<string>
 #include<sstream>
-#include<vector>
 #include<iostream>
 #include<fstream>
 
@@ -26,7 +21,7 @@ static CFSHandler *handler;
 class CStatusbar {
     public:
     std::string status, message;
-    CStatusbar(std::string _status, std::string _message) : status(_status), message(_message) {}
+    CStatusbar(std::string _status, std::string _message) : status(std::move(_status)), message(std::move(_message)) {}
 };
 
 CConfigFile configfile("CoverFS.config");
@@ -36,8 +31,20 @@ class RequestHandler : public Poco::Net::HTTPRequestHandler
 {
 public:
 
-virtual void handleRequest(Poco::Net::HTTPServerRequest &req, Poco::Net::HTTPServerResponse &resp)
-{
+    void handleRequest(Poco::Net::HTTPServerRequest &req, Poco::Net::HTTPServerResponse &resp) override;
+
+    private:
+
+    void SendFile(const std::string& filename, std::ostream& out)
+    {
+        std::ifstream ifs(filename.c_str());
+        if (!ifs.is_open()) return;
+        out << ifs.rdbuf();
+    }
+
+};
+
+void RequestHandler::handleRequest(Poco::Net::HTTPServerRequest &req, Poco::Net::HTTPServerResponse &resp) {
 
     std::cout << " URI=" << req.getURI() << std::endl;
     std::vector<std::string> paths = split(req.getURI(), '/');
@@ -75,8 +82,8 @@ virtual void handleRequest(Poco::Net::HTTPServerRequest &req, Poco::Net::HTTPSer
         if (paths[2] == "status")
         {
             out << "{";
-            out << "\"downloadrate\" : \"" << (rand()%50) << " MB/s\",";
-            out << "\"uploadrate\" : \"" << (rand()%50) << " MB/s\"";
+            out << R"("downloadrate" : ")" << (rand()%50) << " MB/s\",";
+            out << R"("uploadrate" : ")" << (rand()%50) << " MB/s\"";
             /*
             cachedblocks
             writecache
@@ -95,31 +102,31 @@ virtual void handleRequest(Poco::Net::HTTPServerRequest &req, Poco::Net::HTTPSer
         }
         if (paths[2] == "mount")
         {
-            statusbar.push_back(CStatusbar("success", "Container mounted on W:"));
+            statusbar.emplace_back("success", "Container mounted on W:");
             out << "{}";
         }
         if (paths[2] == "scan")
         {
-            statusbar.push_back(CStatusbar("success", "Scan started. Please consult the log for more details"));
+            statusbar.emplace_back("success", "Scan started. Please consult the log for more details");
             out << "{}";
         }
         if (paths[2] == "optimize")
         {
-            statusbar.push_back(CStatusbar("danger", "Optimize destroyed your container"));
+            statusbar.emplace_back("danger", "Optimize destroyed your container");
             out << "{}";
         }
         if (paths[2] == "shrink")
         {
-            statusbar.push_back(CStatusbar("info", "Sorry, Shrink is not yet supported"));
+            statusbar.emplace_back("info", "Sorry, Shrink is not yet supported");
             out << "{}";
         }
         if (paths[2] == "statusbar")
         {
             out << "{";
-            if (statusbar.size() >= 1)
+            if (!statusbar.empty())
             {
-                out << "\"status\" : \"" << statusbar[0].status << "\",";
-                out << "\"message\" : \"" << statusbar[0].message << "\"";
+                out << R"("status" : ")" << statusbar[0].status << "\",";
+                out << R"("message" : ")" << statusbar[0].message << "\"";
                 statusbar.erase(statusbar.begin());
             }
             out << "}";
@@ -129,9 +136,9 @@ virtual void handleRequest(Poco::Net::HTTPServerRequest &req, Poco::Net::HTTPSer
             std::cout << parameters[0] << std::endl;
             std::cout << configfile.hostname << std::endl;
             out << "{";
-            out << "\"host\" : \"" << configfile.hostname << "\",";
-            out << "\"port\" : \"" << configfile.port << "\",";
-            out << "\"mountpoint\" : \"" << configfile.mountpoint << "\"";
+            out << R"("host" : ")" << configfile.hostname << "\",";
+            out << R"("port" : ")" << configfile.port << "\",";
+            out << R"("mountpoint" : ")" << configfile.mountpoint << "\"";
             out << "}";
         }
         out.flush();
@@ -145,7 +152,8 @@ virtual void handleRequest(Poco::Net::HTTPServerRequest &req, Poco::Net::HTTPSer
 
         std::string filename = split(paths[1], '.')[0];
         std::transform(filename.begin(), filename.end(), filename.begin(), ::tolower);
-        out << "<script>function SetNavbarActive(){$(\"#" + filename + "navicon.nav-item\").addClass(\"active\");}</script>";
+        out << "<script>function SetNavbarActive(){$(\"#" + filename +
+               R"(navicon.nav-item").addClass("active");}</script>)";
 
         SendFile(std::string("templates/") + paths[1], out);
         SendFile("templates/footer.html", out);
@@ -163,26 +171,14 @@ virtual void handleRequest(Poco::Net::HTTPServerRequest &req, Poco::Net::HTTPSer
         out << "<h1>404 not found</h1>";
         out.flush();
     }
-  }
-
-    private:
-
-    void SendFile(const std::string& filename, std::ostream& out)
-    {
-        std::ifstream ifs(filename.c_str());
-        if (!ifs.is_open()) return;
-        out << ifs.rdbuf();
-    }
-
-};
+}
 
 class HandlerFactory : public Poco::Net::HTTPRequestHandlerFactory
 {
     public:
-    HandlerFactory () {}
+    HandlerFactory () = default;
 
-    Poco::Net::HTTPRequestHandler* createRequestHandler (const Poco::Net::HTTPServerRequest &request)
-    {
+    Poco::Net::HTTPRequestHandler* createRequestHandler (const Poco::Net::HTTPServerRequest &request) override {
         return new RequestHandler();
     }
 };
@@ -191,11 +187,10 @@ class HandlerFactory : public Poco::Net::HTTPRequestHandlerFactory
 class SimpleHTTPServerApplication : public Poco::Util::ServerApplication
 {
     protected:
-    int main(const std::vector<std::string> &args)
-    {
+    int main(const std::vector<std::string> &args) override {
         Poco::UInt16 port = 9999;
         Poco::Net::ServerSocket socket(port);
-        Poco::Net::HTTPServerParams *pParams = new Poco::Net::HTTPServerParams();
+        auto *pParams = new Poco::Net::HTTPServerParams();
 
         Poco::Net::HTTPServer server(new HandlerFactory(), socket, pParams);
 
@@ -210,7 +205,7 @@ int StartWebApp(CFSHandler &_handler)
 {
     handler = &_handler;
     int argc = 1;
-    const char* argv_const[] = {"CoverFS", NULL};
+    const char* argv_const[] = {"CoverFS", nullptr};
     char **argv = const_cast<char**>(argv_const);
 
     try

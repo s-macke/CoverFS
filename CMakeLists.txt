@@ -1,5 +1,7 @@
 set(CMAKE_LEGACY_CYGWIN_WIN32 0)
 
+set(CMAKE_CXX_STANDARD 14)
+
 project (CoverFS)
 
 cmake_minimum_required(VERSION 3.0.0)
@@ -15,7 +17,7 @@ MESSAGE( STATUS "CMAKE_SYSTEM_NAME: " ${CMAKE_SYSTEM_NAME} )
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake )
 
-add_definitions(-std=c++11 -Wall -O2 -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE)
+add_definitions(-std=c++14 -Wall -O2 -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE)
 
 set(CPP_FILES
     src/utils/Logger.cpp

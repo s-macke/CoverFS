@@ -1,5 +1,5 @@
-#include<stdio.h>
-#include<stdlib.h>
+#include<cstdio>
+#include<cstdlib>
 #include<unistd.h>
 #include<getopt.h>
 #include<memory>
@@ -22,7 +22,7 @@ std::unique_ptr<CStatusView> statusview;
 
 // -----------------------------------------------------------------
 
-void PrintUsage(int argc, char *argv[])
+void PrintUsage(char *argv[])
 {
     printf("Usage: %s [options] mountpoint\n", argv[0]);
     printf("Options:\n");
@@ -50,7 +50,6 @@ static void catch_function(int signo)
 {
     LOG(INFO) << "Terminate Signal received";
     handler.Unmount().get();
-    return;
 }
 
 // -----------------------------------------------------------------
@@ -80,7 +79,7 @@ int main(int argc, char *argv[])
 
     if (argc < 2)
     {
-        PrintUsage(argc, argv);
+        PrintUsage(argv);
         return 0;
     }
 
@@ -101,7 +100,7 @@ int main(int argc, char *argv[])
             {0,            0,                 0,  0 }
         };
 
-    while(1)
+    while(true)
     {
         int option_index = 0;
         int c = getopt_long(argc, argv, "", long_options, &option_index);
@@ -137,7 +136,7 @@ int main(int argc, char *argv[])
 
                 case 7:
                     strncpy(backend, optarg, 255);
-                    for (char *p=backend ; *p; ++p) *p = tolower(*p);
+                    for (char *p=backend ; *p; ++p) *p = static_cast<char>(tolower(*p));
                     break;
 
                 case 8:
@@ -157,22 +156,21 @@ int main(int argc, char *argv[])
                     break;
 
                 case 12:
-#ifdef HAVE_POCO
+                    #ifdef HAVE_POCO
                     webinterface = true;
-#endif
+                    #endif
                     break;
 
                 case 0: // help
                 default:
-                    PrintUsage(argc, argv);
+                    PrintUsage(argv);
                     return EXIT_FAILURE;
-                    break;
             }
         break;
 
         case '?':
         default:
-            PrintUsage(argc, argv);
+            PrintUsage(argv);
             return EXIT_FAILURE;
         }
     }
@@ -194,7 +192,7 @@ int main(int argc, char *argv[])
             strncpy(mountpoint, argv[optind], 255);
         } else
         {
-            PrintUsage(argc, argv);
+            PrintUsage(argv);
             return EXIT_FAILURE;
         }
     }
@@ -217,6 +215,7 @@ int main(int argc, char *argv[])
         LOG(ERROR) << "Backend '" << backend << "' not supported";
         return EXIT_FAILURE;
     }
+
     if (!success) return EXIT_FAILURE;
 
     char *pass = getpass("Password: ");
@@ -257,7 +256,7 @@ int main(int argc, char *argv[])
         printf("============ TEST ============\n");
         printf("==============================\n");
         ParallelTest(10, 10, 2000, *handler.fs);
-        statusview.reset(new CStatusView(handler.fs, handler.cbio, handler.bio));
+        statusview = std::make_unique<CStatusView>(handler.fs, handler.cbio, handler.bio);
         //std::this_thread::sleep_for(std::chrono::seconds(20));
     }
 
@@ -267,7 +266,7 @@ int main(int argc, char *argv[])
         return EXIT_SUCCESS;
     }
 
-    statusview.reset(new CStatusView(handler.fs, handler.cbio, handler.bio));
+    statusview = std::make_unique<CStatusView>(handler.fs, handler.cbio, handler.bio);
 
     if (signal(SIGINT, catch_function) == SIG_ERR)
     {

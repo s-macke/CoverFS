@@ -12,7 +12,7 @@ class CFragmentDesc
     public:
     CFragmentDesc(INODETYPE _type, int32_t _id, uint32_t _ofs=0, uint32_t _size=0) : type(_type), id(_id), size(_size), ofs(_ofs){};
 
-    CFragmentDesc(int8_t *ram)
+    explicit CFragmentDesc(int8_t *ram)
     {
         id   = *(int32_t*)          (ram+0);
         size = *(uint32_t*)         (ram+4);

@@ -20,7 +20,8 @@ public:
     INODETYPE type;
     std::string name;
     std::vector<int> fragments;
-    INODE(SimpleFilesystem &_fs) : id(-4), parentid(-4), size(0), type(INODETYPE::undefined), fs(_fs) {}
+
+    explicit INODE(SimpleFilesystem &_fs) : id(-4), parentid(-4), size(0), type(INODETYPE::undefined), fs(_fs) {}
     std::mutex& GetMutex() { return mtx; } // for lock_guard
     void Lock();
     void Unlock();
@@ -29,7 +30,6 @@ public:
     void Write(const int8_t *d, int64_t ofs, int64_t size);
     void Truncate(int64_t size, bool dozero=true);
     void Remove();
-    void Print();
 
 private:
 

@@ -3,8 +3,8 @@
 
 #include "CSimpleFS.h"
 #include <mutex>
-#include <assert.h>
-#include <stdint.h>
+#include <cassert>
+#include <cstdint>
 #include <functional>
 
 enum class FOREACHENTRYRET {OK, QUIT, WRITEANDQUIT};
@@ -14,7 +14,7 @@ enum class FOREACHENTRYRET {OK, QUIT, WRITEANDQUIT};
 class DIRENTRY
 {
 public:
-    DIRENTRY(std::string _name="", int32_t _id=CFragmentDesc::INVALIDID) : id(_id)
+    explicit DIRENTRY(const std::string &_name="", int32_t _id=CFragmentDesc::INVALIDID) : id(_id)
     {
         memset(name, 0, 64+32);
         memset(dummy, 0, 16+8);
@@ -22,8 +22,8 @@ public:
     }
 
     int32_t id;
-    char name[64+32];
-    char dummy[16+12];
+    char name[64+32]{};
+    char dummy[16+12]{};
 };
 
 

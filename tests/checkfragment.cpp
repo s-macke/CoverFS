@@ -1,10 +1,9 @@
-#include<stdio.h>
-#include<stdlib.h>
-#include<string.h>
+#include<cstdio>
+#include<cstdlib>
+#include<cstring>
 #include<unistd.h>
 #include<fcntl.h>
-#include<assert.h>
-#include<sys/stat.h>
+#include<cassert>
 #include<thread>
 #include<mutex>
 
@@ -14,11 +13,11 @@
 
 typedef struct
 {
-    int fd;
-    char filename[256];
-    int size;
+    int fd{};
+    char filename[256]{};
+    int size{};
     std::mutex mtx;
-    char data[MAXSIZE+2];
+    char data[MAXSIZE+2]{};
 } FSTRUCT;
 
 FSTRUCT *files;
@@ -38,7 +37,7 @@ inline int fastrand()
 
 size_t fsize(int fd) 
 {
-    struct stat st;
+    struct stat st{};
     if(fstat(fd, &st) != 0) {
         return 0;
     }
@@ -47,7 +46,7 @@ size_t fsize(int fd)
 
 void Execute(int tid)
 {
-    char *data = new char[MAXSIZE+2];
+    auto *data = new char[MAXSIZE+2];
     ssize_t retsize;
 
     //printf("thread %i:\n", tid);
@@ -196,6 +195,7 @@ void Execute(int tid)
             }
             break;
 
+            default: break;
         } // switch
 
         files[id].mtx.unlock();
@@ -218,8 +218,8 @@ int main(int argc, char *argv[])
     printf("number of threads: %i\n", nthreads);
     printf("number of iterations per thread: %i\n", niter);
 
-    srand (time(NULL));
-    g_seed = time(NULL);
+    srand (time(nullptr));
+    g_seed = time(nullptr);
 
 
     files = new FSTRUCT[nfiles];
@@ -236,7 +236,7 @@ int main(int argc, char *argv[])
         memset(files[i].data, 0, MAXSIZE+1);
     }
 
-    std::thread *t = new std::thread[nthreads];
+    auto *t = new std::thread[nthreads];
 
     for(unsigned int i=0; i<nthreads; i++)
     {

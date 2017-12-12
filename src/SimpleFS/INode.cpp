@@ -36,10 +36,6 @@ void INODE::Remove()
     fs.Remove(*this);
 }
 
-void INODE::Print()
-{
-}
-
 // non-blocking read and write
 void INODE::WriteInternal(const int8_t *d, int64_t ofs, int64_t size)
 {

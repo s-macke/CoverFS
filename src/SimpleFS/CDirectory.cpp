@@ -24,7 +24,7 @@ void CDirectory::ForEachEntryNonBlocking(std::function<FOREACHENTRYRET(DIRENTRY 
         size = dirnode->ReadInternal(buf, ofs, blocksize);
         assert((size==blocksize) || (size == 0));
         int ndirperblock = size/sizeof(DIRENTRY);
-        DIRENTRY *de = (DIRENTRY*)buf;
+        auto *de = (DIRENTRY*)buf;
         for(int j=0; j<ndirperblock; j++)
         {
             FOREACHENTRYRET ret = f(*de);
@@ -83,7 +83,7 @@ void CDirectory::AddEntry(const DIRENTRY &denew)
     if (written) return;
     int8_t buf[blocksize];
     memset(buf, 0xFF, blocksize);
-    DIRENTRY *de = (DIRENTRY*)buf;
+    auto *de = (DIRENTRY*)buf;
     memcpy(de, &denew, sizeof(DIRENTRY));
     dirnode->WriteInternal(buf, dirnode->size, blocksize);
 }

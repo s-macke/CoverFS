@@ -78,11 +78,11 @@ void CFragmentList::StoreFragment(int idx)
 void CFragmentList::FreeAllFragments(std::vector<int> &ff)
 {
     std::lock_guard<std::mutex> lock(fragmentsmtx);
-    for(unsigned int i=0; i<ff.size(); i++)
+    for (int f : ff)
     {
-        fragments[ff[i]].id = CFragmentDesc::FREEID;
-        fragments[ff[i]].type = INODETYPE::undefined;
-        StoreFragment(ff[i]);
+        fragments[f].id = CFragmentDesc::FREEID;
+        fragments[f].type = INODETYPE::undefined;
+        StoreFragment(f);
     }
     SortOffsets();
     bio->Sync();
@@ -104,10 +104,10 @@ void CFragmentList::GetFragmentIdxList(int32_t id, std::vector<int> &list, int64
 INODETYPE CFragmentList::GetType(int32_t id)
 {
     std::lock_guard<std::mutex> lock(fragmentsmtx);
-    for(unsigned int i=0; i<fragments.size(); i++)
+    for (auto &fragment : fragments)
     {
-        if (fragments[i].id != id) continue;
-        return fragments[i].type;
+        if (fragment.id != id) continue;
+        return fragment.type;
     }
     return INODETYPE::undefined;
 }
@@ -118,9 +118,9 @@ int CFragmentList::ReserveNewFragment(INODETYPE type)
     std::lock_guard<std::mutex> lock(fragmentsmtx);
 
     int idmax = -1;
-    for(unsigned int i=0; i<fragments.size(); i++)
+    for (auto &fragment : fragments)
     {
-        if (fragments[i].id > idmax) idmax = fragments[i].id;
+        if (fragment.id > idmax) idmax = fragment.id;
     }
     int id = idmax+1;
     LOG(DEEP) << "Reserve new id " << id << " of type " << (int)type;

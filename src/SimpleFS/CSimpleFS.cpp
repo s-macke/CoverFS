@@ -2,8 +2,7 @@
 #include "CDirectory.h"
 #include "Logger.h"
 
-#include<stdio.h>
-#include<assert.h>
+#include<cassert>
 #include<set>
 
 /*
@@ -22,7 +21,7 @@ TODO:
 class CFragmentOverlap
 {
     public:
-    CFragmentOverlap(int64_t _ofs=0, int64_t _size=0) : ofs(_ofs), size(_size) {}
+    explicit CFragmentOverlap(int64_t _ofs=0, int64_t _size=0) : ofs(_ofs), size(_size) {}
     int64_t ofs;
     int64_t size;
 };
@@ -31,8 +30,7 @@ bool FindIntersect(const CFragmentOverlap &a, const CFragmentOverlap &b, CFragme
 {
     if (a.ofs > b.ofs) i.ofs = a.ofs; else i.ofs = b.ofs;
     if (a.ofs+a.size > b.ofs+b.size) i.size = b.ofs+b.size-i.ofs; else i.size = a.ofs+a.size-i.ofs;
-    if (i.size <= 0) return false;
-    return true;
+    return i.size > 0;
 }
 
 // -------------------------------------------------------------
@@ -45,8 +43,8 @@ typedef struct
 
 SimpleFilesystem::SimpleFilesystem(const std::shared_ptr<CCacheIO> &_bio) : bio(_bio), fragmentlist(_bio)
 {
-    assert(sizeof(DIRENTRY) == 128);
-    assert(CFragmentDesc::SIZEONDISK == 16);
+    static_assert(sizeof(DIRENTRY) == 128, "");
+    static_assert(CFragmentDesc::SIZEONDISK == 16, "");
 
     nopendir = 0;
     nopenfiles = 0;
@@ -63,7 +61,7 @@ SimpleFilesystem::SimpleFilesystem(const std::shared_ptr<CCacheIO> &_bio) : bio(
     LOG(INFO) << "  blocksize: " << bio->blocksize << " bytes";
 
     CBLOCKPTR superblock = bio->GetBlock(1);
-    SUPER* super = (SUPER*)superblock->GetBufRead();
+    auto * super = (SUPER*)superblock->GetBufRead();
     if (strncmp(super->magic, "CoverFS", 7) != 0)
     {
         superblock->ReleaseBuf();
@@ -74,7 +72,6 @@ SimpleFilesystem::SimpleFilesystem(const std::shared_ptr<CCacheIO> &_bio) : bio(
     superblock->ReleaseBuf();
 
     fragmentlist.Load();
-    return;
 }
 
 SimpleFilesystem::~SimpleFilesystem()
@@ -175,7 +172,7 @@ INODEPTR SimpleFilesystem::OpenNode(int id)
     node->parentid = CFragmentDesc::INVALIDID;
     fragmentlist.GetFragmentIdxList(id, node->fragments, node->size);
 
-    assert(node->fragments.size() > 0);
+    assert(!node->fragments.empty());
     node->type = fragmentlist.fragments[node->fragments[0]].type;
     inodes[id] = node;
     LOG(DEEP) << "Open File with id=" << id << " size=" << node->size;
@@ -188,7 +185,7 @@ INODEPTR SimpleFilesystem::OpenNode(int id)
 std::vector<std::string> SplitPath(const std::string &path)
 {
     std::vector<std::string> d;
-    std::string s = "";
+    std::string s;
 
     unsigned int idx = 0;
 
@@ -196,7 +193,7 @@ std::vector<std::string> SplitPath(const std::string &path)
     {
         if ((path[idx] == '/') || (path[idx] == '\\'))
         {
-            if (s.size() != 0)
+            if (!s.empty())
             {
                 d.push_back(s);
                 s = "";
@@ -204,10 +201,10 @@ std::vector<std::string> SplitPath(const std::string &path)
             idx++;
             continue;
         }
-        s = s + path[idx];
+        s += path[idx];
         idx++;
     }
-    if (s.size() != 0) d.push_back(s);
+    if (!s.empty()) d.push_back(s);
     /*
         for(unsigned int i=0; i<d.size(); i++)
                 printf("  %i: %s\n", i, d[i].c_str());
@@ -217,7 +214,7 @@ std::vector<std::string> SplitPath(const std::string &path)
 
 INODEPTR SimpleFilesystem::OpenNode(const std::string &path)
 {
-    assert(path.size() != 0);
+    assert(!path.empty());
     std::vector<std::string> splitpath;
     splitpath = SplitPath(path);
     return OpenNode(splitpath);
@@ -375,9 +372,7 @@ void SimpleFilesystem::Truncate(INODE &node, int64_t size, bool dozero)
         if (!dozero) return;
 
         int64_t fragmentofs = 0x0;
-        for(unsigned int i=0; i<node.fragments.size(); i++)
-        {
-            int idx = node.fragments[i];
+        for (int idx : node.fragments) {
             CFragmentOverlap intersect;
             if (FindIntersect(CFragmentOverlap(fragmentofs, fragmentlist.fragments[idx].size), CFragmentOverlap(ofs, size-ofs), intersect))
             {
@@ -433,16 +428,12 @@ void SimpleFilesystem::Write(INODE &node, const int8_t *d, int64_t ofs, int64_t 
 {
     nwritten++;
     if (size == 0) return;
-
-
     //printf("write node.id=%i node.size=%li write_ofs=%li write_size=%li\n", node.id, node.size, ofs, size);
 
     if (node.size < ofs+size) Truncate(node, ofs+size, false);
 
     int64_t fragmentofs = 0x0;
-    for(unsigned int i=0; i<node.fragments.size(); i++)
-    {
-        int idx = node.fragments[i];
+    for (int idx : node.fragments) {
         CFragmentOverlap intersect;
         if (FindIntersect(CFragmentOverlap(fragmentofs, fragmentlist.fragments[idx].size), CFragmentOverlap(ofs, size), intersect))
         {
@@ -533,12 +524,11 @@ void SimpleFilesystem::StatFS(struct statvfs *buf)
 
     std::set<int32_t> s;
     int64_t size=0;
-    for(unsigned int i=0; i<fragmentlist.fragments.size(); i++)
-    {
-        int32_t id = fragmentlist.fragments[i].id;
+    for (auto &fragment : fragmentlist.fragments) {
+        int32_t id = fragment.id;
         if (id >= 0)
         {
-            size += fragmentlist.fragments[i].size/bio->blocksize+1;
+            size += fragment.size/bio->blocksize+1;
             s.insert(id);
         }
     }

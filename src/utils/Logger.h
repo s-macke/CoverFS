@@ -24,7 +24,7 @@ class Logger
 };
 
 #define LOG(level)\
-  if (level > Logger::GetReporingLevel()) ;\
+  if ((level) > Logger::GetReporingLevel()) ;\
   else Logger().Get(level)
 
 #endif

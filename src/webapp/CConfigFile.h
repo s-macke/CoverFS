@@ -3,7 +3,7 @@
 class CConfigFile
 {
     public:
-        CConfigFile(const std::string& _filename);
+        explicit CConfigFile(const std::string& _filename);
         void Load();
         void Save();
         

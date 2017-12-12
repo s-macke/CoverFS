@@ -1,11 +1,10 @@
 #include<ntstatus.h>
 
-#include<stdio.h>
-#include<stdio.h>
+#include<cstdio>
 #include<string.h>
-#include<wchar.h>
-#include<errno.h>
-#include<assert.h>
+#include<cwchar>
+#include<cerrno>
+#include<cassert>
 #include<map>
 #include"Logger.h"
 #include"../SimpleFS/CSimpleFS.h"
@@ -69,6 +68,7 @@ NTSTATUS errno_to_nstatus(int err)
         return STATUS_DIRECTORY_NOT_EMPTY;
     case ENOTDIR:
         return STATUS_OBJECT_NAME_NOT_FOUND;
+    default: break;
     }
     return ERROR_INVALID_FUNCTION;
 }

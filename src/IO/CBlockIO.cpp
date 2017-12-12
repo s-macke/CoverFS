@@ -1,5 +1,5 @@
 #include "CBlockIO.h"
-#include <string.h>
+#include <cstring>
 
 CAbstractBlockIO::CAbstractBlockIO(int _blocksize) : blocksize(_blocksize) {}
 int64_t CAbstractBlockIO::GetWriteCache() { return 0; }

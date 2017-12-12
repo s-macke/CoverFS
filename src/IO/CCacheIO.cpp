@@ -1,6 +1,6 @@
 #include"Logger.h"
 #include "CCacheIO.h"
-#include <assert.h>
+#include <cassert>
 
 // -----------------------------------------------------------------
 
@@ -113,7 +113,7 @@ CBLOCKPTR CCacheIO::GetBlock(const int blockidx, bool read)
 void CCacheIO::BlockReadForce(const int blockidx, const int n)
 {
     if (n <= 0) return;
-    int8_t *buf = new int8_t[blocksize*n];
+    auto *buf = new int8_t[blocksize*n];
     bio->Read(blockidx, n, buf);
     cachemtx.lock();
     for(int i=0; i<n; i++)
@@ -219,7 +219,7 @@ void CCacheIO::Sync()
 void CCacheIO::Read(int64_t ofs, int64_t size, int8_t *d)
 {
     CBLOCKPTR block;
-    int8_t *buf = NULL;
+    int8_t *buf = nullptr;
     //printf("ReadFragment ofs=%li size=%li\n", ofs, size);
     if (size == 0) return;
 
@@ -278,7 +278,7 @@ void CCacheIO::Write(int64_t ofs, int64_t size, const int8_t *d)
 void CCacheIO::Zero(int64_t ofs, int64_t size)
 {
     CBLOCKPTR block;
-    int8_t *buf = NULL;
+    int8_t *buf = nullptr;
     //printf("ZeroFragment ofs=%li size=%li\n", ofs, size);
     if (size == 0) return;
 

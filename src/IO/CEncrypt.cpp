@@ -1,8 +1,7 @@
-#include <assert.h>
-#include <string.h>
+#include <cassert>
+#include <cstring>
 #include <gcrypt.h>
-#include <unistd.h>
-#include <pthread.h>
+
 GCRY_THREAD_OPTION_PTHREAD_IMPL;
 
 #include "Logger.h"
@@ -38,7 +37,7 @@ void GCryptCheckError(const char *function, gpg_error_t ret)
 }
 
 
-void CEncrypt::PassToHash(char *pass, uint8_t salt[32], uint8_t passkey[64], int hashreps)
+void CEncrypt::PassToHash(char *pass, uint8_t salt[32], uint8_t passkey[64], unsigned long hashreps)
 {
     gpg_error_t ret = gcry_kdf_derive(
     pass, strlen(pass),
@@ -56,7 +55,7 @@ void CEncrypt::CreateEnc(int8_t *block, char *pass)
     uint8_t key[64];
     gcry_randomize (key, 64, GCRY_STRONG_RANDOM);
 
-    TEncHeader *h = (TEncHeader*)block;
+    auto *h = (TEncHeader*)block;
     memset(h, 0, sizeof(blocksize));
     h->majorversion = 1;
     h->minorversion = 0;
@@ -69,7 +68,7 @@ void CEncrypt::CreateEnc(int8_t *block, char *pass)
     gcry_create_nonce (h->user[0].enccheckbytes, 64);
     
     uint8_t passkey[64];
-    PassToHash(pass, h->salt, passkey, h->user[0].hashreps); 
+    PassToHash(pass, h->salt, passkey, static_cast<unsigned long>(h->user[0].hashreps));
     gpg_error_t ret;
 
     gcry_cipher_hd_t hd;
@@ -83,7 +82,7 @@ void CEncrypt::CreateEnc(int8_t *block, char *pass)
     GCryptCheckError("gcry_cipher_encrypt", ret);
     ret = gcry_cipher_encrypt (hd, h->user[0].key, 64, key, 64);
     GCryptCheckError("gcry_cipher_encrypt", ret);
-    for(int i=0; i<64; i++) key[i] = 0x0;
+    for (unsigned char &i : key) i = 0x0;
     gcry_cipher_close(hd);
 
     gcry_md_hash_buffer(GCRY_MD_CRC32, &h->crc, (int8_t*)h+4, blocksize-4);
@@ -91,14 +90,14 @@ void CEncrypt::CreateEnc(int8_t *block, char *pass)
 
 CEncrypt::CEncrypt(CAbstractBlockIO &bio, char *pass)
 {
-    assert(sizeof(TEncHeader) == 4+8+4+32+(128+64+64+64+4)*4);
+    static_assert(sizeof(TEncHeader) == 4+8+4+32+(128+64+64+64+4)*4, "");
     assert(bio.blocksize >= 1024);
     blocksize = bio.blocksize;
     gpg_error_t ret;
 
     const char* gcryptversion = gcry_check_version (GCRYPT_VERSION);
     LOG(INFO) << "gcrypt version " << gcryptversion;
-    if (gcryptversion == NULL)
+    if (gcryptversion == nullptr)
     {
         LOG(ERROR) << "gcrypt version too old";
         throw std::exception();
@@ -111,7 +110,7 @@ CEncrypt::CEncrypt(CAbstractBlockIO &bio, char *pass)
 
     int8_t block[blocksize];
     bio.Read(0, 1, block);
-    TEncHeader *h = (TEncHeader*)block;
+    auto *h = (TEncHeader*)block;
     if (strncmp(h->magic, "coverfs", 8) != 0)
     {
         CreateEnc(block, pass);
@@ -125,7 +124,7 @@ CEncrypt::CEncrypt(CAbstractBlockIO &bio, char *pass)
     assert(h->minorversion == 0);
 
     uint8_t passkey[64];
-    PassToHash(pass, h->salt, passkey, h->user[0].hashreps); 
+    PassToHash(pass, h->salt, passkey, static_cast<unsigned long>(h->user[0].hashreps));
 
     gcry_cipher_hd_t hd;
     ret =  gcry_cipher_open(&hd, GCRY_CIPHER_AES256, GCRY_CIPHER_MODE_ECB, 0);
@@ -146,11 +145,10 @@ CEncrypt::CEncrypt(CAbstractBlockIO &bio, char *pass)
     GCryptCheckError("gcry_cipher_decrypt", ret);
     gcry_cipher_close(hd);
 
-    for(int i=0; i<4; i++)
-    {
-        ret =  gcry_cipher_open(&hdblock[i], GCRY_CIPHER_AES256, GCRY_CIPHER_MODE_CBC, 0);
+    for (auto &i : hdblock) {
+        ret =  gcry_cipher_open(&i, GCRY_CIPHER_AES256, GCRY_CIPHER_MODE_CBC, 0);
         GCryptCheckError("gcry_cipher_open", ret);
-        ret = gcry_cipher_setkey(hdblock[i], key, 32);
+        ret = gcry_cipher_setkey(i, key, 32);
         GCryptCheckError("gcry_cipher_setkey", ret);
     }
 

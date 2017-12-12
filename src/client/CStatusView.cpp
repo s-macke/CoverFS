@@ -1,9 +1,6 @@
 #include "CStatusView.h"
 #include "Logger.h"
 
-#include <chrono>
-#include <memory>
-
 
 CStatusView::CStatusView(
     std::weak_ptr<SimpleFilesystem> _fs,

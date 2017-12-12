@@ -5,7 +5,7 @@
 
 LogLevel Logger::level = INFO;
 
-Logger::Logger() {}
+Logger::Logger() = default;
 
 Logger::~Logger() 
 {

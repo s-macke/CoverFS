@@ -11,7 +11,7 @@ class CPrintCheckRepair
         void SortIDs(std::vector<int> &idssort);
 
     public:
-        CPrintCheckRepair(SimpleFilesystem &_fs) : fs(_fs) {};
+        explicit CPrintCheckRepair(SimpleFilesystem &_fs) : fs(_fs) {};
 
         void PrintFragments();
         void Check();

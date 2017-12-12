@@ -1,13 +1,11 @@
-#include <stdio.h>
+#include <cstdio>
 #include <unistd.h>
 
 #include <cstdlib>
 #include <iostream>
 #include <thread>
-#include <utility>
 #include <cassert>
 #include <boost/asio.hpp>
-#include <boost/bind.hpp>
 #include <boost/asio/ssl.hpp>
 
 #include "Logger.h"
@@ -43,7 +41,7 @@ typedef struct
 void ParseCommand(char *commandbuf, ssl_socket &sock)
 {
     //COMMANDSTRUCT *cmd = reinterpret_cast<COMMANDSTRUCT*>(commandbuf);
-    COMMANDSTRUCT *cmd = (COMMANDSTRUCT*)commandbuf;
+    auto *cmd = (COMMANDSTRUCT*)commandbuf;
     LOG(INFO) << "received command " << cmd->cmd << " with len=" << cmd->cmdlen;
 
     assert(cmd->cmdlen >= 8);
@@ -53,8 +51,8 @@ void ParseCommand(char *commandbuf, ssl_socket &sock)
         {
             //printf("READ ofs=%li size=%li (block: %li)\n", cmd->offset, cmd->length, cmd->offset/4096);
             fseek(fp, cmd->offset, SEEK_SET);
-            int8_t *data = new int8_t[cmd->length+8];
-            REPLYCOMMANDSTRUCT *reply = (REPLYCOMMANDSTRUCT*)data;
+            auto *data = new int8_t[cmd->length+8];
+            auto *reply = (REPLYCOMMANDSTRUCT*)data;
             reply->cmdlen = cmd->length+8;
             reply->id = cmd->id;
             fread(&reply->data, cmd->length, 1, fp);
@@ -75,7 +73,7 @@ void ParseCommand(char *commandbuf, ssl_socket &sock)
             filesize = ftell(fp);
             fseek(fp, 0L, SEEK_SET);
             int32_t data[4];
-            REPLYCOMMANDSTRUCT *reply = (REPLYCOMMANDSTRUCT*)data;
+            auto *reply = (REPLYCOMMANDSTRUCT*)data;
             reply->cmdlen = 16;
             reply->id = cmd->id;
             memcpy(&reply->data, &filesize, 8);
@@ -88,7 +86,7 @@ void ParseCommand(char *commandbuf, ssl_socket &sock)
             //printf("INFO\n");
             char data[44];
             memset(data, 0, 44);
-            REPLYCOMMANDSTRUCT *reply = (REPLYCOMMANDSTRUCT*)data;
+            auto *reply = (REPLYCOMMANDSTRUCT*)data;
             reply->cmdlen = 44;
             reply->id = cmd->id;
             strncpy((char*)&reply->data, "CoverFS Server V 1.0", 36);
@@ -99,20 +97,18 @@ void ParseCommand(char *commandbuf, ssl_socket &sock)
     case COMMAND::close:
         {
             //printf("CLOSE\n");
-            REPLYCOMMANDSTRUCT reply;
+            REPLYCOMMANDSTRUCT reply{};
             reply.cmdlen = 8;
             reply.id = cmd->id;
             boost::asio::write(sock, boost::asio::buffer(&reply, reply.cmdlen));
             break;
         }
 
-    default:
-        LOG(WARN) << "Ignore received command " << cmd->cmd;
     }
 
 }
 
-void ParseStream(char *data, int length, ssl_socket &sock, char *commandbuf, int32_t &commandbuflen)
+void ParseStream(const char *data, int length, ssl_socket &sock, char *commandbuf, int32_t &commandbuflen)
 {
     for(int i=0; i<length; i++)
     {
@@ -193,7 +189,7 @@ void server(boost::asio::io_service& io_service, unsigned short port)
     {
         try
         {
-            ssl_socket *sock = new ssl_socket(io_service, ctx);
+            auto *sock = new ssl_socket(io_service, ctx);
             a.accept(sock->lowest_layer());
             LOG(INFO)
                 << "Connection from '" 
@@ -217,7 +213,7 @@ void server(boost::asio::io_service& io_service, unsigned short port)
     }
 }
 
-void PrintUsage(int argc, char *argv[])
+void PrintUsage(char *argv[])
 {
     printf("Usage: %s [port]\n", argv[0]);
     printf("The default port is 62000\n");
@@ -225,20 +221,20 @@ void PrintUsage(int argc, char *argv[])
 
 int main(int argc, char *argv[])
 {
-    assert(sizeof(COMMANDSTRUCT) == 40);
+    static_assert(sizeof(COMMANDSTRUCT) == 40, "");
     boost::asio::io_service io_service;
     int defaultport = 62000;
 
     if (argc > 2)
     {
-        PrintUsage(argc, argv);
+        PrintUsage(argv);
         return 0;
     }
     if (argc == 2)
     {
         if (strcmp(argv[1], "--help") == 0)
         {
-            PrintUsage(argc, argv);
+            PrintUsage(argv);
             return 0;
         }
         defaultport = std::atoi(argv[1]);
@@ -247,11 +243,11 @@ int main(int argc, char *argv[])
     const char filename[] = "cfscontainer";
     fp = fopen(filename, "r+b");
 
-    if (fp == NULL)
+    if (fp == nullptr)
     {
         LOG(INFO) << "create new file '" << filename << "'";
         fp = fopen(filename, "wb");
-        if (fp == NULL)
+        if (fp == nullptr)
         {
             LOG(ERROR) << "Cannot create file";
             return 1;
@@ -260,7 +256,7 @@ int main(int argc, char *argv[])
         fwrite(data, sizeof(data), 1, fp);
         fclose(fp);
         fp = fopen(filename, "r+b");
-        if (fp == NULL)
+        if (fp == nullptr)
         {
             LOG(ERROR) << "Cannot open file";
             return 1;

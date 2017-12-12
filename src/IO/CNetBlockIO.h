@@ -22,10 +22,10 @@ public:
     CNetBlockIO(int _blocksize, const std::string &host, const std::string &port);
     ~CNetBlockIO();
 
-    void Read(const int blockidx, const int n, int8_t* d);
-    void Write(const int blockidx, const int n, int8_t* d);
-    int64_t GetFilesize();
-    int64_t GetWriteCache();
+    void Read(int blockidx, int n, int8_t* d);
+    void Write(int blockidx, int n, int8_t* d);
+    int64_t GetFilesize() override;
+    int64_t GetWriteCache() override;
     void GetInfo();
     void Close();
 

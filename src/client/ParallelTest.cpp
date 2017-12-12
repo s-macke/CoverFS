@@ -2,12 +2,10 @@
 #include<stdlib.h>
 #include<string.h>
 
-#include<assert.h>
 #include<thread>
 #include<mutex>
 
 #include"ParallelTest.h"
-#include"../SimpleFS/INode.h"
 #include"../SimpleFS/CDirectory.h"
 
 
@@ -22,11 +20,11 @@ static SimpleFilesystem *fs;
 typedef struct
 {
     INODEPTR node;
-    char filename[256];
-    int size;
+    char filename[256]{};
+    int size{};
     std::mutex mtx;
-    char data[MAXSIZE+2];
-    unsigned int g_seed;
+    char data[MAXSIZE+2]{};
+    unsigned int g_seed{};
 } FSTRUCT;
 
 static FSTRUCT *files;
@@ -150,6 +148,7 @@ void Execute(int tid)
         }
         break;
 
+        default: break;
         } // switch
         files[id].mtx.unlock();
 
@@ -193,7 +192,7 @@ void ParallelTest(unsigned int _nfiles, unsigned int _nthreads, unsigned int _ni
         memset(files[i].data, 0, MAXSIZE+1);
     }
 
-    std::thread *t = new std::thread[nthreads];
+    auto *t = new std::thread[nthreads];
 
     for(unsigned int i=0; i<nthreads; i++)
     {

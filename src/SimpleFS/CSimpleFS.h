@@ -1,13 +1,13 @@
 #ifndef CSIMPLEFS_H
 #define CSIMPLEFS_H
 
-#include <string.h>
+#include <cstring>
 #include <string>
 #include <map>
 #include <memory>
 #include <vector>
 #include <mutex>
-#include <stdint.h>
+#include <cstdint>
 #include <sys/statvfs.h>
 
 #include"../IO/CCacheIO.h"
@@ -28,20 +28,20 @@ class SimpleFilesystem
     friend class CPrintCheckRepair;
 
 public:
-    SimpleFilesystem(const std::shared_ptr<CCacheIO> &_bio);
+    explicit SimpleFilesystem(const std::shared_ptr<CCacheIO> &_bio);
     ~SimpleFilesystem();
     INODETYPE GetType(int id);
 
     INODEPTR OpenNode(int id);
     INODEPTR OpenNode(const std::string &path);
-    INODEPTR OpenNode(const std::vector<std::string> splitpath);
+    INODEPTR OpenNode(std::vector<std::string> splitpath);
 
     CDirectory OpenDir(int id);
     CDirectory OpenDir(const std::string &path);
-    CDirectory OpenDir(const std::vector<std::string> splitpath);
+    CDirectory OpenDir(std::vector<std::string> splitpath);
     INODEPTR OpenFile(int id);
     INODEPTR OpenFile(const std::string &path);
-    INODEPTR OpenFile(const std::vector<std::string> splitpath);
+    INODEPTR OpenFile(std::vector<std::string> splitpath);
 
     void Rename(INODEPTR &node, CDirectory &newdir, const std::string &filename);
     void StatFS(struct statvfs *buf);

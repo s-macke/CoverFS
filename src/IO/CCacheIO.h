@@ -48,9 +48,9 @@ public:
     void Write(int64_t ofs, int64_t size, const int8_t *d);
     void Zero(int64_t ofs, int64_t size);
 
-    CBLOCKPTR GetBlock(const int blockidx, bool read=true);
-    CBLOCKPTR GetWriteBlock(const int blockidx);
-    void CacheBlocks(const int blockidx, const int n);
+    CBLOCKPTR GetBlock(int blockidx, bool read=true);
+    //CBLOCKPTR GetWriteBlock(int blockidx);
+    void CacheBlocks(int blockidx, int n);
 
     int64_t GetFilesize();
     int64_t GetNDirty();
@@ -61,7 +61,7 @@ public:
 
 private:
     void Async_Sync();
-    void BlockReadForce(const int blockidx, const int n);
+    void BlockReadForce(int blockidx, int n);
     std::shared_ptr<CAbstractBlockIO> bio;
 
     CEncrypt &enc;

@@ -1,6 +1,5 @@
 #include<set>
 #include<algorithm>
-#include<climits>
 
 #include"CPrintCheckRepair.h"
 #include"CDirectory.h"
@@ -119,23 +118,22 @@ void  CPrintCheckRepair::PrintInfo()
     std::map<INODETYPE, int32_t> types;
     int64_t size=0;
     uint64_t lastfreeblock = 0;
-    for(unsigned int i=0; i<fs.fragmentlist.fragments.size(); i++)
-    {
-        int32_t id = fs.fragmentlist.fragments[i].id;
+    for (auto &fragment : fs.fragmentlist.fragments) {
+        int32_t id = fragment.id;
         if (id >= 0)
         {
-                size += fs.fragmentlist.fragments[i].size;
-                if (lastfreeblock < fs.fragmentlist.fragments[i].GetNextFreeBlock(fs.bio->blocksize))
-                    lastfreeblock = fs.fragmentlist.fragments[i].GetNextFreeBlock(fs.bio->blocksize);
+                size += fragment.size;
+                if (lastfreeblock < fragment.GetNextFreeBlock(fs.bio->blocksize))
+                    lastfreeblock = fragment.GetNextFreeBlock(fs.bio->blocksize);
                 s.insert(id);
-                types[fs.fragmentlist.fragments[i].type]++;
+                types[fragment.type]++;
         }
     }
     printf("number of inodes: %zu\n", s.size());
     printf("stored bytes: %lli\n", (long long int)size);
     printf("container usage: %f %%\n", (double)size/(double)fs.bio->GetFilesize()*100.);
     printf("last free block: %lli\n", (long long int)lastfreeblock);
-    printf("empty space at end: %lli Bytes\n", (long long int)fs.bio->GetFilesize()-lastfreeblock*fs.bio->blocksize);
+    printf("empty space at end: %lli Bytes\n", (long long int)(fs.bio->GetFilesize()-lastfreeblock*fs.bio->blocksize));
 
     printf("directory fragments: %i\n", types[INODETYPE::dir]);
     printf("     file fragments: %i\n", types[INODETYPE::file]);
@@ -146,9 +144,8 @@ void  CPrintCheckRepair::PrintInfo()
     for(auto f : s)
     {
         int nfragments = 0;
-        for(unsigned int i=0; i<fs.fragmentlist.fragments.size(); i++)
-        {
-            if (fs.fragmentlist.fragments[i].id == f) nfragments++;
+        for (auto &fragment : fs.fragmentlist.fragments) {
+            if (fragment.id == f) nfragments++;
         }
         int idx = 0;
         if (nfragments > 20) idx = 7; else

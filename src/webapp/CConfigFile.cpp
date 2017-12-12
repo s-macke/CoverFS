@@ -7,7 +7,6 @@
 #include <Poco/XML/XMLWriter.h>
 
 #include <fstream>
-#include <stdio.h>
 #include <fcntl.h>
 #include <unistd.h>
 

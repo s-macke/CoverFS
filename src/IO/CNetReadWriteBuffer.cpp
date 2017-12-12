@@ -27,15 +27,15 @@ void CNetReadWriteBuffer::Sync()
 {
     {
         std::lock_guard<std::mutex> lock(readidmapmtx);
-        int n = readidmap.size();
+        unsigned long n = readidmap.size();
         if (n != 0)
         {
             LOG(WARN) << "Read queue not empty";
         }
     }
-    while(1)
+    while(true)
     {
-        unsigned int n = bufsize.load();
+        size_t n = bufsize.load();
         if (n == 0)
         {
             LOG(DEBUG) << "CNetReadWriteBuffer: sync done";
@@ -69,7 +69,7 @@ void CNetReadWriteBuffer::AsyncRead2(int32_t size, int32_t id)
     boost::asio::buffer(rbi.buf, rbi.size),
     [this](const boost::system::error_code& ec, std::size_t readbytes)
     {
-        assert((int32_t)readbytes == rbi.size);
+        assert(readbytes == rbi.size);
         rbi.promise.set_value();
         AsyncRead();
     });
@@ -131,7 +131,7 @@ void CNetReadWriteBuffer::AsyncWrite()
 
     if (wip) return; // return if it already runs
     //if (bufsize.load() > 0) printf("write size=%i\n", bufsize.load());
-    int sendsize = std::min((unsigned int)buf.size()-popidx, bufsize.load());
+    size_t sendsize = std::min(buf.size()-popidx, bufsize.load());
     boost::asio::async_write(
     socket,
     boost::asio::buffer(&(buf[popidx]), sendsize),

@@ -4,8 +4,8 @@
 #include<vector>
 #include<memory>
 #include<mutex>
-#include<stdint.h>
-#include<stdlib.h>
+#include<cstdint>
+#include<cstdlib>
 
 
 class CAbstractBlockIO;
@@ -13,9 +13,9 @@ class CAbstractBlockIO;
 class CAbstractBlockIO
 {
 public:
-    CAbstractBlockIO(int _blocksize);
-    virtual void Read(const int blockidx, const int n, int8_t* d) = 0;
-    virtual void Write(const int blockidx, const int n, int8_t* d) = 0;
+    explicit CAbstractBlockIO(int _blocksize);
+    virtual void Read(int blockidx, int n, int8_t* d) = 0;
+    virtual void Write(int blockidx, int n, int8_t* d) = 0;
     virtual int64_t GetFilesize() = 0;
     virtual int64_t GetWriteCache();
 
@@ -27,10 +27,10 @@ public:
 class CRAMBlockIO : public CAbstractBlockIO
 {
 public:
-    CRAMBlockIO(int _blocksize);
-    void Read(const int blockidx, const int n, int8_t* d);
-    void Write(const int blockidx, const int n, int8_t* d);
-    int64_t GetFilesize();
+    explicit CRAMBlockIO(int _blocksize);
+    void Read(int blockidx, int n, int8_t* d) override;
+    void Write(int blockidx, int n, int8_t* d) override;
+    int64_t GetFilesize() override;
 
 private:
     std::vector<int8_t> data;

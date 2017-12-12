@@ -3,8 +3,7 @@
 #include"CNetReadWriteBuffer.h"
 
 #include<iostream>
-#include<future>
-#include<cassert>
+#include<memory>
 
 using boost::asio::ip::tcp;
 
@@ -45,14 +44,14 @@ CNetBlockIO::CNetBlockIO(int _blocksize, const std::string &host, const std::str
   sdata(io_service, ctx),
   cmdid(0)
 {
-    assert(sizeof(CommandDesc) == 32);
+    static_assert(sizeof(CommandDesc) == 32, "");
     LOG(INFO) << "Try to connect to " << host << ":" << port;
 
     ctx.set_verify_mode(boost::asio::ssl::context::verify_peer);
     try
     {
         ctx.load_verify_file("ssl/server.crt");
-    } catch(boost::system::system_error e)
+    } catch(boost::system::system_error &e)
     {
         LOG(ERROR) << "Error during loading or parsing of ssl/server.crt: " << e.what();
         throw std::exception();
@@ -100,11 +99,11 @@ CNetBlockIO::CNetBlockIO(int _blocksize, const std::string &host, const std::str
     }
 #endif
 
-    rbbufctrl.reset(new CNetReadWriteBuffer(sctrl));
-    rbbufdata.reset(new CNetReadWriteBuffer(sdata));
+    rbbufctrl = std::make_unique<CNetReadWriteBuffer>(sctrl);
+    rbbufdata = std::make_unique<CNetReadWriteBuffer>(sdata);
 
     iothread = std::thread([&](){
-        work.reset(new boost::asio::io_service::work(io_service));
+        work = std::make_unique<boost::asio::io_service::work>(io_service);
         io_service.run();
     });
 
@@ -142,7 +141,7 @@ int64_t CNetBlockIO::GetWriteCache()
 int64_t CNetBlockIO::GetFilesize()
 {
     int64_t filesize;
-    CommandDesc cmd;
+    CommandDesc cmd{};
     int8_t data[8];
     int32_t id = cmdid.fetch_add(1);
     cmd.cmd = SIZE;
@@ -156,7 +155,7 @@ int64_t CNetBlockIO::GetFilesize()
 
 void CNetBlockIO::GetInfo()
 {
-    CommandDesc cmd;
+    CommandDesc cmd{};
     int8_t data[36];
     int32_t id = cmdid.fetch_add(1);
     cmd.cmd = CONTAINERINFO;
@@ -169,7 +168,7 @@ void CNetBlockIO::GetInfo()
 
 void CNetBlockIO::Close()
 {
-    CommandDesc cmd;
+    CommandDesc cmd{};
     int8_t data[8];
     int32_t id = cmdid.fetch_add(1);
     cmd.cmd = CLOSE;
@@ -184,7 +183,7 @@ void CNetBlockIO::Close()
 
 void CNetBlockIO::Read(const int blockidx, const int n, int8_t *d)
 {
-    CommandDesc cmd;
+    CommandDesc cmd{};
     int32_t id = cmdid.fetch_add(1);
     cmd.cmd = READ;
     cmd.dummy = 0;
@@ -199,7 +198,7 @@ void CNetBlockIO::Read(const int blockidx, const int n, int8_t *d)
 void CNetBlockIO::Write(const int blockidx, const int n, int8_t* d)
 {
     int8_t buf[blocksize*n + 2*8 + 2*4];
-    CommandDesc *cmd = (CommandDesc*)buf;
+    auto *cmd = (CommandDesc*)buf;
     int32_t id = cmdid.fetch_add(1);
     cmd->cmd = WRITE;
     cmd->dummy = 0;
