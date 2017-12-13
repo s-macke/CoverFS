@@ -55,17 +55,33 @@ void ParseCommand(char *commandbuf, ssl_socket &sock)
             auto *reply = (REPLYCOMMANDSTRUCT*)data;
             reply->cmdlen = cmd->length+8;
             reply->id = cmd->id;
-            fread(&reply->data, cmd->length, 1, fp);
+            size_t nread = fread(&reply->data, cmd->length, 1, fp);
+            if (nread == 0)
+            {
+                filesize = ftell(fp);
+                if (cmd->offset+cmd->length >= filesize)
+                {
+                    LOG(WARN) << "Read outside of file boundary";
+                } else
+                {
+                   throw std::runtime_error(std::string("Cannot read ") + std::to_string(cmd->length) + " bytes from container");
+                }
+            }
             boost::asio::write(sock, boost::asio::buffer(reply, reply->cmdlen));
             delete[] data;
             break;
         }
     case COMMAND::write:
-        //printf("WRITE ofs=%li size=%li (block: %li)\n", cmd->offset, cmd->length, cmd->offset/4096);
-        fseek(fp, cmd->offset, SEEK_SET);
-        fwrite(&cmd->data, cmd->length, 1, fp);
-        break;
-
+        {
+            //printf("WRITE ofs=%li size=%li (block: %li)\n", cmd->offset, cmd->length, cmd->offset/4096);
+            fseek(fp, cmd->offset, SEEK_SET);
+            size_t nwrite = fwrite(&cmd->data, cmd->length, 1, fp);
+            if (nwrite == 0) {
+                throw std::runtime_error(
+                        std::string("Cannot write ") + std::to_string(cmd->length) + " bytes into container");
+            }
+            break;
+        }
     case COMMAND::size:
         {
             //printf("SIZE\n");
@@ -167,15 +183,15 @@ void server(boost::asio::io_service& io_service, unsigned short port)
     // finding CA certificates.
     boost::asio::ssl::context ctx(boost::asio::ssl::context::sslv23);
     ctx.set_options(
-    boost::asio::ssl::context::default_workarounds
-    | boost::asio::ssl::context::no_sslv2
-    | boost::asio::ssl::context::single_dh_use);
+        boost::asio::ssl::context::default_workarounds
+        | boost::asio::ssl::context::no_sslv2
+        | boost::asio::ssl::context::single_dh_use);
     ctx.set_password_callback(get_password);
     try
     {
-    ctx.use_certificate_chain_file("ssl/server.crt");
-    ctx.use_private_key_file("ssl/server.key", boost::asio::ssl::context::pem);
-    ctx.use_tmp_dh_file("ssl/dh1024.pem");
+        ctx.use_certificate_chain_file("ssl/server.crt");
+        ctx.use_private_key_file("ssl/server.key", boost::asio::ssl::context::pem);
+        ctx.use_tmp_dh_file("ssl/dh1024.pem");
     } catch(...)
     {
         LOG(ERROR) << "Cannot open ssl related files";
