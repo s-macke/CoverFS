@@ -19,6 +19,8 @@ addons:
     - fuse
     - libfuse2
     - g++-5
+    sources:
+    - ubuntu-toolchain-r-test
 
 before_install:
   - sudo apt-get -q update
