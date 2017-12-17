@@ -1,31 +1,72 @@
-# - Try to find the GNU Libgcrypt library
+# - Try to find GCrypt
 # Once done this will define
 #
-#  LIBGCRYPT_FOUND - system has the Libgcrypt library
-#  LIBGCRYPT_LIBS - The libraries needed to use Libgcrypt
-
-# Copyright (c) 2006, Pino Toscano, <toscano.pino@tiscali.it>
-# Copyright (c) 2008, Modestas Vainius, <modestas@vainius.eu>
+#  GCRYPT_FOUND - system has GCrypt
+#  GCRYPT_INCLUDE_DIRS - the GCrypt include directory
+#  GCRYPT_LIBRARIES - Link these to use GCrypt
+#  GCRYPT_DEFINITIONS - Compiler switches required for using GCrypt
 #
-# Redistribution and use is allowed according to the terms of the BSD license.
-# For details see the accompanying LICENSE.BSD file.
+#=============================================================================
+#  Copyright (c) 2009-2011 Andreas Schneider <asn@cryptomilk.org>
+#
+#  Distributed under the OSI-approved BSD License (the "License");
+#  see accompanying file Copyright.txt for details.
+#
+#  This software is distributed WITHOUT ANY WARRANTY; without even the
+#  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+#  See the License for more information.
+#=============================================================================
+#
 
-include(CheckIncludeFiles)
+if (GCRYPT_LIBRARIES AND GCRYPT_INCLUDE_DIRS)
+    # in cache already
+    # set(GCRYPT_FOUND TRUE)
+else (GCRYPT_LIBRARIES AND GCRYPT_INCLUDE_DIRS)
 
-check_include_files(gcrypt.h HAVE_GCRYPT_H)
+    set(_GCRYPT_ROOT_PATHS
+            "$ENV{PROGRAMFILES}/libgcrypt"
+            )
 
-if (HAVE_GCRYPT_H)
-   set(LIBGCRYPT_HEADERS_FOUND TRUE)
-endif (HAVE_GCRYPT_H)
+    find_path(GCRYPT_ROOT_DIR
+            NAMES
+            include/gcrypt.h
+            PATHS
+            ${_GCRYPT_ROOT_PATHS}
+            )
+    mark_as_advanced(ZLIB_ROOT_DIR)
 
-if (LIBGCRYPT_HEADERS_FOUND)
-   find_library(LIBGCRYPT_LIBS NAMES gcrypt )
-endif (LIBGCRYPT_HEADERS_FOUND)
+    find_path(GCRYPT_INCLUDE_DIR
+            NAMES
+            gcrypt.h
+            PATHS
+            /usr/local/include
+            /opt/local/include
+            /sw/include
+            /usr/lib/sfw/include
+            /mingw64/include
+            ${GCRYPT_ROOT_DIR}/include
+            )
+    set(GCRYPT_INCLUDE_DIRS ${GCRYPT_INCLUDE_DIR})
 
-if (LIBGCRYPT_LIBS)
-   set(LIBGCRYPT_FOUND TRUE)
-   message(STATUS "Libgcrypt found: ${LIBGCRYPT_LIBS}")
-elseif (Libgcrypt_FIND_REQUIRED)
-   message(FATAL_ERROR "Could not find Libgcrypt")
-endif (LIBGCRYPT_LIBS)
+    find_library(GCRYPT_LIBRARY
+            NAMES
+            gcrypt
+            gcrypt11
+            libgcrypt-11
+            PATHS
+            /opt/local/lib
+            /sw/lib
+            /usr/sfw/lib/64
+            /usr/sfw/lib
+            /mingw64/lib
+            ${GCRYPT_ROOT_DIR}/lib
+            )
+    set(GCRYPT_LIBRARIES ${GCRYPT_LIBRARY})
 
+    include(FindPackageHandleStandardArgs)
+    find_package_handle_standard_args(GCrypt DEFAULT_MSG GCRYPT_LIBRARIES GCRYPT_INCLUDE_DIRS)
+
+    # show the GCRYPT_INCLUDE_DIRS and GCRYPT_LIBRARIES variables only in the advanced view
+    mark_as_advanced(GCRYPT_INCLUDE_DIRS GCRYPT_LIBRARIES)
+
+endif (GCRYPT_LIBRARIES AND GCRYPT_INCLUDE_DIRS)
