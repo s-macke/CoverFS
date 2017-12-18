@@ -1,13 +1,6 @@
 set(CMAKE_LEGACY_CYGWIN_WIN32 0)
 
-if (MSYS OR MINGW)
-    #    SET(CMAKE_PREFIX_PATH "/mingw64")
-    #    SET(CMAKE_C_COMPILER "/usr/bin/x86_64-pc-msys-gcc")
-    #    SET(CMAKE_CXX_COMPILER "/usr/bin/x86_64-pc-msys-g++")
-    #    set(BOOST_ROOT /mingw64)
-    #    set(OPENSSL_ROOT_DIR /mingw64)
-    #    CXX=x86_64-pc-msys-g++ CC=x86_64-pc-msys-gcc BOOST_ROOT=/mingw64 OPENSSL_ROOT_DIR=/mingw64 cmake ..
-endif()
+#MINGW64 compile with  CXX=g++ CC=gcc cmake ..
 
 project (CoverFS)
 set(PROJECT_VERSION "0.91")
@@ -49,22 +42,22 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake )
 add_definitions(-std=c++14 -Wall -O2 -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE)
 
 set(CPP_FILES
-        src/utils/Logger.cpp
-        src/IO/CBlockIO.cpp
-        src/IO/CCacheIO.cpp
-        src/IO/CEncrypt.cpp
-        src/IO/CNetBlockIO.cpp
-        src/IO/CNetReadWriteBuffer.cpp
-        src/SimpleFS/CSimpleFS.cpp
-        src/SimpleFS/CDirectory.cpp
-        src/SimpleFS/INode.cpp
-        src/SimpleFS/CFragment.cpp
-        src/SimpleFS/CPrintCheckRepair.cpp
-        src/interface/CFSHandler.cpp
-        src/client/ParallelTest.cpp
-        src/client/CStatusView.cpp
-        src/client/main.cpp
-        )
+    src/utils/Logger.cpp
+    src/IO/CBlockIO.cpp
+    src/IO/CCacheIO.cpp
+    src/IO/CEncrypt.cpp
+    src/IO/CNetBlockIO.cpp
+    src/IO/CNetReadWriteBuffer.cpp
+    src/SimpleFS/CSimpleFS.cpp
+    src/SimpleFS/CDirectory.cpp
+    src/SimpleFS/INode.cpp
+    src/SimpleFS/CFragment.cpp
+    src/SimpleFS/CPrintCheckRepair.cpp
+    src/interface/CFSHandler.cpp
+    src/client/ParallelTest.cpp
+    src/client/CStatusView.cpp
+    src/client/main.cpp
+    )
 
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
@@ -88,12 +81,13 @@ if ("${CMAKE_SYSTEM_NAME}" STREQUAL "CYGWIN")
     include_directories(${DOKAN_INCLUDE_DIR})
     set(FUSE_LIB ${DOKAN_LIB_DIR})
 endif ()
-if ("${CMAKE_SYSTEM_NAME}" STREQUAL "MSYS")
+if ("${CMAKE_SYSTEM_NAME}" STREQUAL "MSYS" OR "${CMAKE_SYSTEM_NAME}" STREQUAL "MINGW" OR "${CMAKE_SYSTEM_NAME}" STREQUAL "MINGW64_NT-10.0")
     MESSAGE( STATUS "Add Dokan Library")
     find_package(dokan REQUIRED)
     set(CPP_FILES ${CPP_FILES} src/fuse/dokanoper.cpp)
     include_directories(${DOKAN_INCLUDE_DIR})
     set(FUSE_LIB ${DOKAN_LIB_DIR})
+    set(PLATFORM_LIBS ws2_32 wsock32)
 endif ()
 
 
@@ -106,28 +100,28 @@ if (POCO_FOUND)
 endif ()
 
 configure_file(
-        ${PROJECT_SOURCE_DIR}/cmake/config.h.in
-        ${PROJECT_BINARY_DIR}/config.h
+    ${PROJECT_SOURCE_DIR}/cmake/config.h.in
+    ${PROJECT_BINARY_DIR}/config.h
 )
 
 add_executable(coverfsserver src/server/coverfsserver.cpp src/utils/Logger.cpp)
 add_executable(coverfs ${CPP_FILES})
 add_executable(checkfragment tests/checkfragment.cpp)
 
-target_link_libraries (coverfs ${Boost_SYSTEM_LIBRARY_RELEASE} pthread ssl crypto gcrypt ${FUSE_LIB} ${POCO_LIB})
-target_link_libraries (coverfsserver ${Boost_SYSTEM_LIBRARY_RELEASE} pthread ssl crypto)
-target_link_libraries (checkfragment ${Boost_SYSTEM_LIBRARY_RELEASE} pthread)
+target_link_libraries (coverfs ${Boost_SYSTEM_LIBRARY_RELEASE} pthread ssl crypto gcrypt ${FUSE_LIB} ${POCO_LIB} ${PLATFORM_LIBS})
+target_link_libraries (coverfsserver ${Boost_SYSTEM_LIBRARY_RELEASE} pthread ssl crypto ${PLATFORM_LIBS})
+target_link_libraries (checkfragment ${Boost_SYSTEM_LIBRARY_RELEASE} pthread ${PLATFORM_LIBS})
 
 add_custom_command(
-        TARGET coverfs POST_BUILD
-        COMMAND "${CMAKE_COMMAND}" -E create_symlink ${PROJECT_SOURCE_DIR}/ssl ${PROJECT_BINARY_DIR}/ssl
-        COMMAND "${CMAKE_COMMAND}" -E create_symlink ${PROJECT_SOURCE_DIR}/templates ${PROJECT_BINARY_DIR}/templates
-        COMMENT "Copying to build directory"
+    TARGET coverfs POST_BUILD
+    COMMAND "${CMAKE_COMMAND}" -E create_symlink ${PROJECT_SOURCE_DIR}/ssl ${PROJECT_BINARY_DIR}/ssl
+    COMMAND "${CMAKE_COMMAND}" -E create_symlink ${PROJECT_SOURCE_DIR}/templates ${PROJECT_BINARY_DIR}/templates
+    COMMENT "Copying to build directory"
 )
 
 
 add_custom_target(dist
-        COMMAND git archive --prefix=${ARCHIVE_NAME}/ HEAD
-        | bzip2 > ${CMAKE_BINARY_DIR}/${ARCHIVE_NAME}.tar.bz2
-        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+    COMMAND git archive --prefix=${ARCHIVE_NAME}/ HEAD
+    | bzip2 > ${CMAKE_BINARY_DIR}/${ARCHIVE_NAME}.tar.bz2
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
