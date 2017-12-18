@@ -65,8 +65,8 @@ public:
 
 private:
 
-    int CreateDirectory(CDirectory &dir, const std::string &name);
-    int CreateFile(CDirectory &dir, const std::string &name);
+    int MakeDirectory(CDirectory& dir, const std::string& name);
+    int MakeFile(CDirectory& dir, const std::string& name);
 
     int64_t Read(INODE &node, int8_t *d, int64_t ofs, int64_t size);
     void Write(INODE &node, const int8_t *d, int64_t ofs, int64_t size);

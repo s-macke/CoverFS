@@ -48,20 +48,20 @@ void CDirectory::Create()
     dirnode->Write((int8_t*)buf, 0, blocksize);
 }
 
-int CDirectory::CreateDirectory(const std::string &name)
+int CDirectory::MakeDirectory(const std::string& name)
 {
     DIRENTRY e("");
     Find(name, e);
     if (e.id != CFragmentDesc::INVALIDID) throw EEXIST;
-    return fs.CreateDirectory(*this, name);
+    return fs.MakeDirectory(*this, name);
 }
 
-int CDirectory::CreateFile(const std::string &name)
+int CDirectory::MakeFile(const std::string& name)
 {
     DIRENTRY e("");
     Find(name, e);
     if (e.id != CFragmentDesc::INVALIDID) throw EEXIST;
-    return fs.CreateFile(*this, name);
+    return fs.MakeFile(*this, name);
 }
 
 void CDirectory::AddEntry(const DIRENTRY &denew)

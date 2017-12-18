@@ -15,9 +15,6 @@
 extern "C" {
     #include <dokan/dokan.h>
 }
-// fix some bad defines
-#undef CreateDirectory
-#undef CreateFile
 
 static SimpleFilesystem *fs;
 static uint64_t handleid = 1;
@@ -170,7 +167,7 @@ Dokan_CreateFile(
             try
             {
                 CDirectory dir = fs->OpenDir(splitpath);
-                dir.CreateDirectory(filename);
+                dir.MakeDirectory(filename);
                 DokanFileInfo->Context = handleid++;
                 DokanFileInfo->IsDirectory = TRUE;
                 handle2path[DokanFileInfo->Context] = path;
@@ -210,7 +207,7 @@ Dokan_CreateFile(
         try
         {
             CDirectory dir = fs->OpenDir(splitpath);
-            dir.CreateFile(filename);
+            dir.MakeFile(filename);
             DokanFileInfo->Context = handleid++;
             handle2path[DokanFileInfo->Context] = path;
         } catch(const int &err) // or file already exist?

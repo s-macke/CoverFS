@@ -142,7 +142,7 @@ void Execute(int tid)
             printf("tid %1i %5i: create&remove %i\n", tid, iter, id);
             char newfilename[256];
             sprintf(newfilename, "tests%02i_check.dat", id);
-            dir.CreateFile(newfilename);
+            dir.MakeFile(newfilename);
             INODEPTR node = fs->OpenNode(newfilename);
             node->Remove();
         }
@@ -179,7 +179,7 @@ void ParallelTest(unsigned int _nfiles, unsigned int _nthreads, unsigned int _ni
         sprintf(files[i].filename, "tests%02i_%03i.dat", i, 0);
         try
         {
-            dir.CreateFile(files[i].filename);
+            dir.MakeFile(files[i].filename);
         }
         catch(...)
         {

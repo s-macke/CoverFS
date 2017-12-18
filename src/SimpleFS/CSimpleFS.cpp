@@ -126,7 +126,7 @@ void SimpleFilesystem::CreateFS()
     rootinode->id = CFragmentDesc::INVALIDID;
     rootinode->type = INODETYPE::dir;
     CDirectory rootdir = CDirectory(rootinode, *this);
-    int id = rootdir.CreateDirectory(std::string("root"));
+    int id = rootdir.MakeDirectory(std::string("root"));
 
     if (id != CFragmentDesc::ROOTID)
     {
@@ -140,9 +140,9 @@ void SimpleFilesystem::CreateFS()
 */
 
     CDirectory dir = OpenDir("/");
-    dir.CreateDirectory("mydir");
+    dir.MakeDirectory("mydir");
 
-    dir.CreateFile("hello");
+    dir.MakeFile("hello");
     INODEPTR node = OpenNode("hello");
     const char *s = "Hello world\n";
     node->Write((int8_t*)s, 0, strlen(s));
@@ -472,14 +472,14 @@ int SimpleFilesystem::CreateNode(CDirectory &dir, const std::string &name, INODE
     return id;
 }
 
-int SimpleFilesystem::CreateFile(CDirectory &dir, const std::string &name)
+int SimpleFilesystem::MakeFile(CDirectory &dir, const std::string &name)
 {
     int id = CreateNode(dir, name, INODETYPE::file);
     LOG(LogLevel::DEEP) << "Create File '" << name << "' with id=" << id;
     return id;
 }
 
-int SimpleFilesystem::CreateDirectory(CDirectory &dir, const std::string &name)
+int SimpleFilesystem::MakeDirectory(CDirectory &dir, const std::string &name)
 {
     int id = CreateNode(dir, name, INODETYPE::dir);
     LOG(LogLevel::DEEP) << "Create Directory '" << name << "' with id=" << id;
