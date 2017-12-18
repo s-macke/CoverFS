@@ -191,7 +191,7 @@ static int fuse_mkdir(const char *path, mode_t mode)
     try
     {
         CDirectory dir = fs->OpenDir(splitpath);
-        dir.CreateDirectory(dirname);
+        dir.MakeDirectory(dirname);
     } catch(const int &err)
     {
         return -err;
@@ -242,7 +242,7 @@ static int fuse_create(const char *path, mode_t mode, struct fuse_file_info *fi)
     try
     {
         CDirectory dir = fs->OpenDir(splitpath);
-        fi->fh = dir.CreateFile(filename);
+        fi->fh = dir.MakeFile(filename);
     } catch(const int &err)
     {
         return -err;
