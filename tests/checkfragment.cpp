@@ -91,7 +91,13 @@ void Execute(int tid)
             retsize = 0;
             do
             {
-                ssize_t ret = pwrite(files[id].fd, &(files[id].data[ofs+retsize]), newsize-retsize, ofs);
+                ssize_t ret = lseek(files[id].fd, ofs, SEEK_SET);
+                if (ret < 0)
+                {
+                    perror("Error during seek");
+                    exit(1);
+                }
+                ret = write(files[id].fd, &(files[id].data[ofs+retsize]), newsize-retsize);
                 if (ret < 0)
                 {
                     perror("Error during write");
@@ -110,7 +116,14 @@ void Execute(int tid)
             retsize = 0;
             do
             {
-                ssize_t ret = pread(files[id].fd, &data[retsize], newsize-retsize, ofs);
+                ssize_t ret = lseek(files[id].fd, ofs, SEEK_SET);
+                if (ret < 0)
+                {
+                    perror("Error during seek");
+                    exit(1);
+                }
+
+                ret = read(files[id].fd, &data[retsize], newsize-retsize);
                 if (ret < 0)
                 {
                     perror("Error during read");
