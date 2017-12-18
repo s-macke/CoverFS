@@ -166,7 +166,7 @@ void session(ssl_socket *sock)
     }
     catch (std::exception& e)
     {
-        LOG(LogLevel::ERROR) << "Exception in thread: " << e.what();
+        LOG(LogLevel::ERR) << "Exception in thread: " << e.what();
     }
     LOG(LogLevel::INFO) << "Connection closed";
 }
@@ -194,7 +194,7 @@ void server(boost::asio::io_service& io_service, unsigned short port)
         ctx.use_tmp_dh_file("ssl/dh1024.pem");
     } catch(...)
     {
-        LOG(LogLevel::ERROR) << "Cannot open ssl related files";
+        LOG(LogLevel::ERR) << "Cannot open ssl related files";
         throw std::exception();
     }
 
@@ -219,11 +219,11 @@ void server(boost::asio::io_service& io_service, unsigned short port)
         }
         catch (std::exception& e)
         {
-            LOG(LogLevel::ERROR) << "Exception: " << e.what();
+            LOG(LogLevel::ERR) << "Exception: " << e.what();
         }
         catch (...) // No matter what happens, continue
         {
-            LOG(LogLevel::ERROR) << "Unknown connection problem. Connection closed";
+            LOG(LogLevel::ERR) << "Unknown connection problem. Connection closed";
         }
 
     }
@@ -265,7 +265,7 @@ int main(int argc, char *argv[])
         fp = fopen(filename, "wb");
         if (fp == nullptr)
         {
-            LOG(LogLevel::ERROR) << "Cannot create file";
+            LOG(LogLevel::ERR) << "Cannot create file";
             return 1;
         }
         char data[4096*3] = {0};
@@ -274,7 +274,7 @@ int main(int argc, char *argv[])
         fp = fopen(filename, "r+b");
         if (fp == nullptr)
         {
-            LOG(LogLevel::ERROR) << "Cannot open file";
+            LOG(LogLevel::ERR) << "Cannot open file";
             return 1;
         }
     }
@@ -285,11 +285,11 @@ int main(int argc, char *argv[])
     }
     catch(std::exception &e)
     {
-        LOG(LogLevel::ERROR) << e.what();
+        LOG(LogLevel::ERR) << e.what();
     }
     catch(...)
     {
-        LOG(LogLevel::ERROR) << "Unknown exception";
+        LOG(LogLevel::ERR) << "Unknown exception";
     }
     return 0;
 }

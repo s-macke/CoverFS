@@ -204,7 +204,7 @@ int main(int argc, char *argv[])
     } else
     if (strncmp(backend, "file", 255) == 0)
     {
-        LOG(LogLevel::ERROR) << "Backend 'file' not supported";
+        LOG(LogLevel::ERR) << "Backend 'file' not supported";
         return EXIT_FAILURE;
     } else
     if (strncmp(backend, "cvfsserver", 255) == 0)
@@ -212,7 +212,7 @@ int main(int argc, char *argv[])
         success = handler.ConnectNET(hostname, port).get();
     } else
     {
-        LOG(LogLevel::ERROR) << "Backend '" << backend << "' not supported";
+        LOG(LogLevel::ERR) << "Backend '" << backend << "' not supported";
         return EXIT_FAILURE;
     }
 
@@ -270,7 +270,7 @@ int main(int argc, char *argv[])
 
     if (signal(SIGINT, catch_function) == SIG_ERR)
     {
-        LOG(LogLevel::ERROR) << "An error occurred while setting a signal handler.";
+        LOG(LogLevel::ERR) << "An error occurred while setting a signal handler.";
         return EXIT_FAILURE;
     }
     handler.Mount(argc, argv, mountpoint).get();

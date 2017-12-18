@@ -59,7 +59,7 @@ CNetBlockIO::CNetBlockIO(int _blocksize, const std::string &host, const std::str
         ctx.load_verify_file("ssl/server.crt");
     } catch(boost::system::system_error &e)
     {
-        LOG(LogLevel::ERROR) << "Error during loading or parsing of ssl/server.crt: " << e.what();
+        LOG(LogLevel::ERR) << "Error during loading or parsing of ssl/server.crt: " << e.what();
         throw std::exception();
     }
 
@@ -75,7 +75,7 @@ CNetBlockIO::CNetBlockIO(int _blocksize, const std::string &host, const std::str
     tcp::resolver::iterator iter = resolver.resolve(q, ec);
     if (ec)
     {
-        LOG(LogLevel::ERROR) << "Cannot resolve host";
+        LOG(LogLevel::ERR) << "Cannot resolve host";
         throw std::exception();
     }
     LOG(LogLevel::INFO) << "Connect to " << host;
@@ -83,7 +83,7 @@ CNetBlockIO::CNetBlockIO(int _blocksize, const std::string &host, const std::str
     boost::asio::connect(sctrl.lowest_layer(), iter, ec);
     if (ec)
     {
-        LOG(LogLevel::ERROR) << "Cannot connect to server. (Control Stream)\n";
+        LOG(LogLevel::ERR) << "Cannot connect to server. (Control Stream)\n";
         throw std::exception();
     }
     sctrl.handshake(boost::asio::ssl::stream_base::client);
@@ -91,7 +91,7 @@ CNetBlockIO::CNetBlockIO(int _blocksize, const std::string &host, const std::str
     boost::asio::connect(sdata.lowest_layer(), iter, ec);
     if (ec)
     {
-        LOG(LogLevel::ERROR) << "Cannot connect to server. (Data Stream)";
+        LOG(LogLevel::ERR) << "Cannot connect to server. (Data Stream)";
         throw std::exception();
     }
     sdata.handshake(boost::asio::ssl::stream_base::client);

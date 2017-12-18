@@ -3,7 +3,7 @@
 
 #include <sstream>
 
-enum class LogLevel : int {ERROR, WARN, INFO, DEBUG, DEEP};
+enum class LogLevel : int {ERR, WARN, INFO, DEBUG, DEEP};
 
 class Logger
 {

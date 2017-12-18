@@ -133,7 +133,7 @@ int CFragmentList::ReserveNewFragment(INODETYPE type)
         //SortOffsets(); // Sorting is not necessary, because a FREEID and ofs=0 are treated the same way
         return id;
     }
-    LOG(LogLevel::ERROR) << "No free fragments available\n";
+    LOG(LogLevel::ERR) << "No free fragments available\n";
     exit(1);
     return id;
 }

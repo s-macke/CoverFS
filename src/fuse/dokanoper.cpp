@@ -625,7 +625,7 @@ int StopDokan()
         return EXIT_SUCCESS;
     else
     {
-        LOG(LogLevel::ERROR) << "Unmount failed";
+        LOG(LogLevel::ERR) << "Unmount failed";
         return EXIT_FAILURE;
     }
 }
@@ -683,28 +683,28 @@ int StartDokan(int argc, char *argv[], const char* _mountpoint, SimpleFilesystem
         LOG(LogLevel::INFO) << "Dokan: Success";
         break;
     case DOKAN_ERROR:
-        LOG(LogLevel::ERROR) << "Dokan: Error";
+        LOG(LogLevel::ERR) << "Dokan: Error";
         return EXIT_FAILURE;
     case DOKAN_DRIVE_LETTER_ERROR:
-        LOG(LogLevel::ERROR) << "Dokan: Bad Drive letter";
+        LOG(LogLevel::ERR) << "Dokan: Bad Drive letter";
         return EXIT_FAILURE;
     case DOKAN_DRIVER_INSTALL_ERROR:
-        LOG(LogLevel::ERROR) << "Dokan: Can't install driver";
+        LOG(LogLevel::ERR) << "Dokan: Can't install driver";
         return EXIT_FAILURE;
     case DOKAN_START_ERROR:
-        LOG(LogLevel::ERROR) << "Dokan: Driver something wrong";
+        LOG(LogLevel::ERR) << "Dokan: Driver something wrong";
         return EXIT_FAILURE;
     case DOKAN_MOUNT_ERROR:
-        LOG(LogLevel::ERROR) << "Dokan: Can't assign a drive letter";
+        LOG(LogLevel::ERR) << "Dokan: Can't assign a drive letter";
         return EXIT_FAILURE;
     case DOKAN_MOUNT_POINT_ERROR:
-        LOG(LogLevel::ERROR) << "Dokan: Mount point error";
+        LOG(LogLevel::ERR) << "Dokan: Mount point error";
         return EXIT_FAILURE;
     case DOKAN_VERSION_ERROR:
-        LOG(LogLevel::ERROR) << "Dokan: Version error";
+        LOG(LogLevel::ERR) << "Dokan: Version error";
         return EXIT_FAILURE;
     default:
-        LOG(LogLevel::ERROR) << "Dokan: Unknown error: " << status;
+        LOG(LogLevel::ERR) << "Dokan: Unknown error: " << status;
         return EXIT_FAILURE;
     }
 

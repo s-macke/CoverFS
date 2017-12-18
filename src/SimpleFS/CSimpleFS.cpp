@@ -130,7 +130,7 @@ void SimpleFilesystem::CreateFS()
 
     if (id != CFragmentDesc::ROOTID)
     {
-        LOG(LogLevel::ERROR) << "Error: Cannot create root directory";
+        LOG(LogLevel::ERR) << "Error: Cannot create root directory";
         exit(1);
     }
 /*
