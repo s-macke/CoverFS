@@ -50,7 +50,7 @@ void CStatusView::Work()
             ncached = "-";
             ndirty = "-";
         }
-        LOG(INFO) << 
+        LOG(LogLevel::INFO) <<
         "used inodes: " << ninodes << 
         " cached blocks: "<< ncached <<
         " dirty blocks: " << ndirty <<

@@ -31,7 +31,7 @@ void GCryptCheckError(const char *function, gpg_error_t ret)
 {
     if (ret)
     {
-        LOG(ERROR) << function << ": Failure: " << gcry_strsource(ret) << "/" << gcry_strerror (ret);
+        LOG(LogLevel::ERROR) << function << ": Failure: " << gcry_strsource(ret) << "/" << gcry_strerror (ret);
         throw std::exception();
     }
 }
@@ -51,7 +51,7 @@ void CEncrypt::PassToHash(char *pass, uint8_t salt[32], uint8_t passkey[64], uns
 
 void CEncrypt::CreateEnc(int8_t *block, char *pass)
 {
-    LOG(INFO) << "Create Encryption block";
+    LOG(LogLevel::INFO) << "Create Encryption block";
     uint8_t key[64];
     gcry_randomize (key, 64, GCRY_STRONG_RANDOM);
 
@@ -96,10 +96,10 @@ CEncrypt::CEncrypt(CAbstractBlockIO &bio, char *pass)
     gpg_error_t ret;
 
     const char* gcryptversion = gcry_check_version (GCRYPT_VERSION);
-    LOG(INFO) << "gcrypt version " << gcryptversion;
+    LOG(LogLevel::INFO) << "gcrypt version " << gcryptversion;
     if (gcryptversion == nullptr)
     {
-        LOG(ERROR) << "gcrypt version too old";
+        LOG(LogLevel::ERROR) << "gcrypt version too old";
         throw std::exception();
     }
     ret = gcry_control (GCRYCTL_SET_THREAD_CBS, &gcry_threads_pthread);
@@ -137,7 +137,7 @@ CEncrypt::CEncrypt(CAbstractBlockIO &bio, char *pass)
 
     if (memcmp(check, h->user[0].checkbytes, 64) != 0)
     {
-        LOG(ERROR) << "Cannot decrypt filesystem. Did you type the right password?";
+        LOG(LogLevel::ERROR) << "Cannot decrypt filesystem. Did you type the right password?";
         throw std::exception();
     }
     uint8_t key[64];

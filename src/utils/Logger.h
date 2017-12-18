@@ -3,7 +3,7 @@
 
 #include <sstream>
 
-enum LogLevel {ERROR, WARN, INFO, DEBUG, DEEP};
+enum class LogLevel : int {ERROR, WARN, INFO, DEBUG, DEEP};
 
 class Logger
 {
@@ -17,14 +17,21 @@ class Logger
 
     void Set(LogLevel newlevel);
 
-    private:
+    template <typename E>
+    static constexpr auto to_underlying(E e) noexcept
+    {
+      return static_cast<std::underlying_type_t<E>>(e);
+    }
+
+
+private:
         std::string ToString(LogLevel level);
         static LogLevel level;
         std::ostringstream os;
 };
 
 #define LOG(level)\
-  if ((level) > Logger::GetReporingLevel()) ;\
+  if (Logger::to_underlying(level) > Logger::to_underlying(Logger::GetReporingLevel())) ;\
   else Logger().Get(level)
 
 #endif

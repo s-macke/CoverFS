@@ -66,7 +66,7 @@ int CDirectory::CreateFile(const std::string &name)
 
 void CDirectory::AddEntry(const DIRENTRY &denew)
 {
-    LOG(DEEP) << "AddDirEntry '" << denew.name << "' id=" << denew.id;
+    LOG(LogLevel::DEEP) << "AddDirEntry '" << denew.name << "' id=" << denew.id;
     bool written = false;
     std::lock_guard<std::mutex> lock(dirnode->GetMutex());
     ForEachEntryNonBlocking([&](DIRENTRY &de)
@@ -91,7 +91,7 @@ void CDirectory::AddEntry(const DIRENTRY &denew)
 void CDirectory::RemoveEntry(const std::string &name, DIRENTRY &e)
 {
     e.id = CFragmentDesc::INVALIDID;
-    LOG(DEEP) << "RemoveDirEntry '" << name << "' in dir '" << dirnode->name << "'";
+    LOG(LogLevel::DEEP) << "RemoveDirEntry '" << name << "' in dir '" << dirnode->name << "'";
     ForEachEntry([&](DIRENTRY &de)
     {
         if (de.id == CFragmentDesc::INVALIDID) return FOREACHENTRYRET::OK;

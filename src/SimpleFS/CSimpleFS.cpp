@@ -56,9 +56,9 @@ SimpleFilesystem::SimpleFilesystem(const std::shared_ptr<CCacheIO> &_bio) : bio(
     nremoved = 0;
     ntruncated = 0;
 
-    LOG(INFO) << "container info:";
-    LOG(INFO) << "  size: " << int(bio->GetFilesize()/(1024*1024)) << " MB";
-    LOG(INFO) << "  blocksize: " << bio->blocksize << " bytes";
+    LOG(LogLevel::INFO) << "container info:";
+    LOG(LogLevel::INFO) << "  size: " << int(bio->GetFilesize()/(1024*1024)) << " MB";
+    LOG(LogLevel::INFO) << "  blocksize: " << bio->blocksize << " bytes";
 
     CBLOCKPTR superblock = bio->GetBlock(1);
     auto * super = (SUPER*)superblock->GetBufRead();
@@ -68,7 +68,7 @@ SimpleFilesystem::SimpleFilesystem(const std::shared_ptr<CCacheIO> &_bio) : bio(
         CreateFS();
         return;
     }
-    LOG(INFO) << "filesystem " << super->magic << " V" << (super->version>>16) << "." << (super->version|0xFFFF);
+    LOG(LogLevel::INFO) << "filesystem " << super->magic << " V" << (super->version>>16) << "." << (super->version|0xFFFF);
     superblock->ReleaseBuf();
 
     fragmentlist.Load();
@@ -76,16 +76,16 @@ SimpleFilesystem::SimpleFilesystem(const std::shared_ptr<CCacheIO> &_bio) : bio(
 
 SimpleFilesystem::~SimpleFilesystem()
 {
-    LOG(DEBUG) << "SimpleFilesystem: Destruct";
-    LOG(INFO) << "Opened files:        " << nopenfiles;
-    LOG(INFO) << "Opened directories:  " << nopendir;
-    LOG(INFO) << "Created files:       " << ncreatefiles;
-    LOG(INFO) << "Created directories: " << ncreatedir;
-    LOG(INFO) << "Read commands:       " << nread;
-    LOG(INFO) << "Write commands:      " << nwritten;
-    LOG(INFO) << "Renamed nodes:       " << nrenamed;
-    LOG(INFO) << "Removed nodes:       " << nremoved;
-    LOG(INFO) << "Truncated nodes:     " << ntruncated;
+    LOG(LogLevel::DEBUG) << "SimpleFilesystem: Destruct";
+    LOG(LogLevel::INFO) << "Opened files:        " << nopenfiles;
+    LOG(LogLevel::INFO) << "Opened directories:  " << nopendir;
+    LOG(LogLevel::INFO) << "Created files:       " << ncreatefiles;
+    LOG(LogLevel::INFO) << "Created directories: " << ncreatedir;
+    LOG(LogLevel::INFO) << "Read commands:       " << nread;
+    LOG(LogLevel::INFO) << "Write commands:      " << nwritten;
+    LOG(LogLevel::INFO) << "Renamed nodes:       " << nrenamed;
+    LOG(LogLevel::INFO) << "Removed nodes:       " << nremoved;
+    LOG(LogLevel::INFO) << "Truncated nodes:     " << ntruncated;
 
 
     std::lock_guard<std::mutex> lock(inodescachemtx);
@@ -93,7 +93,7 @@ SimpleFilesystem::~SimpleFilesystem()
     {
         while(inode.second.use_count() > 1)
         {
-            LOG(WARN) << "Inode with id=" << inode.second->id << "still in use. Filename='" << inode.second->name << "'";
+            LOG(LogLevel::WARN) << "Inode with id=" << inode.second->id << "still in use. Filename='" << inode.second->name << "'";
             std::this_thread::sleep_for(std::chrono::seconds(1));
         }
     }
@@ -106,10 +106,10 @@ int64_t SimpleFilesystem::GetNInodes()
 
 void SimpleFilesystem::CreateFS()
 {
-    LOG(INFO) << "==================";
-    LOG(INFO) << "Create Filesystem";
+    LOG(LogLevel::INFO) << "==================";
+    LOG(LogLevel::INFO) << "Create Filesystem";
 
-    LOG(INFO) << "  Write superblock";
+    LOG(LogLevel::INFO) << "  Write superblock";
 
     CBLOCKPTR superblock = bio->GetBlock(1);
     SUPER* super = (SUPER*)superblock->GetBufReadWrite();
@@ -130,7 +130,7 @@ void SimpleFilesystem::CreateFS()
 
     if (id != CFragmentDesc::ROOTID)
     {
-        LOG(ERROR) << "Error: Cannot create root directory";
+        LOG(LogLevel::ERROR) << "Error: Cannot create root directory";
         exit(1);
     }
 /*
@@ -149,8 +149,8 @@ void SimpleFilesystem::CreateFS()
 
     bio->Sync();
 
-    LOG(INFO) << "Filesystem created";
-    LOG(INFO) << "==================";
+    LOG(LogLevel::INFO) << "Filesystem created";
+    LOG(LogLevel::INFO) << "==================";
 }
 
 INODEPTR SimpleFilesystem::OpenNode(int id)
@@ -160,7 +160,7 @@ INODEPTR SimpleFilesystem::OpenNode(int id)
     auto it = inodes.find(id);
     if (it != inodes.end())
     {
-        LOG(DEEP) << "Open File with id=" << id << " size=" << it->second->size << "and ptrcount=" << it->second.use_count();
+        LOG(LogLevel::DEEP) << "Open File with id=" << id << " size=" << it->second->size << "and ptrcount=" << it->second.use_count();
         assert(id == it->second->id);
         return it->second;
     }
@@ -175,7 +175,7 @@ INODEPTR SimpleFilesystem::OpenNode(int id)
     assert(!node->fragments.empty());
     node->type = fragmentlist.fragments[node->fragments[0]].type;
     inodes[id] = node;
-    LOG(DEEP) << "Open File with id=" << id << " size=" << node->size;
+    LOG(LogLevel::DEEP) << "Open File with id=" << id << " size=" << node->size;
 
     if (node->type == INODETYPE::dir) nopendir++; else nopenfiles++;
 
@@ -361,7 +361,7 @@ void SimpleFilesystem::ShrinkNode(INODE &node, int64_t size)
 void SimpleFilesystem::Truncate(INODE &node, int64_t size, bool dozero)
 {
     ntruncated++;
-    LOG(DEEP) << "Truncate of id=" << node.id << " from:" << node.size << "to:" << size;
+    LOG(LogLevel::DEEP) << "Truncate of id=" << node.id << " from:" << node.size << "to:" << size;
     assert(node.id != CFragmentDesc::INVALIDID);
     if (size == node.size) return;
 
@@ -475,14 +475,14 @@ int SimpleFilesystem::CreateNode(CDirectory &dir, const std::string &name, INODE
 int SimpleFilesystem::CreateFile(CDirectory &dir, const std::string &name)
 {
     int id = CreateNode(dir, name, INODETYPE::file);
-    LOG(DEEP) << "Create File '" << name << "' with id=" << id;
+    LOG(LogLevel::DEEP) << "Create File '" << name << "' with id=" << id;
     return id;
 }
 
 int SimpleFilesystem::CreateDirectory(CDirectory &dir, const std::string &name)
 {
     int id = CreateNode(dir, name, INODETYPE::dir);
-    LOG(DEEP) << "Create Directory '" << name << "' with id=" << id;
+    LOG(LogLevel::DEEP) << "Create Directory '" << name << "' with id=" << id;
 
     INODEPTR newdirnode = OpenNode(id);
     newdirnode->parentid = dir.dirnode->id;

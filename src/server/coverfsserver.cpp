@@ -42,7 +42,7 @@ void ParseCommand(char *commandbuf, ssl_socket &sock)
 {
     //COMMANDSTRUCT *cmd = reinterpret_cast<COMMANDSTRUCT*>(commandbuf);
     auto *cmd = (COMMANDSTRUCT*)commandbuf;
-    LOG(INFO) << "received command " << cmd->cmd << " with len=" << cmd->cmdlen;
+    LOG(LogLevel::INFO) << "received command " << cmd->cmd << " with len=" << cmd->cmdlen;
 
     assert(cmd->cmdlen >= 8);
     switch((COMMAND)cmd->cmd)
@@ -61,7 +61,7 @@ void ParseCommand(char *commandbuf, ssl_socket &sock)
                 filesize = ftell(fp);
                 if (cmd->offset+cmd->length >= filesize)
                 {
-                    LOG(WARN) << "Read outside of file boundary";
+                    LOG(LogLevel::WARN) << "Read outside of file boundary";
                 } else
                 {
                    throw std::runtime_error(std::string("Cannot read ") + std::to_string(cmd->length) + " bytes from container");
@@ -166,9 +166,9 @@ void session(ssl_socket *sock)
     }
     catch (std::exception& e)
     {
-        LOG(ERROR) << "Exception in thread: " << e.what();
+        LOG(LogLevel::ERROR) << "Exception in thread: " << e.what();
     }
-    LOG(INFO) << "Connection closed";
+    LOG(LogLevel::INFO) << "Connection closed";
 }
 
 std::string get_password(std::size_t max_length, boost::asio::ssl::context::password_purpose purpose)
@@ -194,11 +194,11 @@ void server(boost::asio::io_service& io_service, unsigned short port)
         ctx.use_tmp_dh_file("ssl/dh1024.pem");
     } catch(...)
     {
-        LOG(ERROR) << "Cannot open ssl related files";
+        LOG(LogLevel::ERROR) << "Cannot open ssl related files";
         throw std::exception();
     }
 
-    LOG(INFO) << "Start listening on port " << port;
+    LOG(LogLevel::INFO) << "Start listening on port " << port;
     tcp::acceptor a(io_service, tcp::endpoint(tcp::v4(), port));
 
     for (;;)
@@ -207,7 +207,7 @@ void server(boost::asio::io_service& io_service, unsigned short port)
         {
             auto *sock = new ssl_socket(io_service, ctx);
             a.accept(sock->lowest_layer());
-            LOG(INFO)
+            LOG(LogLevel::INFO)
                 << "Connection from '" 
                 << sock->lowest_layer().remote_endpoint().address().to_string()
                 << "'. Establish SSL connection";
@@ -219,11 +219,11 @@ void server(boost::asio::io_service& io_service, unsigned short port)
         }
         catch (std::exception& e)
         {
-            LOG(ERROR) << "Exception: " << e.what();
+            LOG(LogLevel::ERROR) << "Exception: " << e.what();
         }
         catch (...) // No matter what happens, continue
         {
-            LOG(ERROR) << "Unknown connection problem. Connection closed";
+            LOG(LogLevel::ERROR) << "Unknown connection problem. Connection closed";
         }
 
     }
@@ -261,11 +261,11 @@ int main(int argc, char *argv[])
 
     if (fp == nullptr)
     {
-        LOG(INFO) << "create new file '" << filename << "'";
+        LOG(LogLevel::INFO) << "create new file '" << filename << "'";
         fp = fopen(filename, "wb");
         if (fp == nullptr)
         {
-            LOG(ERROR) << "Cannot create file";
+            LOG(LogLevel::ERROR) << "Cannot create file";
             return 1;
         }
         char data[4096*3] = {0};
@@ -274,7 +274,7 @@ int main(int argc, char *argv[])
         fp = fopen(filename, "r+b");
         if (fp == nullptr)
         {
-            LOG(ERROR) << "Cannot open file";
+            LOG(LogLevel::ERROR) << "Cannot open file";
             return 1;
         }
     }
@@ -285,11 +285,11 @@ int main(int argc, char *argv[])
     }
     catch(std::exception &e)
     {
-        LOG(ERROR) << e.what();
+        LOG(LogLevel::ERROR) << e.what();
     }
     catch(...)
     {
-        LOG(ERROR) << "Unknown exception";
+        LOG(LogLevel::ERROR) << "Unknown exception";
     }
     return 0;
 }

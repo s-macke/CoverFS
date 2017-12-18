@@ -48,7 +48,7 @@ void PrintUsage(char *argv[])
 
 static void catch_function(int signo)
 {
-    LOG(INFO) << "Terminate Signal received";
+    LOG(LogLevel::INFO) << "Terminate Signal received";
     handler.Unmount().get();
 }
 
@@ -73,7 +73,7 @@ int main(int argc, char *argv[])
     strncpy(hostname,   "localhost", 255);
     strncpy(port,       "62000",     255);
     strncpy(backend,    "cvfsserver",  255);
-    Logger().Set(INFO);
+    Logger().Set(LogLevel::INFO);
 
     mountpoint[0] = 0;
 
@@ -140,11 +140,11 @@ int main(int argc, char *argv[])
                     break;
 
                 case 8:
-                    Logger().Set(DEBUG);
+                    Logger().Set(LogLevel::DEBUG);
                     break;
 
                 case 9:
-                    Logger().Set(DEEP);
+                    Logger().Set(LogLevel::DEEP);
                     break;
 
                 case 10:
@@ -175,7 +175,7 @@ int main(int argc, char *argv[])
         }
     }
 
-    LOG(INFO) << "Start CoverFS";
+    LOG(LogLevel::INFO) << "Start CoverFS";
 
     #ifdef HAVE_POCO
     if (webinterface)
@@ -204,7 +204,7 @@ int main(int argc, char *argv[])
     } else
     if (strncmp(backend, "file", 255) == 0)
     {
-        LOG(ERROR) << "Backend 'file' not supported";
+        LOG(LogLevel::ERROR) << "Backend 'file' not supported";
         return EXIT_FAILURE;
     } else
     if (strncmp(backend, "cvfsserver", 255) == 0)
@@ -212,7 +212,7 @@ int main(int argc, char *argv[])
         success = handler.ConnectNET(hostname, port).get();
     } else
     {
-        LOG(ERROR) << "Backend '" << backend << "' not supported";
+        LOG(LogLevel::ERROR) << "Backend '" << backend << "' not supported";
         return EXIT_FAILURE;
     }
 
@@ -262,7 +262,7 @@ int main(int argc, char *argv[])
 
     if ((info) || (showfragments) || (check) || (rootdir) || (testfs))
     {
-        LOG(INFO) << "Stop CoverFS";
+        LOG(LogLevel::INFO) << "Stop CoverFS";
         return EXIT_SUCCESS;
     }
 
@@ -270,10 +270,10 @@ int main(int argc, char *argv[])
 
     if (signal(SIGINT, catch_function) == SIG_ERR)
     {
-        LOG(ERROR) << "An error occurred while setting a signal handler.";
+        LOG(LogLevel::ERROR) << "An error occurred while setting a signal handler.";
         return EXIT_FAILURE;
     }
     handler.Mount(argc, argv, mountpoint).get();
 
-    LOG(INFO) << "Stop CoverFS";
+    LOG(LogLevel::INFO) << "Stop CoverFS";
 }

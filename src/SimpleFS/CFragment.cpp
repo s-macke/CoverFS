@@ -9,7 +9,7 @@ void CFragmentList::Load()
 {
     unsigned int nfragmentblocks = 5;
     unsigned int nentries = bio->blocksize*nfragmentblocks/CFragmentDesc::SIZEONDISK;
-    LOG(INFO) << "  number of blocks containing fragments: " << nfragmentblocks << " with " << nentries << " entries";
+    LOG(LogLevel::INFO) << "  number of blocks containing fragments: " << nfragmentblocks << " with " << nentries << " entries";
 
     fragmentblocks.clear();
     for(unsigned int i=0; i<nfragmentblocks; i++)
@@ -38,7 +38,7 @@ void CFragmentList::Create()
 {
     unsigned int nfragmentblocks = 5;
     unsigned int nentries = bio->blocksize*nfragmentblocks/16;
-    LOG(INFO) << "  number of blocks containing fragments: " << nfragmentblocks << " with " << nentries << " entries";
+    LOG(LogLevel::INFO) << "  number of blocks containing fragments: " << nfragmentblocks << " with " << nentries << " entries";
 // ---
     fragmentblocks.clear();
     for(unsigned int i=0; i<nfragmentblocks; i++)
@@ -123,7 +123,7 @@ int CFragmentList::ReserveNewFragment(INODETYPE type)
         if (fragment.id > idmax) idmax = fragment.id;
     }
     int id = idmax+1;
-    LOG(DEEP) << "Reserve new id " << id << " of type " << (int)type;
+    LOG(LogLevel::DEEP) << "Reserve new id " << id << " of type " << (int)type;
 
     for(unsigned int i=0; i<fragments.size(); i++)
     {
@@ -133,7 +133,7 @@ int CFragmentList::ReserveNewFragment(INODETYPE type)
         //SortOffsets(); // Sorting is not necessary, because a FREEID and ofs=0 are treated the same way
         return id;
     }
-    LOG(ERROR) << "No free fragments available\n";
+    LOG(LogLevel::ERROR) << "No free fragments available\n";
     exit(1);
     return id;
 }
@@ -141,7 +141,7 @@ int CFragmentList::ReserveNewFragment(INODETYPE type)
 
 int CFragmentList::ReserveNextFreeFragment(int lastidx, int32_t id, INODETYPE type, int64_t maxsize)
 {
-    LOG(DEEP) << "Reserve next free fragment " << id;
+    LOG(LogLevel::DEEP) << "Reserve next free fragment " << id;
     //assert(node.fragments.size() != 0);
     //int lastidx = node.fragments.back();
 

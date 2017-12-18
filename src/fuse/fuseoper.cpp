@@ -24,7 +24,7 @@ struct fuse_chan *fuse_chan = NULL;
 
 static int fuse_getattr(const char *path, struct stat *stbuf)
 {
-    LOG(INFO) << "FUSE: getattr '" << path << "'";
+    LOG(LogLevel::INFO) << "FUSE: getattr '" << path << "'";
 
     memset(stbuf, 0, sizeof(struct stat));
 
@@ -61,25 +61,25 @@ static int fuse_getattr(const char *path, struct stat *stbuf)
 
 static int fuse_utimens(const char *path, const struct timespec tv[2])
 {
-    LOG(INFO) << "FUSE: utimens '" << path << "'";
+    LOG(LogLevel::INFO) << "FUSE: utimens '" << path << "'";
     return 0;
 }
 
 static int fuse_chmod(const char *path, mode_t mode)
 {
-    LOG(INFO) << "FUSE: chmod '" << path << "'";
+    LOG(LogLevel::INFO) << "FUSE: chmod '" << path << "'";
     return 0;
 }
 
 static int fuse_chown(const char *path, uid_t uid, gid_t gid)
 {
-    LOG(INFO) << "FUSE: chown '" << path << "'";
+    LOG(LogLevel::INFO) << "FUSE: chown '" << path << "'";
     return 0;
 }
 
 static int fuse_truncate(const char *path, off_t size)
 {
-    LOG(INFO) << "FUSE: truncate '" << path << "' size=" << size;
+    LOG(LogLevel::INFO) << "FUSE: truncate '" << path << "' size=" << size;
     try
     {
         INODEPTR node = fs->OpenFile(path);
@@ -93,7 +93,7 @@ static int fuse_truncate(const char *path, off_t size)
 
 static int fuse_opendir(const char *path, struct fuse_file_info *fi)
 {
-    LOG(INFO) << "FUSE: opendir '" << path << "'";
+    LOG(LogLevel::INFO) << "FUSE: opendir '" << path << "'";
     try
     {
         CDirectory dir = fs->OpenDir(path);
@@ -108,7 +108,7 @@ static int fuse_opendir(const char *path, struct fuse_file_info *fi)
 static int fuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t offset, struct fuse_file_info *fi)
 {
     (void) offset;
-    LOG(INFO) << "FUSE: readdir '" << path << "'";
+    LOG(LogLevel::INFO) << "FUSE: readdir '" << path << "'";
     try
     {
         CDirectory dir = fs->OpenDir(fi->fh);
@@ -131,7 +131,7 @@ static int fuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off
 
 static int fuse_open(const char *path, struct fuse_file_info *fi)
 {
-    LOG(INFO) << "FUSE: open '" << path << "'";
+    LOG(LogLevel::INFO) << "FUSE: open '" << path << "'";
     try
     {
         INODEPTR node = fs->OpenFile(path);
@@ -149,7 +149,7 @@ static int fuse_open(const char *path, struct fuse_file_info *fi)
 
 static int fuse_read(const char *path, char *buf, size_t size, off_t offset, struct fuse_file_info *fi)
 {
-    LOG(INFO) << "FUSE: read '" << path << "' ofs=" << offset << " size=" << size;
+    LOG(LogLevel::INFO) << "FUSE: read '" << path << "' ofs=" << offset << " size=" << size;
     try
     {
         INODEPTR node = fs->OpenFile(fi->fh);
@@ -164,7 +164,7 @@ static int fuse_read(const char *path, char *buf, size_t size, off_t offset, str
 
 static int fuse_write(const char *path, const char *buf, size_t size, off_t offset, struct fuse_file_info *fi)
 {
-    LOG(INFO) << "FUSE: write '" << path << "' ofs=" << offset << " size=" << size;
+    LOG(LogLevel::INFO) << "FUSE: write '" << path << "' ofs=" << offset << " size=" << size;
 
     try
     {
@@ -181,7 +181,7 @@ static int fuse_write(const char *path, const char *buf, size_t size, off_t offs
 
 static int fuse_mkdir(const char *path, mode_t mode)
 {
-    LOG(INFO) << "FUSE: mkdir '" << path << "'";
+    LOG(LogLevel::INFO) << "FUSE: mkdir '" << path << "'";
     // test if dir is empty? Looks like this is tested already
     std::vector<std::string> splitpath;
     splitpath = SplitPath(std::string(path));
@@ -201,7 +201,7 @@ static int fuse_mkdir(const char *path, mode_t mode)
 
 static int fuse_rmdir(const char *path)
 {
-    LOG(INFO) << "FUSE: rmdir '" << path << "'";
+    LOG(LogLevel::INFO) << "FUSE: rmdir '" << path << "'";
 
     try
     {
@@ -217,7 +217,7 @@ static int fuse_rmdir(const char *path)
 
 static int fuse_unlink(const char *path)
 {
-    LOG(INFO) << "FUSE: unlink '" << path << "'";
+    LOG(LogLevel::INFO) << "FUSE: unlink '" << path << "'";
 
     try
     {
@@ -233,7 +233,7 @@ static int fuse_unlink(const char *path)
 
 static int fuse_create(const char *path, mode_t mode, struct fuse_file_info *fi)
 {
-    LOG(INFO) << "FUSE: create '" << path << "'";
+    LOG(LogLevel::INFO) << "FUSE: create '" << path << "'";
     std::vector<std::string> splitpath;
     splitpath = SplitPath(std::string(path));
     assert(splitpath.size() >= 1);
@@ -253,7 +253,7 @@ static int fuse_create(const char *path, mode_t mode, struct fuse_file_info *fi)
 
 static int fuse_access(const char *path, int mask)
 {
-    LOG(INFO) << "FUSE: access '" << path << "'";
+    LOG(LogLevel::INFO) << "FUSE: access '" << path << "'";
     try
     {
         INODEPTR node = fs->OpenNode(path);
@@ -267,7 +267,7 @@ static int fuse_access(const char *path, int mask)
 
 static int fuse_rename(const char *oldpath, const char *newpath)
 {
-    LOG(INFO) << "FUSE: create '" << oldpath << "' to '" << newpath << "'";
+    LOG(LogLevel::INFO) << "FUSE: create '" << oldpath << "' to '" << newpath << "'";
 
     std::vector<std::string> splitpath;
     splitpath = SplitPath(std::string(newpath));
@@ -297,7 +297,7 @@ static int fuse_rename(const char *oldpath, const char *newpath)
 
 static int fuse_statfs(const char *path, struct statvfs *buf)
 {
-    LOG(INFO) << "FUSE: statfs '" << path << "'";
+    LOG(LogLevel::INFO) << "FUSE: statfs '" << path << "'";
     fs->StatFS(buf);
     return 0;
 }
@@ -306,7 +306,7 @@ int StopFuse()
 {
     if (fs == NULL) return EXIT_SUCCESS;
     if (fusectx == NULL) return EXIT_SUCCESS;
-    LOG(INFO) << "Unmount FUSE mountpoint: " << mountpoint;
+    LOG(LogLevel::INFO) << "Unmount FUSE mountpoint: " << mountpoint;
     fuse_unmount(mountpoint.c_str(), fuse_chan);
     return EXIT_SUCCESS;
 }
@@ -316,7 +316,7 @@ int StartFuse(int argc, char *argv[], const char* _mountpoint, SimpleFilesystem 
     fs = &_fs;
     mountpoint = std::string(_mountpoint);
 
-    LOG(INFO) << "FUSE Version: " << fuse_version();
+    LOG(LogLevel::INFO) << "FUSE Version: " << fuse_version();
 
     struct fuse_args args = FUSE_ARGS_INIT(0, NULL);
 

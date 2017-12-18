@@ -37,7 +37,7 @@ bool verify_certificate(bool preverified, boost::asio::ssl::verify_context& ctx)
     char subject_name[256];
     X509* cert = X509_STORE_CTX_get_current_cert(ctx.native_handle());
     X509_NAME_oneline(X509_get_subject_name(cert), subject_name, 256);
-    LOG(INFO) << "Verifying certificate: " << subject_name;
+    LOG(LogLevel::INFO) << "Verifying certificate: " << subject_name;
 
     return preverified;
 }
@@ -51,7 +51,7 @@ CNetBlockIO::CNetBlockIO(int _blocksize, const std::string &host, const std::str
   cmdid(0)
 {
     static_assert(sizeof(CommandDesc) == 32, "");
-    LOG(INFO) << "Try to connect to " << host << ":" << port;
+    LOG(LogLevel::INFO) << "Try to connect to " << host << ":" << port;
 
     ctx.set_verify_mode(boost::asio::ssl::context::verify_peer);
     try
@@ -59,7 +59,7 @@ CNetBlockIO::CNetBlockIO(int _blocksize, const std::string &host, const std::str
         ctx.load_verify_file("ssl/server.crt");
     } catch(boost::system::system_error &e)
     {
-        LOG(ERROR) << "Error during loading or parsing of ssl/server.crt: " << e.what();
+        LOG(LogLevel::ERROR) << "Error during loading or parsing of ssl/server.crt: " << e.what();
         throw std::exception();
     }
 
@@ -75,15 +75,15 @@ CNetBlockIO::CNetBlockIO(int _blocksize, const std::string &host, const std::str
     tcp::resolver::iterator iter = resolver.resolve(q, ec);
     if (ec)
     {
-        LOG(ERROR) << "Cannot resolve host";
+        LOG(LogLevel::ERROR) << "Cannot resolve host";
         throw std::exception();
     }
-    LOG(INFO) << "Connect to " << host;
+    LOG(LogLevel::INFO) << "Connect to " << host;
 
     boost::asio::connect(sctrl.lowest_layer(), iter, ec);
     if (ec)
     {
-        LOG(ERROR) << "Cannot connect to server. (Control Stream)\n";
+        LOG(LogLevel::ERROR) << "Cannot connect to server. (Control Stream)\n";
         throw std::exception();
     }
     sctrl.handshake(boost::asio::ssl::stream_base::client);
@@ -91,7 +91,7 @@ CNetBlockIO::CNetBlockIO(int _blocksize, const std::string &host, const std::str
     boost::asio::connect(sdata.lowest_layer(), iter, ec);
     if (ec)
     {
-        LOG(ERROR) << "Cannot connect to server. (Data Stream)";
+        LOG(LogLevel::ERROR) << "Cannot connect to server. (Data Stream)";
         throw std::exception();
     }
     sdata.handshake(boost::asio::ssl::stream_base::client);
@@ -101,7 +101,7 @@ CNetBlockIO::CNetBlockIO(int _blocksize, const std::string &host, const std::str
     int ret = setsockopt(sctrl.lowest_layer().native(), SOL_SOCKET, SO_PRIORITY, &priority, sizeof(priority));
     if (ret != 0)
     {
-        LOG(WARN) << "Cannot set socket priority";
+        LOG(LogLevel::WARN) << "Cannot set socket priority";
     }
 #endif
 
@@ -119,10 +119,10 @@ CNetBlockIO::CNetBlockIO(int _blocksize, const std::string &host, const std::str
 CNetBlockIO::~CNetBlockIO()
 {
 
-    LOG(DEBUG) << "CNetBlockIO: Destruct";
-    LOG(DEBUG) << "CNetBlockIO: Send Close command";
+    LOG(LogLevel::DEBUG) << "CNetBlockIO: Destruct";
+    LOG(LogLevel::DEBUG) << "CNetBlockIO: Send Close command";
     Close();
-    LOG(DEBUG) << "CNetBlockIO: Send Close command done";
+    LOG(LogLevel::DEBUG) << "CNetBlockIO: Send Close command done";
 
     rbbufctrl->Sync();
     rbbufdata->Sync();
@@ -131,12 +131,12 @@ CNetBlockIO::~CNetBlockIO()
     io_service.stop();
     iothread.join();
 
-    LOG(DEBUG) << "CNetBlockIO: Destruct buffer";
+    LOG(LogLevel::DEBUG) << "CNetBlockIO: Destruct buffer";
     rbbufctrl.reset();
     rbbufdata.reset();
-    LOG(DEBUG) << "CNetBlockIO: Destruct buffers done";
+    LOG(LogLevel::DEBUG) << "CNetBlockIO: Destruct buffers done";
 
-    LOG(DEBUG) << "CNetBlockIO: Destruct done";
+    LOG(LogLevel::DEBUG) << "CNetBlockIO: Destruct done";
 }
 
 int64_t CNetBlockIO::GetWriteCache()
@@ -168,7 +168,7 @@ void CNetBlockIO::GetInfo()
     std::future<void> fut = rbbufctrl->Read(id, data, 36);
     rbbufctrl->Write(id, (int8_t*)&cmd, 4);
     fut.get();
-    LOG(INFO) << "Connected to '" << data << "'";
+    LOG(LogLevel::INFO) << "Connected to '" << data << "'";
 }
 
 

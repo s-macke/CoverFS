@@ -3,7 +3,7 @@
 #include <iostream>
 #include <chrono>
 
-LogLevel Logger::level = INFO;
+LogLevel Logger::level = LogLevel::INFO;
 
 Logger::Logger() = default;
 
@@ -33,5 +33,5 @@ void Logger::Set(LogLevel newlevel)
 std::string Logger::ToString(LogLevel level)
 {
     static const char* const buffer[] = {" ERR", "WARN", "INFO", " DBG", "DEEP"};
-    return buffer[level];
+    return buffer[to_underlying(level)];
 }

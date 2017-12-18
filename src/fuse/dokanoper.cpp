@@ -144,13 +144,13 @@ Dokan_CreateFile(
     if ((DesiredAccess&STANDARD_RIGHTS_EXECUTE)) os << "(standard rights execute)";
     if ((DesiredAccess&FILE_LIST_DIRECTORY)) os << "(file list directory)";
     if ((DesiredAccess&FILE_TRAVERSE)) os << "(file traverse)";
-    LOG(INFO) << os.str();
+    LOG(LogLevel::INFO) << os.str();
     
     if ((CreateOptions & FILE_DIRECTORY_FILE) == FILE_DIRECTORY_FILE)
     {
         if (CreateDisposition == FILE_CREATE || CreateDisposition == FILE_OPEN_IF)
         {
-            //LOG(INFO) << "command: create directory";
+            //LOG(LogLevel::INFO) << "command: create directory";
 
             std::vector<std::string> splitpath;
             splitpath = SplitPath(path);
@@ -184,7 +184,7 @@ Dokan_CreateFile(
         {
             DokanFileInfo->IsDirectory = TRUE;
 
-            //LOG(INFO) << "command: open directory";
+            //LOG(LogLevel::INFO) << "command: open directory";
             try
             {
                 INODEPTR node = fs->OpenNode(path.c_str());
@@ -200,7 +200,7 @@ Dokan_CreateFile(
 
     if (CreateDisposition == FILE_CREATE || CreateDisposition == FILE_OPEN_IF)
     {
-        //LOG(INFO) << "Dokan: command: create file";
+        //LOG(LogLevel::INFO) << "Dokan: command: create file";
 
         std::vector<std::string> splitpath;
         splitpath = SplitPath(path);
@@ -224,7 +224,7 @@ Dokan_CreateFile(
     } else
     if (CreateDisposition == FILE_OPEN)
     {
-        //LOG(INFO) << "Dokan: command: open file";
+        //LOG(LogLevel::INFO) << "Dokan: command: open file";
         try
         {
             INODEPTR node = fs->OpenNode(path.c_str());
@@ -245,19 +245,19 @@ Dokan_CreateFile(
 static NTSTATUS DOKAN_CALLBACK Dokan_GetFileInformation(LPCWSTR FileName, LPBY_HANDLE_FILE_INFORMATION HandleFileInformation, PDOKAN_FILE_INFO DokanFileInfo)
 {
     std::string path = GetFilePath(FileName, DokanFileInfo);
-    LOG(INFO) << "Dokan: GetFileInformation '" << path << "' of handle " << DokanFileInfo->Context;
+    LOG(LogLevel::INFO) << "Dokan: GetFileInformation '" << path << "' of handle " << DokanFileInfo->Context;
 
     HANDLE handle = (HANDLE)DokanFileInfo->Context;
     if (!handle || handle == INVALID_HANDLE_VALUE)
     {
-        LOG(INFO) << "Dokan: Invalid handle?";
+        LOG(LogLevel::INFO) << "Dokan: Invalid handle?";
     }
 
     //memset(HandleFileInformation, 0, sizeof(struct BY_HANDLE_FILE_INFORMATION));
     try
     {
         INODEPTR node = fs->OpenNode(path.c_str());
-        //LOG(INFO) << "open succesful";
+        //LOG(LogLevel::INFO) << "open succesful";
         node->Lock();
         HandleFileInformation->nFileSizeLow = node->size&0xFFFFFFFF;
         HandleFileInformation->nFileSizeHigh = node->size >> 32;
@@ -291,7 +291,7 @@ static NTSTATUS DOKAN_CALLBACK Dokan_SetFileAttributes(
 LPCWSTR FileName, DWORD FileAttributes, PDOKAN_FILE_INFO DokanFileInfo)
 {
     std::string path = GetFilePath(FileName, DokanFileInfo);
-    LOG(INFO) << "Dokan: SetFileAttributes '" << path << "' FileAttributes: " << FileAttributes;
+    LOG(LogLevel::INFO) << "Dokan: SetFileAttributes '" << path << "' FileAttributes: " << FileAttributes;
     return STATUS_SUCCESS;
 }
 /*
@@ -330,7 +330,7 @@ Dokan_FindStreams(LPCWSTR FileName, PFillFindStreamData FillFindStreamData,
                 PDOKAN_FILE_INFO DokanFileInfo)
 {
     std::string path = wstring_to_utf8(FileName);
-    LOG(INFO) << "FindStreams '" << path << "'";
+    LOG(LogLevel::INFO) << "FindStreams '" << path << "'";
     return STATUS_SUCCESS;
 }
 */
@@ -341,7 +341,7 @@ static NTSTATUS DOKAN_CALLBACK Dokan_SetEndOfFile(
     LPCWSTR FileName, LONGLONG ByteOffset, PDOKAN_FILE_INFO DokanFileInfo)
 {
     std::string path = GetFilePath(FileName, DokanFileInfo);
-    LOG(INFO) << "Dokan: SetEndOfFile '" << path << "' size=" <<  ByteOffset;
+    LOG(LogLevel::INFO) << "Dokan: SetEndOfFile '" << path << "' size=" <<  ByteOffset;
 
     try
     {
@@ -365,7 +365,7 @@ LONGLONG Offset,
 PDOKAN_FILE_INFO DokanFileInfo)
 {
     std::string path = GetFilePath(FileName, DokanFileInfo);
-    LOG(INFO) << "Dokan: ReadFile '" << path << "' size=" << BufferLength;
+    LOG(LogLevel::INFO) << "Dokan: ReadFile '" << path << "' size=" << BufferLength;
     try
     {
         INODEPTR node = fs->OpenFile(path.c_str());
@@ -385,7 +385,7 @@ LONGLONG Offset,
 PDOKAN_FILE_INFO DokanFileInfo)
 {
     std::string path = GetFilePath(FileName, DokanFileInfo);
-    LOG(INFO) << "Dokan: WriteFile '" << path << "' size=" << NumberOfBytesToWrite;
+    LOG(LogLevel::INFO) << "Dokan: WriteFile '" << path << "' size=" << NumberOfBytesToWrite;
     try
     {
         INODEPTR node = fs->OpenFile(path.c_str());
@@ -403,7 +403,7 @@ static NTSTATUS DOKAN_CALLBACK
 Dokan_FindFiles(LPCWSTR FileName, PFillFindData FillFindData, PDOKAN_FILE_INFO DokanFileInfo)
 {
     std::string path = GetFilePath(FileName, DokanFileInfo);
-    LOG(INFO) << "Dokan: FindFiles '" << path << "'";
+    LOG(LogLevel::INFO) << "Dokan: FindFiles '" << path << "'";
 
     try
     {
@@ -449,7 +449,7 @@ LPCWSTR NewFileName, BOOL ReplaceIfExisting, PDOKAN_FILE_INFO DokanFileInfo)
 {
     std::string oldpath = GetFilePath(FileName, DokanFileInfo);
     std::string newpath = wstring_to_utf8(NewFileName);
-    LOG(INFO) << "Dokan: MoveFile '" << oldpath << "' to '" << newpath << "'";
+    LOG(LogLevel::INFO) << "Dokan: MoveFile '" << oldpath << "' to '" << newpath << "'";
 
     std::vector<std::string> splitpath;
     splitpath = SplitPath(newpath);
@@ -512,7 +512,7 @@ LPCWSTR NewFileName, BOOL ReplaceIfExisting, PDOKAN_FILE_INFO DokanFileInfo)
 static void DOKAN_CALLBACK Dokan_CloseFile(LPCWSTR FileName, PDOKAN_FILE_INFO DokanFileInfo)
 {
     std::string path = GetFilePath(FileName, DokanFileInfo);
-    LOG(INFO) << "Dokan: CloseFile '" << path << "' of handle " << DokanFileInfo->Context;
+    LOG(LogLevel::INFO) << "Dokan: CloseFile '" << path << "' of handle " << DokanFileInfo->Context;
     if (DokanFileInfo)
     if (DokanFileInfo->Context)
     {
@@ -523,19 +523,19 @@ static void DOKAN_CALLBACK Dokan_CloseFile(LPCWSTR FileName, PDOKAN_FILE_INFO Do
 static void DOKAN_CALLBACK Dokan_Cleanup(LPCWSTR FileName, PDOKAN_FILE_INFO DokanFileInfo)
 {
     std::string path = GetFilePath(FileName, DokanFileInfo);
-    LOG(INFO) << "Dokan: Cleanup '" << path << "' of handle " << DokanFileInfo->Context;
+    LOG(LogLevel::INFO) << "Dokan: Cleanup '" << path << "' of handle " << DokanFileInfo->Context;
 
     if (!DokanFileInfo->Context) return;
 
     if (!DokanFileInfo->DeleteOnClose) return;
-    LOG(INFO) << "Dokan: remove file";
+    LOG(LogLevel::INFO) << "Dokan: remove file";
     try
     {
         INODEPTR node = fs->OpenNode(path);
         node->Remove();
     } catch(const int &err)
     {
-        LOG(INFO) << "Dokan: Cannot remove file";
+        LOG(LogLevel::INFO) << "Dokan: Cannot remove file";
         return;
     }
 }
@@ -564,7 +564,7 @@ PDOKAN_FILE_INFO DokanFileInfo)
 {
     UNREFERENCED_PARAMETER(DokanFileInfo);
 
-    LOG(INFO) << "Dokan: GetVolumeInformation";
+    LOG(LogLevel::INFO) << "Dokan: GetVolumeInformation";
     wcsncpy(VolumeNameBuffer, L"CoverFS", VolumeNameSize);
 
     *VolumeSerialNumber = 0x53281900;
@@ -595,7 +595,7 @@ static NTSTATUS DOKAN_CALLBACK Dokan_Mounted(PDOKAN_FILE_INFO DokanFileInfo)
 {
     UNREFERENCED_PARAMETER(DokanFileInfo);
 
-    LOG(INFO) << "Dokan: Mounted";
+    LOG(LogLevel::INFO) << "Dokan: Mounted";
     mounted = true;
     return STATUS_SUCCESS;
 }
@@ -604,7 +604,7 @@ static NTSTATUS DOKAN_CALLBACK Dokan_Unmounted(PDOKAN_FILE_INFO DokanFileInfo)
 {
     UNREFERENCED_PARAMETER(DokanFileInfo);
 
-    LOG(INFO) << "Dokan: Unmounted";
+    LOG(LogLevel::INFO) << "Dokan: Unmounted";
     mounted = false;
     return STATUS_SUCCESS;
 }
@@ -620,12 +620,12 @@ int StopDokan()
 {
     if (fs == NULL) return EXIT_SUCCESS;
     if (mounted == false) return EXIT_SUCCESS;
-    LOG(INFO) << "Unmount Dokan mountpoint " << mountpoint;
+    LOG(LogLevel::INFO) << "Unmount Dokan mountpoint " << mountpoint;
     if (DokanUnmount(*utf8_to_wstring(mountpoint).data()))
         return EXIT_SUCCESS;
     else
     {
-        LOG(ERROR) << "Unmount failed";
+        LOG(LogLevel::ERROR) << "Unmount failed";
         return EXIT_FAILURE;
     }
 }
@@ -635,8 +635,8 @@ int StartDokan(int argc, char *argv[], const char* _mountpoint, SimpleFilesystem
     fs = &_fs;
     mountpoint = std::string(_mountpoint);
 
-    LOG(INFO) << "Dokan Version: " << DokanVersion();
-    LOG(INFO) << "Dokan Driver Version: " << DokanDriverVersion();;
+    LOG(LogLevel::INFO) << "Dokan Version: " << DokanVersion();
+    LOG(LogLevel::INFO) << "Dokan Driver Version: " << DokanDriverVersion();;
 
     dokanOptions.Version = DOKAN_VERSION;
     dokanOptions.ThreadCount = 1; // use default = 0 is default
@@ -680,31 +680,31 @@ int StartDokan(int argc, char *argv[], const char* _mountpoint, SimpleFilesystem
     switch (status)
     {
     case DOKAN_SUCCESS:
-        LOG(INFO) << "Dokan: Success";
+        LOG(LogLevel::INFO) << "Dokan: Success";
         break;
     case DOKAN_ERROR:
-        LOG(ERROR) << "Dokan: Error";
+        LOG(LogLevel::ERROR) << "Dokan: Error";
         return EXIT_FAILURE;
     case DOKAN_DRIVE_LETTER_ERROR:
-        LOG(ERROR) << "Dokan: Bad Drive letter";
+        LOG(LogLevel::ERROR) << "Dokan: Bad Drive letter";
         return EXIT_FAILURE;
     case DOKAN_DRIVER_INSTALL_ERROR:
-        LOG(ERROR) << "Dokan: Can't install driver";
+        LOG(LogLevel::ERROR) << "Dokan: Can't install driver";
         return EXIT_FAILURE;
     case DOKAN_START_ERROR:
-        LOG(ERROR) << "Dokan: Driver something wrong";
+        LOG(LogLevel::ERROR) << "Dokan: Driver something wrong";
         return EXIT_FAILURE;
     case DOKAN_MOUNT_ERROR:
-        LOG(ERROR) << "Dokan: Can't assign a drive letter";
+        LOG(LogLevel::ERROR) << "Dokan: Can't assign a drive letter";
         return EXIT_FAILURE;
     case DOKAN_MOUNT_POINT_ERROR:
-        LOG(ERROR) << "Dokan: Mount point error";
+        LOG(LogLevel::ERROR) << "Dokan: Mount point error";
         return EXIT_FAILURE;
     case DOKAN_VERSION_ERROR:
-        LOG(ERROR) << "Dokan: Version error";
+        LOG(LogLevel::ERROR) << "Dokan: Version error";
         return EXIT_FAILURE;
     default:
-        LOG(ERROR) << "Dokan: Unknown error: " << status;
+        LOG(LogLevel::ERROR) << "Dokan: Unknown error: " << status;
         return EXIT_FAILURE;
     }
 

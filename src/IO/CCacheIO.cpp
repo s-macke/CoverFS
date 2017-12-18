@@ -51,12 +51,12 @@ CCacheIO::CCacheIO(const std::shared_ptr<CAbstractBlockIO> &_bio, CEncrypt &_enc
 
 CCacheIO::~CCacheIO()
 {
-    LOG(DEBUG) << "Cache: destruct";
+    LOG(LogLevel::DEBUG) << "Cache: destruct";
     terminatesyncthread.store(true);
     Sync();
     syncthread.join();
     assert(ndirty.load() == 0);
-    LOG(DEBUG) << "All Blocks stored. Erase cache ...";
+    LOG(LogLevel::DEBUG) << "All Blocks stored. Erase cache ...";
 
     cachemtx.lock();
     for(auto iter = cache.begin(); iter != cache.end();)
@@ -64,24 +64,24 @@ CCacheIO::~CCacheIO()
         CBLOCKPTR block = iter->second;
         if (block.use_count() != 2)
         {
-            LOG(WARN) << "Block " << block->blockidx << " still in use.";
+            LOG(LogLevel::WARN) << "Block " << block->blockidx << " still in use.";
             iter++;
             continue;
         }
         if (!block->mutex.try_lock())
         {
-            LOG(WARN) << "Locking block " << block->blockidx << " failed.";
+            LOG(LogLevel::WARN) << "Locking block " << block->blockidx << " failed.";
             iter++;
             continue;
         }
         iter = cache.erase(iter);
         block->mutex.unlock();
     }
-    LOG(DEBUG) << "Cache erased";
+    LOG(LogLevel::DEBUG) << "Cache erased";
 
     if (!cache.empty())
     {
-        LOG(WARN) << "Cache not empty";
+        LOG(LogLevel::WARN) << "Cache not empty";
     }
     cachemtx.unlock();
 }
