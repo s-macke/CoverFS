@@ -8,7 +8,6 @@
 #include <vector>
 #include <mutex>
 #include <cstdint>
-#include <sys/statvfs.h>
 
 #include"../IO/CCacheIO.h"
 #include"INode.h"
@@ -18,6 +17,19 @@ class CDirectory;
 class SimpleFilesystem;
 class INODE;
 class DIRENTRY;
+
+// ----------------------------------------------------------
+class CStatFS
+{
+public:
+    int f_bsize;
+    int f_frsize;
+    int f_namemax;
+    int64_t f_blocks;
+    int64_t f_bfree;
+    int64_t f_bavail;
+    int64_t f_files;
+};
 
 // ----------------------------------------------------------
 
@@ -44,7 +56,7 @@ public:
     INODEPTR OpenFile(std::vector<std::string> splitpath);
 
     void Rename(INODEPTR &node, CDirectory &newdir, const std::string &filename);
-    void StatFS(struct statvfs *buf);
+    void StatFS(CStatFS *buf);
 
     void CreateFS();
     void GetRecursiveDirectories(std::map<int32_t, std::string> &direntries, int id, const std::string &path);

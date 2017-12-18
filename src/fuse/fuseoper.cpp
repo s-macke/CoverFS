@@ -298,7 +298,16 @@ static int fuse_rename(const char *oldpath, const char *newpath)
 static int fuse_statfs(const char *path, struct statvfs *buf)
 {
     LOG(LogLevel::INFO) << "FUSE: statfs '" << path << "'";
-    fs->StatFS(buf);
+    CStatFS stat;
+    fs->StatFS(&stat);
+    buf->f_avail = stat.f_bavail;
+    buf->f_bfree = stat.f_bfree;
+    buf->f_blocks = stat.f_blocks;
+    buf->f_bsize = stat.f_bsize;
+    buf->f_files = stat.f_files;
+    buf->f_frsize = stat.f_frsize;
+    buf->f_namemax = stat.f_namemax;
+
     return 0;
 }
 

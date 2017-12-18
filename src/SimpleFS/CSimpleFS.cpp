@@ -511,7 +511,7 @@ INODETYPE SimpleFilesystem::GetType(int32_t type)
     return fragmentlist.GetType(type);
 }
 
-void SimpleFilesystem::StatFS(struct statvfs *buf)
+void SimpleFilesystem::StatFS(CStatFS *buf)
 {
     buf->f_bsize   = bio->blocksize;
     buf->f_frsize  = bio->blocksize;
