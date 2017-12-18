@@ -94,7 +94,6 @@ if ("${CMAKE_SYSTEM_NAME}" STREQUAL "MSYS")
     set(CPP_FILES ${CPP_FILES} src/fuse/dokanoper.cpp)
     include_directories(${DOKAN_INCLUDE_DIR})
     set(FUSE_LIB ${DOKAN_LIB_DIR})
-    #add_definitions(-D _WIN32_WINNT=0x050 -D__USE_W32_SOCKETS)
 endif ()
 
 
