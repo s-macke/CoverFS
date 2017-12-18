@@ -300,7 +300,7 @@ static int fuse_statfs(const char *path, struct statvfs *buf)
     LOG(LogLevel::INFO) << "FUSE: statfs '" << path << "'";
     CStatFS stat;
     fs->StatFS(&stat);
-    buf->f_avail = stat.f_bavail;
+    buf->f_bavail = stat.f_bavail;
     buf->f_bfree = stat.f_bfree;
     buf->f_blocks = stat.f_blocks;
     buf->f_bsize = stat.f_bsize;
