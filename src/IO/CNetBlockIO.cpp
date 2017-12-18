@@ -7,7 +7,7 @@
 
 using boost::asio::ip::tcp;
 
-enum COMMAND {READ=0, WRITE=1, SIZE=2, CONTAINERINFO=3, CLOSE=4};
+enum class COMMAND : int32_t {READ=0, WRITE=1, SIZE=2, CONTAINERINFO=3, CLOSE=4};
 
 typedef struct
 {
@@ -17,6 +17,12 @@ typedef struct
     int64_t length;
     int64_t data;
 } CommandDesc;
+
+template <typename E>
+constexpr auto to_underlying(E e) noexcept
+{
+    return static_cast<std::underlying_type_t<E>>(e);
+}
 
 bool verify_certificate(bool preverified, boost::asio::ssl::verify_context& ctx)
 {
@@ -144,7 +150,7 @@ int64_t CNetBlockIO::GetFilesize()
     CommandDesc cmd{};
     int8_t data[8];
     int32_t id = cmdid.fetch_add(1);
-    cmd.cmd = SIZE;
+    cmd.cmd = to_underlying(COMMAND::SIZE);
     std::future<void> fut = rbbufctrl->Read(id, data, 8);
     rbbufctrl->Write(id, (int8_t*)&cmd, 4);
     fut.get();
@@ -158,7 +164,7 @@ void CNetBlockIO::GetInfo()
     CommandDesc cmd{};
     int8_t data[36];
     int32_t id = cmdid.fetch_add(1);
-    cmd.cmd = CONTAINERINFO;
+    cmd.cmd = to_underlying(COMMAND::CONTAINERINFO);
     std::future<void> fut = rbbufctrl->Read(id, data, 36);
     rbbufctrl->Write(id, (int8_t*)&cmd, 4);
     fut.get();
@@ -171,7 +177,7 @@ void CNetBlockIO::Close()
     CommandDesc cmd{};
     int8_t data[8];
     int32_t id = cmdid.fetch_add(1);
-    cmd.cmd = CLOSE;
+    cmd.cmd = to_underlying(COMMAND::CLOSE);
     std::future<void> futctrl = rbbufctrl->Read(id, data, 0);
     std::future<void> futdata = rbbufdata->Read(id, data, 0);
     rbbufctrl->Write(id, (int8_t*)&cmd, 4);
@@ -185,7 +191,7 @@ void CNetBlockIO::Read(const int blockidx, const int n, int8_t *d)
 {
     CommandDesc cmd{};
     int32_t id = cmdid.fetch_add(1);
-    cmd.cmd = READ;
+    cmd.cmd = to_underlying(COMMAND::READ);
     cmd.dummy = 0;
     cmd.offset = blockidx*blocksize;
     cmd.length = blocksize*n;
@@ -200,7 +206,7 @@ void CNetBlockIO::Write(const int blockidx, const int n, int8_t* d)
     int8_t buf[blocksize*n + 2*8 + 2*4];
     auto *cmd = (CommandDesc*)buf;
     int32_t id = cmdid.fetch_add(1);
-    cmd->cmd = WRITE;
+    cmd->cmd = to_underlying(COMMAND::WRITE);
     cmd->dummy = 0;
     cmd->offset = blockidx*blocksize;
     cmd->length = blocksize*n;
