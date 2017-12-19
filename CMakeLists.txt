@@ -126,3 +126,31 @@ add_custom_target(dist
     | bzip2 > ${CMAKE_BINARY_DIR}/${ARCHIVE_NAME}.tar.bz2
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
+
+add_custom_target(release
+    COMMAND
+        rm -f ${CMAKE_BINARY_DIR}/${ARCHIVE_NAME}.zip
+        &&
+        zip -j ${CMAKE_BINARY_DIR}/${ARCHIVE_NAME}.zip
+            ${PROJECT_BINARY_DIR}/coverfs.exe
+            ${PROJECT_BINARY_DIR}/coverfsserver.exe
+            /mingw64/bin/libgcrypt-20.dll
+            /mingw64/bin/libPocoFoundation.dll
+            /mingw64/bin/libPocoNet.dll
+            /mingw64/bin/libPocoXML.dll
+            /mingw64/bin/libPocoJSON.dll
+            /mingw64/bin/libPocoUtil.dll
+            /mingw64/bin/libeay32.dll
+            /mingw64/bin/ssleay32.dll
+            /mingw64/bin/libgcc_s_seh-1.dll
+            /mingw64/bin/libstdc++-6.dll
+            /mingw64/bin/libwinpthread-1.dll
+            /mingw64/bin/libpcre-1.dll
+            /mingw64/bin/libgpg-error-0.dll
+            /mingw64/bin/libexpat-1.dll
+            /mingw64/bin/zlib1.dll
+        && zip -r ${CMAKE_BINARY_DIR}/${ARCHIVE_NAME}.zip
+        ssl
+        templates
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    )
