@@ -93,10 +93,11 @@ endif ()
 
 include_directories(${Boost_INCLUDE_DIRS} ${PROJECT_BINARY_DIR} ${PROJECT_SOURCE_DIR}/src/utils)
 
-if (POCO_FOUND)
+if (Poco_FOUND)
     set(HAVE_POCO TRUE)
     set(POCO_LIB PocoNet PocoUtil PocoFoundation PocoXML)
     set(CPP_FILES ${CPP_FILES} src/webapp/CConfigFile.cpp src/webapp/webapp.cpp)
+    add_definitions(-DPOCO_WIN32_UTF8)
 endif ()
 
 configure_file(
