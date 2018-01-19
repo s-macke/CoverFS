@@ -6,12 +6,11 @@
 class CPrintCheckRepair
 {
     private:
-        SimpleFilesystem &fs;
+        CSimpleFilesystem &fs;
         void GetRecursiveDirectories(std::map<int32_t, std::string> &direntries, int id, const std::string &path);
-        void SortIDs(std::vector<int> &idssort);
 
     public:
-        explicit CPrintCheckRepair(SimpleFilesystem &_fs) : fs(_fs) {};
+        explicit CPrintCheckRepair(CSimpleFilesystem &_fs) : fs(_fs) {};
 
         void PrintFragments();
         void Check();

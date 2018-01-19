@@ -1,7 +1,7 @@
 #ifndef CFRAGMENT_H
 #define CFRAGMENT_H
 
-#include"INode.h"
+#include"CSimpleFSInode.h"
 
 #include"../IO/CCacheIO.h"
 

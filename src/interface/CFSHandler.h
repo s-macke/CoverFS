@@ -6,7 +6,7 @@
 #include"../IO/CNetBlockIO.h"
 #include"../IO/CEncrypt.h"
 #include"../IO/CCacheIO.h"
-#include"../SimpleFS/CSimpleFS.h"
+#include"../FS/SimpleFS/CSimpleFS.h"
 
 enum HandlerStatus { DISCONNECTED, CONNECTED, UNMOUNTED, MOUNTED };
 
@@ -17,7 +17,7 @@ class CFSHandler
     std::shared_ptr<CAbstractBlockIO> bio;
     std::shared_ptr<CEncrypt> enc;
     std::shared_ptr<CCacheIO> cbio;
-    std::shared_ptr<SimpleFilesystem> fs;
+    std::shared_ptr<CSimpleFilesystem> fs;
 
     std::future<bool> ConnectNET(const std::string hostname, const std::string port);
     std::future<bool> ConnectRAM();

@@ -1,8 +1,8 @@
 #ifndef PARALLELTEST_H
 #define PARALLELTEST_H
 
-#include"../SimpleFS/CSimpleFS.h"
+#include"../FS/SimpleFS/CSimpleFS.h"
 
-void ParallelTest(unsigned int nfiles, unsigned int nthreads, unsigned int niter, SimpleFilesystem &_fs);
+void ParallelTest(unsigned int nfiles, unsigned int nthreads, unsigned int niter, CSimpleFilesystem &_fs);
 
 #endif

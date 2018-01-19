@@ -1,27 +1,27 @@
-#include<stdio.h>
-#include<stdlib.h>
-#include<string.h>
+#include<cstdio>
+#include<cstdlib>
+#include<cstring>
 
 #include<thread>
 #include<mutex>
 
 #include"ParallelTest.h"
-#include"../SimpleFS/CDirectory.h"
+#include"../FS/CFilesystem.h"
 
 
 #define MAXSIZE 0xFFFFF
 
 // ----------------------
 
-static SimpleFilesystem *fs;
+static CFilesystem *fs;
 
 // ----------------------
 
 typedef struct
 {
-    INODEPTR node;
+    CInodePtr node;
     char filename[256]{};
-    int size{};
+    int64_t size{};
     std::mutex mtx;
     char data[MAXSIZE+2]{};
     unsigned int g_seed{};
@@ -46,7 +46,7 @@ inline int fastrand(unsigned int &g_seed)
 void Execute(int tid)
 {
     char *data = new char[MAXSIZE+2];
-    CDirectory dir = fs->OpenDir("/");
+    CDirectoryPtr dir = fs->OpenDir("/");
 
     //printf("thread %i:\n", tid);
     for(unsigned int iter=0; iter<niter; iter++)
@@ -66,10 +66,10 @@ void Execute(int tid)
             printf("tid %1i %5i: Truncate %i size=%i\n", tid, iter, id, newsize);
             if (newsize > files[id].size)
             {
-                memset(&(files[id].data[ files[id].size ]), 0, newsize-files[id].size);
+                memset(&(files[id].data[ files[id].size ]), 0, newsize - files[id].size);
             }
             files[id].size = newsize;
-            files[id].node->Truncate(newsize);
+            files[id].node->Truncate(newsize, true);
         }
         break;
 
@@ -118,9 +118,9 @@ void Execute(int tid)
         case 3: // check filesize
         {
             printf("tid %1i %5i: filesize %i\n", tid, iter, id);
-            if (files[id].node->size != (unsigned int)files[id].size)
+            if (files[id].node->GetSize() != (unsigned int)files[id].size)
             {
-                printf("size of file %i does not match %i %lli\n", id, files[id].size, (long long int)files[id].node->size);
+                printf("size of file %i does not match %i %lli\n", id, (int)files[id].size, (long long int)files[id].node->GetSize());
                 exit(1);
             }
         }
@@ -142,8 +142,8 @@ void Execute(int tid)
             printf("tid %1i %5i: create&remove %i\n", tid, iter, id);
             char newfilename[256];
             sprintf(newfilename, "tests%02i_check.dat", id);
-            dir.MakeFile(newfilename);
-            INODEPTR node = fs->OpenNode(newfilename);
+            dir->MakeFile(newfilename);
+            CInodePtr node = fs->OpenFile(newfilename);
             node->Remove();
         }
         break;
@@ -157,7 +157,7 @@ void Execute(int tid)
 }
 
 
-void ParallelTest(unsigned int _nfiles, unsigned int _nthreads, unsigned int _niter, SimpleFilesystem &_fs)
+void ParallelTest(unsigned int _nfiles, unsigned int _nthreads, unsigned int _niter, CSimpleFilesystem &_fs)
 {
     printf("Number of files %i\n", nfiles);
     printf("Number of threads: %i\n", nthreads);
@@ -170,7 +170,7 @@ void ParallelTest(unsigned int _nfiles, unsigned int _nthreads, unsigned int _ni
     nthreads = _nthreads;
     niter = _niter;
     fs = &_fs;
-    CDirectory dir = fs->OpenDir("/");
+    CDirectoryPtr dir = fs->OpenDir("/");
 
     files = new FSTRUCT[nfiles];
     for(unsigned int i=0; i<nfiles; i++)
@@ -179,14 +179,14 @@ void ParallelTest(unsigned int _nfiles, unsigned int _nthreads, unsigned int _ni
         sprintf(files[i].filename, "tests%02i_%03i.dat", i, 0);
         try
         {
-            dir.MakeFile(files[i].filename);
+            dir->MakeFile(files[i].filename);
         }
         catch(...)
         {
             // file already exists
         }
-        files[i].node = fs->OpenNode(files[i].filename);
-        files[i].node->Truncate(0);
+        files[i].node = fs->OpenFile(files[i].filename);
+        files[i].node->Truncate(0, true);
 
         files[i].size = 0;
         memset(files[i].data, 0, MAXSIZE+1);

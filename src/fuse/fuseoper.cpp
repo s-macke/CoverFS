@@ -1,11 +1,11 @@
-#include<stdio.h>
-#include<string.h>
-#include<errno.h>
-#include<assert.h>
+#include<cstdio>
+#include<cstring>
+#include<cerrno>
+#include<cassert>
+#include<vector>
 
 #include"Logger.h"
-#include"../SimpleFS/CSimpleFS.h"
-#include"../SimpleFS/CDirectory.h"
+#include"../FS/CFilesystem.h"
 
 #include"fuseoper.h"
 
@@ -17,7 +17,7 @@ extern "C" {
     #include <fuse.h>
 }
 
-static SimpleFilesystem *fs;
+static CFilesystem *fs;
 std::string mountpoint;
 struct fuse *fusectx = NULL;
 struct fuse_chan *fuse_chan = NULL;
@@ -37,19 +37,18 @@ static int fuse_getattr(const char *path, struct stat *stbuf)
 
     try
     {
-        INODEPTR node = fs->OpenNode(path);
-        node->Lock();
-        stbuf->st_size = node->size;
-        stbuf->st_blocks = node->size/512;
+        CInodePtr node = fs->OpenNode(path);
+        int64_t size = node->GetSize();
+        stbuf->st_size = size;
+        stbuf->st_blocks = size/512;
         stbuf->st_nlink = 1;
-        if (node->type == INODETYPE::dir)
+        if (node->GetType() == INODETYPE::dir)
         {
             stbuf->st_mode = S_IFDIR | 0755;
         } else
         {
             stbuf->st_mode = S_IFREG | 0666;
         }
-        node->Unlock();
 
     } catch(const int &err)
     {
@@ -82,8 +81,8 @@ static int fuse_truncate(const char *path, off_t size)
     LOG(LogLevel::INFO) << "FUSE: truncate '" << path << "' size=" << size;
     try
     {
-        INODEPTR node = fs->OpenFile(path);
-        node->Truncate(size);
+        CInodePtr node = fs->OpenFile(path);
+        node->Truncate(size, true);
     } catch(const int &err)
     {
         return -err;
@@ -96,8 +95,8 @@ static int fuse_opendir(const char *path, struct fuse_file_info *fi)
     LOG(LogLevel::INFO) << "FUSE: opendir '" << path << "'";
     try
     {
-        CDirectory dir = fs->OpenDir(path);
-        fi->fh = dir.dirnode->id;
+        CDirectoryPtr dir = fs->OpenDir(path);
+        fi->fh = dir->GetId();
     } catch(const int &err)
     {
         return -err;
@@ -111,15 +110,13 @@ static int fuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off
     LOG(LogLevel::INFO) << "FUSE: readdir '" << path << "'";
     try
     {
-        CDirectory dir = fs->OpenDir(fi->fh);
+        CDirectoryPtr dir = fs->OpenDir(fi->fh);
         filler(buf, ".", NULL, 0);
         filler(buf, "..", NULL, 0);
 
-        dir.ForEachEntry([&](DIRENTRY &de)
+        dir->ForEachEntry([&](CDirectoryEntry &de)
         {
-            if (de.id == CFragmentDesc::INVALIDID) return FOREACHENTRYRET::OK;
-            filler(buf, de.name, NULL, 0);
-            return FOREACHENTRYRET::OK;
+            filler(buf, de.name.c_str(), NULL, 0);
         });
     } catch(const int &err)
     {
@@ -134,8 +131,8 @@ static int fuse_open(const char *path, struct fuse_file_info *fi)
     LOG(LogLevel::INFO) << "FUSE: open '" << path << "'";
     try
     {
-        INODEPTR node = fs->OpenFile(path);
-        fi->fh = node->id;
+        CInodePtr node = fs->OpenFile(path);
+        fi->fh = node->GetId();
     } catch(const int &err)
     {
         return -err;
@@ -152,7 +149,7 @@ static int fuse_read(const char *path, char *buf, size_t size, off_t offset, str
     LOG(LogLevel::INFO) << "FUSE: read '" << path << "' ofs=" << offset << " size=" << size;
     try
     {
-        INODEPTR node = fs->OpenFile(fi->fh);
+        CInodePtr node = fs->OpenFile(fi->fh);
         size = node->Read((int8_t*)buf, offset, size);
     } catch(const int &err)
     {
@@ -168,13 +165,12 @@ static int fuse_write(const char *path, const char *buf, size_t size, off_t offs
 
     try
     {
-        INODEPTR node = fs->OpenFile(fi->fh);
+        CInodePtr node = fs->OpenFile(fi->fh);
         node->Write((int8_t*)buf, offset, size);
     } catch(const int &err)
     {
         return -err;
     }
-
     return size;
 }
 
@@ -190,8 +186,8 @@ static int fuse_mkdir(const char *path, mode_t mode)
     splitpath.pop_back();
     try
     {
-        CDirectory dir = fs->OpenDir(splitpath);
-        dir.MakeDirectory(dirname);
+        CDirectoryPtr dir = fs->OpenDir(splitpath);
+        dir->MakeDirectory(dirname);
     } catch(const int &err)
     {
         return -err;
@@ -205,9 +201,9 @@ static int fuse_rmdir(const char *path)
 
     try
     {
-        CDirectory dir = fs->OpenDir(path);
-        if (!dir.IsEmpty()) return -ENOTEMPTY;
-        dir.dirnode->Remove();
+        CDirectoryPtr dir = fs->OpenDir(path);
+        if (!dir->IsEmpty()) return -ENOTEMPTY;
+        dir->Remove();
     } catch(const int &err)
     {
         return -err;
@@ -221,7 +217,7 @@ static int fuse_unlink(const char *path)
 
     try
     {
-        INODEPTR node = fs->OpenNode(path);
+        CInodePtr node = fs->OpenNode(path);
         node->Remove();
     } catch(const int &err)
     {
@@ -241,8 +237,8 @@ static int fuse_create(const char *path, mode_t mode, struct fuse_file_info *fi)
     splitpath.pop_back();
     try
     {
-        CDirectory dir = fs->OpenDir(splitpath);
-        fi->fh = dir.MakeFile(filename);
+        CDirectoryPtr dir = fs->OpenDir(splitpath);
+        fi->fh = dir->MakeFile(filename);
     } catch(const int &err)
     {
         return -err;
@@ -256,7 +252,7 @@ static int fuse_access(const char *path, int mask)
     LOG(LogLevel::INFO) << "FUSE: access '" << path << "'";
     try
     {
-        INODEPTR node = fs->OpenNode(path);
+        CInodePtr node = fs->OpenNode(path);
     } catch(const int &err)
     {
         return -err;
@@ -271,22 +267,22 @@ static int fuse_rename(const char *oldpath, const char *newpath)
 
     std::vector<std::string> splitpath;
     splitpath = SplitPath(std::string(newpath));
-    assert(splitpath.size() >= 1);
+    assert(!splitpath.empty());
 
     try
     {
-        INODEPTR newnode = fs->OpenNode(splitpath);
+        CInodePtr newnode = fs->OpenNode(splitpath);
         return -EEXIST;
     }
     catch(...){}
 
     try
     {
-        INODEPTR node = fs->OpenNode(oldpath);
+        CInodePtr node = fs->OpenNode(oldpath);
 
         std::string filename = splitpath.back();
         splitpath.pop_back();
-        CDirectory dir = fs->OpenDir(splitpath);
+        CDirectoryPtr dir = fs->OpenDir(splitpath);
         fs->Rename(node, dir, filename); // TODO: check if rename overwrites an already existing file.
     } catch(const int &err)
     {
@@ -320,7 +316,7 @@ int StopFuse()
     return EXIT_SUCCESS;
 }
 
-int StartFuse(int argc, char *argv[], const char* _mountpoint, SimpleFilesystem &_fs)
+int StartFuse(int argc, char *argv[], const char* _mountpoint, CFilesystem &_fs)
 {
     fs = &_fs;
     mountpoint = std::string(_mountpoint);

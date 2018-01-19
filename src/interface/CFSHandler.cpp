@@ -88,7 +88,7 @@ std::future<bool> CFSHandler::Decrypt(char *pass)
         {
             enc.reset(new CEncrypt(*bio, pass));
             cbio.reset(new CCacheIO(bio, *enc, false));
-            fs.reset(new SimpleFilesystem(cbio));
+            fs.reset(new CSimpleFilesystem(cbio));
             status = UNMOUNTED;
             return true;
         } catch(...)

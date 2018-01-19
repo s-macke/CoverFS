@@ -3,7 +3,7 @@
 
 
 CStatusView::CStatusView(
-    std::weak_ptr<SimpleFilesystem> _fs,
+    std::weak_ptr<CSimpleFilesystem> _fs,
     std::weak_ptr<CCacheIO> _cbio,
     std::weak_ptr<CAbstractBlockIO> _bio
     ) : fs(_fs), cbio(_cbio), bio(_bio)

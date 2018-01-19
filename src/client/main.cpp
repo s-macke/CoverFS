@@ -7,8 +7,7 @@
 #include"Logger.h"
 
 #include"../interface/CFSHandler.h"
-#include"../SimpleFS/CDirectory.h"
-#include"../SimpleFS/CPrintCheckRepair.h"
+#include"../FS/SimpleFS/CPrintCheckRepair.h"
 #include"CStatusView.h"
 #include"ParallelTest.h"
 
@@ -84,20 +83,20 @@ int main(int argc, char *argv[])
     }
 
     static struct option long_options[] = {
-            {"help",       no_argument,       0,  0 },
-            {"port",       required_argument, 0,  0 },
-            {"host",       required_argument, 0,  0 },
-            {"info",       no_argument,       0,  0 },
-            {"fragments",  no_argument,       0,  0 },
-            {"rootdir",    no_argument,       0,  0 },
-            {"check",      no_argument,       0,  0 },
-            {"backend",    required_argument, 0,  0 },
-            {"debug",      no_argument,       0,  0 },
-            {"debugdeep",  no_argument,       0,  0 },
-            {"cryptcache", no_argument,       0,  0 },
-            {"test",       no_argument,       0,  0 },
-            {"web",        no_argument,       0,  0 },
-            {0,            0,                 0,  0 }
+            {"help",       no_argument,       nullptr,  0 },
+            {"port",       required_argument, nullptr,  0 },
+            {"host",       required_argument, nullptr,  0 },
+            {"info",       no_argument,       nullptr,  0 },
+            {"fragments",  no_argument,       nullptr,  0 },
+            {"rootdir",    no_argument,       nullptr,  0 },
+            {"check",      no_argument,       nullptr,  0 },
+            {"backend",    required_argument, nullptr,  0 },
+            {"debug",      no_argument,       nullptr,  0 },
+            {"debugdeep",  no_argument,       nullptr,  0 },
+            {"cryptcache", no_argument,       nullptr,  0 },
+            {"test",       no_argument,       nullptr,  0 },
+            {"web",        no_argument,       nullptr,  0 },
+            {nullptr,                0,       nullptr,  0 }
         };
 
     while(true)
@@ -247,8 +246,14 @@ int main(int argc, char *argv[])
     }
     if (rootdir)
     {
-        CDirectory dir = handler.fs->OpenDir("/");
-        dir.List();
+        CDirectoryPtr dir = handler.fs->OpenDir("/");
+        int n = 0;
+        dir->ForEachEntry([&](CDirectoryEntry &de)
+        {
+            printf("  %3i: '%s'\n", n, de.name.c_str());
+            n++;
+            return FOREACHENTRYRET::OK;
+        });
     }
     if (testfs)
     {

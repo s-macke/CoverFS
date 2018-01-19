@@ -48,11 +48,12 @@ set(CPP_FILES
     src/IO/CEncrypt.cpp
     src/IO/CNetBlockIO.cpp
     src/IO/CNetReadWriteBuffer.cpp
-    src/SimpleFS/CSimpleFS.cpp
-    src/SimpleFS/CDirectory.cpp
-    src/SimpleFS/INode.cpp
-    src/SimpleFS/CFragment.cpp
-    src/SimpleFS/CPrintCheckRepair.cpp
+    src/FS/CFilesystem.cpp
+    src/FS/SimpleFS/CSimpleFS.cpp
+    src/FS/SimpleFS/CSimpleFSDirectory.cpp
+    src/FS/SimpleFS/CSimpleFSInode.cpp
+    src/FS/SimpleFS/CFragment.cpp
+    src/FS/SimpleFS/CPrintCheckRepair.cpp
     src/interface/CFSHandler.cpp
     src/client/ParallelTest.cpp
     src/client/CStatusView.cpp
@@ -90,7 +91,6 @@ if ("${CMAKE_SYSTEM_NAME}" STREQUAL "MSYS" OR "${CMAKE_SYSTEM_NAME}" STREQUAL "M
     set(PLATFORM_LIBS ws2_32 wsock32)
 endif ()
 
-
 include_directories(${Boost_INCLUDE_DIRS} ${PROJECT_BINARY_DIR} ${PROJECT_SOURCE_DIR}/src/utils)
 
 if (Poco_FOUND)
@@ -120,12 +120,10 @@ add_custom_command(
     COMMENT "Copying to build directory"
 )
 
-
 add_custom_target(dist
     COMMAND git archive --prefix=${ARCHIVE_NAME}/ HEAD
     | bzip2 > ${CMAKE_BINARY_DIR}/${ARCHIVE_NAME}.tar.bz2
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
-
 
 add_custom_target(release
     COMMAND

@@ -2,7 +2,7 @@
 #include<algorithm>
 
 #include"CPrintCheckRepair.h"
-#include"CDirectory.h"
+#include"CSimpleFSDirectory.h"
 
 void CPrintCheckRepair::GetRecursiveDirectories(std::map<int32_t, std::string> &direntries, int id, const std::string &path)
 {
@@ -10,11 +10,11 @@ void CPrintCheckRepair::GetRecursiveDirectories(std::map<int32_t, std::string> &
     std::string newpath;
     try
     {
-        INODEPTR node = fs.OpenNode(id);
+        CSimpleFSInodePtr node = fs.OpenNodeInternal(id);
         //printf("recursive opened: %i\n", id);
-        CDirectory dir = CDirectory(node, fs);
+        CSimpleFSDirectory dir = CSimpleFSDirectory(node, fs);
 
-        dir.ForEachEntry([&](DIRENTRY &de)
+        dir.ForEachEntryIntern([&](CDirectoryEntryOnDisk &de)
         {
             //printf("id=%9i: '%s/%s'\n", de.id, path.c_str(), de.name);
             if (de.id == CFragmentDesc::INVALIDID) return FOREACHENTRYRET::OK;

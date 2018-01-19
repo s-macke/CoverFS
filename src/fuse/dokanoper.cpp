@@ -1,14 +1,14 @@
 #include<ntstatus.h>
 
 #include<cstdio>
-#include<string.h>
+#include<cstring>
 #include<cwchar>
 #include<cerrno>
 #include<cassert>
 #include<map>
+#include<vector>
 #include"Logger.h"
-#include"../SimpleFS/CSimpleFS.h"
-#include"../SimpleFS/CDirectory.h"
+#include"../FS/CFilesystem.h"
 
 #include"dokanoper.h"
 
@@ -16,7 +16,7 @@ extern "C" {
     #include <dokan/dokan.h>
 }
 
-static SimpleFilesystem *fs;
+static CFilesystem *fs;
 static uint64_t handleid = 1;
 bool mounted = false;
 
@@ -87,7 +87,7 @@ Dokan_CreateFile(
 
     os << "Dokan: CreateFile '" << path << "' (new handle id " << handleid << ") ";
 
-    if (path == "") return STATUS_OBJECT_NAME_NOT_FOUND;
+    if (path.empty()) return STATUS_OBJECT_NAME_NOT_FOUND;
 
     if (CreateOptions&FILE_DIRECTORY_FILE) os << " (isdir) ";
 
@@ -166,8 +166,8 @@ Dokan_CreateFile(
             splitpath.pop_back();
             try
             {
-                CDirectory dir = fs->OpenDir(splitpath);
-                dir.MakeDirectory(filename);
+                CDirectoryPtr dir = fs->OpenDir(splitpath);
+                dir->MakeDirectory(filename);
                 DokanFileInfo->Context = handleid++;
                 DokanFileInfo->IsDirectory = TRUE;
                 handle2path[DokanFileInfo->Context] = path;
@@ -184,7 +184,7 @@ Dokan_CreateFile(
             //LOG(LogLevel::INFO) << "command: open directory";
             try
             {
-                INODEPTR node = fs->OpenNode(path.c_str());
+                CDirectoryPtr node = fs->OpenDir(path); // just to check if everything works and preload
                 DokanFileInfo->Context = handleid++;
                 handle2path[DokanFileInfo->Context] = path;
             } catch(const int &err)
@@ -206,8 +206,8 @@ Dokan_CreateFile(
         splitpath.pop_back();
         try
         {
-            CDirectory dir = fs->OpenDir(splitpath);
-            dir.MakeFile(filename);
+            CDirectoryPtr dir = fs->OpenDir(splitpath);
+            dir->MakeFile(filename);
             DokanFileInfo->Context = handleid++;
             handle2path[DokanFileInfo->Context] = path;
         } catch(const int &err) // or file already exist?
@@ -224,8 +224,8 @@ Dokan_CreateFile(
         //LOG(LogLevel::INFO) << "Dokan: command: open file";
         try
         {
-            INODEPTR node = fs->OpenNode(path.c_str());
-            DokanFileInfo->Context = handleid++;;
+            CInodePtr node = fs->OpenFile(path);
+            DokanFileInfo->Context = handleid++;
             handle2path[DokanFileInfo->Context] = path;
         } catch(const int &err)
         {
@@ -253,21 +253,22 @@ static NTSTATUS DOKAN_CALLBACK Dokan_GetFileInformation(LPCWSTR FileName, LPBY_H
     //memset(HandleFileInformation, 0, sizeof(struct BY_HANDLE_FILE_INFORMATION));
     try
     {
-        INODEPTR node = fs->OpenNode(path.c_str());
+        CInodePtr node = fs->OpenNode(path);
         //LOG(LogLevel::INFO) << "open succesful";
-        node->Lock();
-        HandleFileInformation->nFileSizeLow = node->size&0xFFFFFFFF;
-        HandleFileInformation->nFileSizeHigh = node->size >> 32;
+
+        int64_t size = node->GetSize();
+        HandleFileInformation->nFileSizeLow = size&0xFFFFFFFF;
+        HandleFileInformation->nFileSizeHigh = size >> 32;
         HandleFileInformation->nNumberOfLinks = 1;
         //HandleFileInformation->ftCreationTime = 0;
         //HandleFileInformation->ftLastAccessTime = 0;
         //HandleFileInformation->ftLastWriteTime = 0;
         HandleFileInformation->nFileIndexHigh = 0;
-        HandleFileInformation->nFileIndexLow = node->id;
+        HandleFileInformation->nFileIndexLow = node->GetId();
         HandleFileInformation->dwVolumeSerialNumber = 0x53281900;
 
         // FILE_ATTRIBUTE_OFFLINE
-        if (node->type == INODETYPE::dir)
+        if (node->GetType() == INODETYPE::dir)
         {
             HandleFileInformation->dwFileAttributes = FILE_ATTRIBUTE_DIRECTORY | FILE_ATTRIBUTE_NOT_CONTENT_INDEXED;
             DokanFileInfo->IsDirectory = TRUE;
@@ -275,7 +276,7 @@ static NTSTATUS DOKAN_CALLBACK Dokan_GetFileInformation(LPCWSTR FileName, LPBY_H
         {
             HandleFileInformation->dwFileAttributes = FILE_ATTRIBUTE_NORMAL;
         }
-        node->Unlock();
+
     } catch(const int &err)
     {
         return errno_to_nstatus(err);
@@ -342,7 +343,7 @@ static NTSTATUS DOKAN_CALLBACK Dokan_SetEndOfFile(
 
     try
     {
-        INODEPTR node = fs->OpenFile(path);
+        CInodePtr node = fs->OpenFile(path);
         node->Truncate(ByteOffset, false);  // the content is undefined according to spec
         //node->Truncate(ByteOffset);
     } catch(const int &err)
@@ -365,7 +366,7 @@ PDOKAN_FILE_INFO DokanFileInfo)
     LOG(LogLevel::INFO) << "Dokan: ReadFile '" << path << "' size=" << BufferLength;
     try
     {
-        INODEPTR node = fs->OpenFile(path.c_str());
+        CInodePtr node = fs->OpenFile(path);
         *ReadLength = node->Read((int8_t*)Buffer, Offset, BufferLength);
     } catch(const int &err)
     {
@@ -385,7 +386,7 @@ PDOKAN_FILE_INFO DokanFileInfo)
     LOG(LogLevel::INFO) << "Dokan: WriteFile '" << path << "' size=" << NumberOfBytesToWrite;
     try
     {
-        INODEPTR node = fs->OpenFile(path.c_str());
+        CInodePtr node = fs->OpenFile(path);
         node->Write((int8_t*)Buffer, Offset, NumberOfBytesToWrite);
         *NumberOfBytesWritten = NumberOfBytesToWrite;
     } catch(const int &err)
@@ -404,30 +405,26 @@ Dokan_FindFiles(LPCWSTR FileName, PFillFindData FillFindData, PDOKAN_FILE_INFO D
 
     try
     {
-        CDirectory dir = fs->OpenDir(path.c_str());
+        CDirectoryPtr dir = fs->OpenDir(path);
 
-        dir.ForEachEntry([&](DIRENTRY &de)
+        dir->ForEachEntry([&](CDirectoryEntry &de)
         {
-            if (de.id == CFragmentDesc::INVALIDID) return FOREACHENTRYRET::OK;
             WIN32_FIND_DATAW findData = {0};
 
-            INODEPTR node = fs->OpenNode(de.id);
-            node->Lock();
-            findData.nFileSizeHigh = node->size >> 32;
-            findData.nFileSizeLow = node->size & 0xFFFFFFFF;
-            if (fs->GetType(de.id) == INODETYPE::dir)
+            CInodePtr node = fs->OpenNode(de.id);
+            int64_t size = node->GetSize();
+            findData.nFileSizeHigh = size >> 32;
+            findData.nFileSizeLow = size & 0xFFFFFFFF;
+            if (node->GetType() == INODETYPE::dir)
             {
                 findData.dwFileAttributes = FILE_ATTRIBUTE_DIRECTORY | FILE_ATTRIBUTE_NOT_CONTENT_INDEXED;
             } else
             {
                 findData.dwFileAttributes = FILE_ATTRIBUTE_NORMAL;
             }
-            node->Unlock();
             std::wstring name = utf8_to_wstring(de.name);
             wcsncpy(findData.cFileName, name.data(), 96+32);
             FillFindData(&findData, DokanFileInfo);
-
-            return FOREACHENTRYRET::OK;
         });
 
     } catch(const int &err)
@@ -450,22 +447,22 @@ LPCWSTR NewFileName, BOOL ReplaceIfExisting, PDOKAN_FILE_INFO DokanFileInfo)
 
     std::vector<std::string> splitpath;
     splitpath = SplitPath(newpath);
-    assert(splitpath.size() >= 1);
+    assert(!splitpath.empty());
 
     try
     {
-        INODEPTR newnode = fs->OpenNode(splitpath);
+        CInodePtr newnode = fs->OpenNode(splitpath);
         return errno_to_nstatus(-EEXIST);
     }
     catch(...){}
 
     try
     {
-        INODEPTR node = fs->OpenNode(oldpath);
+        CInodePtr node = fs->OpenNode(oldpath);
 
         std::string filename = splitpath.back();
         splitpath.pop_back();
-        CDirectory dir = fs->OpenDir(splitpath);
+        CDirectoryPtr dir = fs->OpenDir(splitpath);
         fs->Rename(node, dir, filename);
     } catch(const int &err)
     {
@@ -528,7 +525,7 @@ static void DOKAN_CALLBACK Dokan_Cleanup(LPCWSTR FileName, PDOKAN_FILE_INFO Doka
     LOG(LogLevel::INFO) << "Dokan: remove file";
     try
     {
-        INODEPTR node = fs->OpenNode(path);
+        CInodePtr node = fs->OpenNode(path);
         node->Remove();
     } catch(const int &err)
     {
@@ -627,7 +624,7 @@ int StopDokan()
     }
 }
 
-int StartDokan(int argc, char *argv[], const char* _mountpoint, SimpleFilesystem &_fs)
+int StartDokan(int argc, char *argv[], const char* _mountpoint, CFilesystem &_fs)
 {
     fs = &_fs;
     mountpoint = std::string(_mountpoint);

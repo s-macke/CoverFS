@@ -1,9 +1,11 @@
-#include "CSimpleFS.h"
-#include "CDirectory.h"
-#include "Logger.h"
 
 #include<cassert>
 #include<set>
+
+#include "CSimpleFSInode.h"
+#include "CSimpleFSDirectory.h"
+#include "CSimpleFS.h"
+#include "Logger.h"
 
 /*
 TODO:
@@ -41,9 +43,9 @@ typedef struct
     int32_t version;
 } SUPER;
 
-SimpleFilesystem::SimpleFilesystem(const std::shared_ptr<CCacheIO> &_bio) : bio(_bio), fragmentlist(_bio)
+CSimpleFilesystem::CSimpleFilesystem(const std::shared_ptr<CCacheIO> &_bio) : bio(_bio), fragmentlist(_bio)
 {
-    static_assert(sizeof(DIRENTRY) == 128, "");
+    static_assert(sizeof(CDirectoryEntryOnDisk) == 128, "");
     static_assert(CFragmentDesc::SIZEONDISK == 16, "");
 
     nopendir = 0;
@@ -61,7 +63,7 @@ SimpleFilesystem::SimpleFilesystem(const std::shared_ptr<CCacheIO> &_bio) : bio(
     LOG(LogLevel::INFO) << "  blocksize: " << bio->blocksize << " bytes";
 
     CBLOCKPTR superblock = bio->GetBlock(1);
-    auto * super = (SUPER*)superblock->GetBufRead();
+    SUPER * super = (SUPER*)superblock->GetBufRead();
     if (strncmp(super->magic, "CoverFS", 7) != 0)
     {
         superblock->ReleaseBuf();
@@ -74,9 +76,9 @@ SimpleFilesystem::SimpleFilesystem(const std::shared_ptr<CCacheIO> &_bio) : bio(
     fragmentlist.Load();
 }
 
-SimpleFilesystem::~SimpleFilesystem()
+CSimpleFilesystem::~CSimpleFilesystem()
 {
-    LOG(LogLevel::DEBUG) << "SimpleFilesystem: Destruct";
+    LOG(LogLevel::DEBUG) << "CSimpleFilesystem: Destruct";
     LOG(LogLevel::INFO) << "Opened files:        " << nopenfiles;
     LOG(LogLevel::INFO) << "Opened directories:  " << nopendir;
     LOG(LogLevel::INFO) << "Created files:       " << ncreatefiles;
@@ -86,7 +88,6 @@ SimpleFilesystem::~SimpleFilesystem()
     LOG(LogLevel::INFO) << "Renamed nodes:       " << nrenamed;
     LOG(LogLevel::INFO) << "Removed nodes:       " << nremoved;
     LOG(LogLevel::INFO) << "Truncated nodes:     " << ntruncated;
-
 
     std::lock_guard<std::mutex> lock(inodescachemtx);
     for (auto &inode : inodes)
@@ -99,12 +100,12 @@ SimpleFilesystem::~SimpleFilesystem()
     }
 }
 
-int64_t SimpleFilesystem::GetNInodes()
+int64_t CSimpleFilesystem::GetNInodes()
 {
     return inodes.size();
 }
 
-void SimpleFilesystem::CreateFS()
+void CSimpleFilesystem::CreateFS()
 {
     LOG(LogLevel::INFO) << "==================";
     LOG(LogLevel::INFO) << "Create Filesystem";
@@ -122,10 +123,10 @@ void SimpleFilesystem::CreateFS()
 
     // Create root directory
 
-    INODEPTR rootinode(new INODE(*this));
+    CSimpleFSInodePtr rootinode(new CSimpleFSInode(*this));
     rootinode->id = CFragmentDesc::INVALIDID;
     rootinode->type = INODETYPE::dir;
-    CDirectory rootdir = CDirectory(rootinode, *this);
+    CSimpleFSDirectory rootdir = CSimpleFSDirectory(rootinode, *this);
     int id = rootdir.MakeDirectory(std::string("root"));
 
     if (id != CFragmentDesc::ROOTID)
@@ -135,15 +136,14 @@ void SimpleFilesystem::CreateFS()
     }
 /*
     int id = fragmentlist.ReserveNewFragment(INODETYPE::file);
-    INODEPTR node = OpenNode(id);
+    CSimpleFSInodePtr node = OpenNodeInternal(id);
     GrowNode(*node, 1);
 */
+    CDirectoryPtr dir = OpenDir("/");
+    dir->MakeDirectory("mydir");
 
-    CDirectory dir = OpenDir("/");
-    dir.MakeDirectory("mydir");
-
-    dir.MakeFile("hello");
-    INODEPTR node = OpenNode("hello");
+    dir->MakeFile("hello");
+    CSimpleFSInodePtr node = OpenNodeInternal("hello");
     const char *s = "Hello world\n";
     node->Write((int8_t*)s, 0, strlen(s));
 
@@ -153,7 +153,7 @@ void SimpleFilesystem::CreateFS()
     LOG(LogLevel::INFO) << "==================";
 }
 
-INODEPTR SimpleFilesystem::OpenNode(int id)
+CSimpleFSInodePtr CSimpleFilesystem::OpenNodeInternal(int id)
 {
     std::lock_guard<std::mutex> lock(inodescachemtx);
 
@@ -165,7 +165,7 @@ INODEPTR SimpleFilesystem::OpenNode(int id)
         return it->second;
     }
 
-    INODEPTR node(new INODE(*this));
+    CSimpleFSInodePtr node(new CSimpleFSInode(*this));
     node->id = id;
     node->size = 0;
     node->fragments.clear();
@@ -182,56 +182,26 @@ INODEPTR SimpleFilesystem::OpenNode(int id)
     return node;
 }
 
-std::vector<std::string> SplitPath(const std::string &path)
-{
-    std::vector<std::string> d;
-    std::string s;
-
-    unsigned int idx = 0;
-
-    while(idx<path.size())
-    {
-        if ((path[idx] == '/') || (path[idx] == '\\'))
-        {
-            if (!s.empty())
-            {
-                d.push_back(s);
-                s = "";
-            }
-            idx++;
-            continue;
-        }
-        s += path[idx];
-        idx++;
-    }
-    if (!s.empty()) d.push_back(s);
-    /*
-        for(unsigned int i=0; i<d.size(); i++)
-                printf("  %i: %s\n", i, d[i].c_str());
-    */
-    return d;
-}
-
-INODEPTR SimpleFilesystem::OpenNode(const std::string &path)
+CSimpleFSInodePtr CSimpleFilesystem::OpenNodeInternal(const std::string &path)
 {
     assert(!path.empty());
     std::vector<std::string> splitpath;
     splitpath = SplitPath(path);
-    return OpenNode(splitpath);
+    return OpenNodeInternal(splitpath);
 }
 
-INODEPTR SimpleFilesystem::OpenNode(const std::vector<std::string> splitpath)
+CSimpleFSInodePtr CSimpleFilesystem::OpenNodeInternal(const std::vector<std::string> splitpath)
 {
-    INODEPTR node;
-    DIRENTRY e("");
+    CSimpleFSInodePtr node;
+    CDirectoryEntryOnDisk e("");
 
     int dirid = 0;
     e.id = 0;
     for(unsigned int i=0; i<splitpath.size(); i++)
     {
         dirid = e.id;
-        node = OpenNode(dirid);
-        CDirectory(node, *this).Find(splitpath[i], e);
+        node = OpenNodeInternal(dirid);
+        CSimpleFSDirectory(node, *this).Find(splitpath[i], e);
         if (e.id == CFragmentDesc::INVALIDID)
         {
             throw ENOENT;
@@ -239,7 +209,7 @@ INODEPTR SimpleFilesystem::OpenNode(const std::vector<std::string> splitpath)
         if (i<splitpath.size()-1) assert(node->type == INODETYPE::dir);
     }
 
-    node = OpenNode(e.id);
+    node = OpenNodeInternal(e.id);
     std::lock_guard<std::mutex> lock(node->GetMutex());
     node->parentid = dirid;
     if (splitpath.empty())
@@ -250,51 +220,50 @@ INODEPTR SimpleFilesystem::OpenNode(const std::vector<std::string> splitpath)
     return node;
 }
 
-CDirectory SimpleFilesystem::OpenDir(int id)
+CSimpleFSDirectoryPtr CSimpleFilesystem::OpenDirInternal(int id)
 {
-    INODEPTR node = OpenNode(id);
+    CSimpleFSInodePtr node = OpenNodeInternal(id);
     // The check whether this is a directory is done in the constructor
-    return CDirectory(node, *this);
+    return std::make_shared<CSimpleFSDirectory>(CSimpleFSDirectory(node, *this));
 }
 
-CDirectory SimpleFilesystem::OpenDir(const std::string &path)
+CDirectoryPtr CSimpleFilesystem::OpenDir(const std::string &path)
 {
-    INODEPTR node = OpenNode(path);
-    return CDirectory(node, *this);
+    CSimpleFSInodePtr node = OpenNodeInternal(path);
+    return std::make_shared<CSimpleFSDirectory>(CSimpleFSDirectory(node, *this));
 }
 
-CDirectory SimpleFilesystem::OpenDir(const std::vector<std::string> splitpath)
+CDirectoryPtr CSimpleFilesystem::OpenDir(const std::vector<std::string> splitpath)
 {
-    INODEPTR node = OpenNode(splitpath);
-    return CDirectory(node, *this);
+    CSimpleFSInodePtr node = OpenNodeInternal(splitpath);
+    return std::make_shared<CSimpleFSDirectory>(CSimpleFSDirectory(node, *this));
 }
 
-INODEPTR SimpleFilesystem::OpenFile(int id)
+CInodePtr CSimpleFilesystem::OpenFile(int id)
 {
-    INODEPTR node = OpenNode(id);
+    CSimpleFSInodePtr node = OpenNodeInternal(id);
     if (node->type != INODETYPE::file) throw ENOENT;
     if (node->id == CFragmentDesc::INVALIDID) throw ENOENT;
     return node;
 }
 
-INODEPTR SimpleFilesystem::OpenFile(const std::string &path)
+CInodePtr CSimpleFilesystem::OpenFile(const std::string &path)
 {
-    INODEPTR node = OpenNode(path);
+    CSimpleFSInodePtr node = OpenNodeInternal(path);
     if (node->id == CFragmentDesc::INVALIDID) throw ENOENT;
     if (node->type != INODETYPE::file) throw ENOENT;
     return node;
 }
 
-INODEPTR SimpleFilesystem::OpenFile(const std::vector<std::string> splitpath)
+CInodePtr CSimpleFilesystem::OpenFile(const std::vector<std::string> splitpath)
 {
-    INODEPTR node = OpenNode(splitpath);
+    CSimpleFSInodePtr node = OpenNodeInternal(splitpath);
     if (node->id == CFragmentDesc::INVALIDID) throw ENOENT;
     if (node->type != INODETYPE::file) throw ENOENT;
     return node;
 }
 
-
-void SimpleFilesystem::GrowNode(INODE &node, int64_t size)
+void CSimpleFilesystem::GrowNode(CSimpleFSInode &node, int64_t size)
 {
     std::lock_guard<std::mutex> lock(fragmentlist.fragmentsmtx);
     while(node.size < size)
@@ -333,7 +302,7 @@ void SimpleFilesystem::GrowNode(INODE &node, int64_t size)
     }
 }
 
-void SimpleFilesystem::ShrinkNode(INODE &node, int64_t size)
+void CSimpleFilesystem::ShrinkNode(CSimpleFSInode &node, int64_t size)
 {
     std::lock_guard<std::mutex> lock(fragmentlist.fragmentsmtx); // not interfere with sorted offset list
     while(node.size > 0)
@@ -358,7 +327,7 @@ void SimpleFilesystem::ShrinkNode(INODE &node, int64_t size)
     fragmentlist.SortOffsets();
 }
 
-void SimpleFilesystem::Truncate(INODE &node, int64_t size, bool dozero)
+void CSimpleFilesystem::Truncate(CSimpleFSInode &node, int64_t size, bool dozero)
 {
     ntruncated++;
     LOG(LogLevel::DEEP) << "Truncate of id=" << node.id << " from:" << node.size << "to:" << size;
@@ -394,7 +363,7 @@ void SimpleFilesystem::Truncate(INODE &node, int64_t size, bool dozero)
 
 // -----------
 
-int64_t SimpleFilesystem::Read(INODE &node, int8_t *d, int64_t ofs, int64_t size)
+int64_t CSimpleFilesystem::Read(CSimpleFSInode &node, int8_t *d, int64_t ofs, int64_t size)
 {
     int64_t s = 0;
     nread++;
@@ -424,7 +393,7 @@ int64_t SimpleFilesystem::Read(INODE &node, int8_t *d, int64_t ofs, int64_t size
     return s;
 }
 
-void SimpleFilesystem::Write(INODE &node, const int8_t *d, int64_t ofs, int64_t size)
+void CSimpleFilesystem::Write(CSimpleFSInode &node, const int8_t *d, int64_t ofs, int64_t size)
 {
     nwritten++;
     if (size == 0) return;
@@ -451,67 +420,70 @@ void SimpleFilesystem::Write(INODE &node, const int8_t *d, int64_t ofs, int64_t 
 
 // -----------
 
-void SimpleFilesystem::Rename(INODEPTR &node, CDirectory &newdir, const std::string &filename)
+void CSimpleFilesystem::Rename(CInodePtr _node, CDirectoryPtr _newdir, const std::string &filename)
 {
+    CSimpleFSDirectoryPtr newdir = std::dynamic_pointer_cast<CSimpleFSDirectory>(_newdir);
+    CSimpleFSInodePtr node = std::dynamic_pointer_cast<CSimpleFSInode>(_node);
+
     nrenamed++;
-    DIRENTRY e(filename);
-    CDirectory olddir = OpenDir(node->parentid);
-    olddir.RemoveEntry(node->name, e);
+    CDirectoryEntryOnDisk e(filename);
+    CSimpleFSDirectoryPtr olddir = OpenDirInternal(node->parentid);
+    olddir->RemoveEntry(node->name, e);
     strncpy(e.name, filename.c_str(), 64+32);
-    newdir.AddEntry(e);
+    newdir->AddEntry(e);
 }
 
-int SimpleFilesystem::CreateNode(CDirectory &dir, const std::string &name, INODETYPE t)
+int CSimpleFilesystem::CreateNode(CSimpleFSDirectory &dir, const std::string &name, INODETYPE t)
 {
     // Reserve one block. Necessary even for empty files
     if (t == INODETYPE::dir) ncreatedir++; else ncreatefiles++;
     int id = fragmentlist.ReserveNewFragment(t);
     bio->Sync();
     if (dir.dirnode->id == CFragmentDesc::INVALIDID) return id; // this is the root directory and does not have a parent
-    dir.AddEntry(DIRENTRY(name, id));
+    dir.AddEntry(CDirectoryEntryOnDisk(name, id));
     return id;
 }
 
-int SimpleFilesystem::MakeFile(CDirectory &dir, const std::string &name)
+int CSimpleFilesystem::MakeFile(CSimpleFSDirectory &dir, const std::string &name)
 {
     int id = CreateNode(dir, name, INODETYPE::file);
     LOG(LogLevel::DEEP) << "Create File '" << name << "' with id=" << id;
     return id;
 }
 
-int SimpleFilesystem::MakeDirectory(CDirectory &dir, const std::string &name)
+int CSimpleFilesystem::MakeDirectory(CSimpleFSDirectory &dir, const std::string &name)
 {
     int id = CreateNode(dir, name, INODETYPE::dir);
     LOG(LogLevel::DEEP) << "Create Directory '" << name << "' with id=" << id;
 
-    INODEPTR newdirnode = OpenNode(id);
+    CSimpleFSInodePtr newdirnode = OpenNodeInternal(id);
     newdirnode->parentid = dir.dirnode->id;
     newdirnode->name = name;
     newdirnode->type = INODETYPE::dir;
 
-    CDirectory(newdirnode, *this).Create();
+    CSimpleFSDirectory(newdirnode, *this).Create();
     return id;
 }
 
-void SimpleFilesystem::Remove(INODE &node)
+void CSimpleFilesystem::Remove(CSimpleFSInode &node)
 {
     nremoved++;
     // maybe, we have to check the shared_ptr here
-    DIRENTRY e("");
-    CDirectory dir = OpenDir(node.parentid);
+    CDirectoryEntryOnDisk e("");
+    CSimpleFSDirectoryPtr dir = OpenDirInternal(node.parentid);
     fragmentlist.FreeAllFragments(node.fragments);
     node.fragments.clear();
-    dir.RemoveEntry(node.name, e);
+    dir->RemoveEntry(node.name, e);
     std::lock_guard<std::mutex> lock(inodescachemtx);
     inodes.erase(node.id); // remove from map
 }
 
-INODETYPE SimpleFilesystem::GetType(int32_t type)
+INODETYPE CSimpleFilesystem::GetType(int32_t id)
 {
-    return fragmentlist.GetType(type);
+    return fragmentlist.GetType(id);
 }
 
-void SimpleFilesystem::StatFS(CStatFS *buf)
+void CSimpleFilesystem::StatFS(CStatFS *buf)
 {
     buf->f_bsize   = bio->blocksize;
     buf->f_frsize  = bio->blocksize;
@@ -535,4 +507,20 @@ void SimpleFilesystem::StatFS(CStatFS *buf)
     buf->f_bfree  = totalsize / bio->blocksize - size;
     buf->f_bavail = totalsize / bio->blocksize - size;
     buf->f_files  = s.size();
+}
+CInodePtr CSimpleFilesystem::OpenNode(int id)
+{
+    return OpenNodeInternal(id);
+}
+CInodePtr CSimpleFilesystem::OpenNode(const std::vector<std::string> splitpath)
+{
+    return OpenNodeInternal(splitpath);
+}
+CInodePtr CSimpleFilesystem::OpenNode(const std::string& path)
+{
+    return OpenNodeInternal(path);
+}
+CDirectoryPtr CSimpleFilesystem::OpenDir(int id)
+{
+    return OpenDirInternal(id);
 }

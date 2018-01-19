@@ -1,9 +1,9 @@
 #ifndef FUSE_H
 #define FUSE_H
 
-#include"../SimpleFS/CSimpleFS.h"
+#include"../FS/SimpleFS/CSimpleFS.h"
 
-int StartFuse(int argc, char *argv[], const char* mountpoint, SimpleFilesystem &fs);
+int StartFuse(int argc, char *argv[], const char* mountpoint, CFilesystem &fs);
 int StopFuse();
 
 #endif
