@@ -113,11 +113,11 @@ static int fuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off
         CDirectoryPtr dir = fs->OpenDir(fi->fh);
         filler(buf, ".", NULL, 0);
         filler(buf, "..", NULL, 0);
-
-        dir->ForEachEntry([&](CDirectoryEntry &de)
+        CDirectoryIteratorPtr iterator = dir->GetIterator();
+        while(iterator->HasNext())
         {
-            filler(buf, de.name.c_str(), NULL, 0);
-        });
+            filler(buf, iterator->Next().name.c_str(), NULL, 0);
+        }
     } catch(const int &err)
     {
         return -err;

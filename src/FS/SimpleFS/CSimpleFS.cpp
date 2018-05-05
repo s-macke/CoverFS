@@ -160,7 +160,7 @@ CSimpleFSInodePtr CSimpleFilesystem::OpenNodeInternal(int id)
     auto it = inodes.find(id);
     if (it != inodes.end())
     {
-        LOG(LogLevel::DEEP) << "Open File with id=" << id << " size=" << it->second->size << "and ptrcount=" << it->second.use_count();
+        LOG(LogLevel::DEEP) << "Open File with id=" << id << " size=" << it->second->size << " and ptrcount=" << it->second.use_count();
         assert(id == it->second->id);
         return it->second;
     }
@@ -204,7 +204,8 @@ CSimpleFSInodePtr CSimpleFilesystem::OpenNodeInternal(const std::vector<std::str
         CSimpleFSDirectory(node, *this).Find(splitpath[i], e);
         if (e.id == CFragmentDesc::INVALIDID)
         {
-            throw ENOENT;
+            LOG(LogLevel::DEEP) << "Cannot find node '" << splitpath[i] << "'";
+            throw ENOENT; // No such file or directory
         }
         if (i<splitpath.size()-1) assert(node->type == INODETYPE::dir);
     }
@@ -330,7 +331,7 @@ void CSimpleFilesystem::ShrinkNode(CSimpleFSInode &node, int64_t size)
 void CSimpleFilesystem::Truncate(CSimpleFSInode &node, int64_t size, bool dozero)
 {
     ntruncated++;
-    LOG(LogLevel::DEEP) << "Truncate of id=" << node.id << " from:" << node.size << "to:" << size;
+    LOG(LogLevel::DEEP) << "Truncate of id=" << node.id << " from: " << node.size << " to: " << size;
     assert(node.id != CFragmentDesc::INVALIDID);
     if (size == node.size) return;
 

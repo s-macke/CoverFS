@@ -12,6 +12,8 @@ class CSimpleFilesystem;
 class CSimpleFSInode : public CInode
 {
     friend class CSimpleFSDirectory;
+    friend class CSimpleFSInternalDirectoryIterator;
+    friend class CSimpleFSDirectoryIterator;
     friend class CSimpleFilesystem;
 
 public:

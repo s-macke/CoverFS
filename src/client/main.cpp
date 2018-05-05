@@ -248,12 +248,12 @@ int main(int argc, char *argv[])
     {
         CDirectoryPtr dir = handler.fs->OpenDir("/");
         int n = 0;
-        dir->ForEachEntry([&](CDirectoryEntry &de)
+        CDirectoryIteratorPtr iterator = dir->GetIterator();
+        while(iterator->HasNext())
         {
-            printf("  %3i: '%s'\n", n, de.name.c_str());
+            printf("  %3i: '%s'\n", n, iterator->Next().name.c_str());
             n++;
-            return FOREACHENTRYRET::OK;
-        });
+        }
     }
     if (testfs)
     {

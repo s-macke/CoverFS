@@ -406,10 +406,12 @@ Dokan_FindFiles(LPCWSTR FileName, PFillFindData FillFindData, PDOKAN_FILE_INFO D
     try
     {
         CDirectoryPtr dir = fs->OpenDir(path);
-
-        dir->ForEachEntry([&](CDirectoryEntry &de)
+        CDirectoryIteratorPtr iterator = dir->GetIterator();
+        while(iterator->HasNext())
         {
             WIN32_FIND_DATAW findData = {0};
+
+            CDirectoryEntry de = iterator->Next();
 
             CInodePtr node = fs->OpenNode(de.id);
             int64_t size = node->GetSize();
@@ -417,15 +419,16 @@ Dokan_FindFiles(LPCWSTR FileName, PFillFindData FillFindData, PDOKAN_FILE_INFO D
             findData.nFileSizeLow = size & 0xFFFFFFFF;
             if (node->GetType() == INODETYPE::dir)
             {
-                findData.dwFileAttributes = FILE_ATTRIBUTE_DIRECTORY | FILE_ATTRIBUTE_NOT_CONTENT_INDEXED;
+            findData.dwFileAttributes = FILE_ATTRIBUTE_DIRECTORY | FILE_ATTRIBUTE_NOT_CONTENT_INDEXED;
             } else
             {
-                findData.dwFileAttributes = FILE_ATTRIBUTE_NORMAL;
+            findData.dwFileAttributes = FILE_ATTRIBUTE_NORMAL;
             }
             std::wstring name = utf8_to_wstring(de.name);
             wcsncpy(findData.cFileName, name.data(), 96+32);
             FillFindData(&findData, DokanFileInfo);
-        });
+
+        }
 
     } catch(const int &err)
     {

@@ -2,6 +2,7 @@
 #define CFILESYSTEM_H
 
 #include<memory>
+#include<functional>
 
 class CStatFS
 {
@@ -30,8 +31,6 @@ class CInode
 };
 using CInodePtr = std::shared_ptr<CInode>;
 
-enum class FOREACHENTRYRET {OK, QUIT, WRITEANDQUIT};
-
 class CDirectoryEntry
 {
     public:
@@ -39,11 +38,25 @@ class CDirectoryEntry
         int32_t id;
 };
 
+/*
+class CDirectoryIterator : public std::iterator<std::forward_iterator_tag, CDirectoryEntry>
+{};
+*/
+
+class CDirectoryIterator
+{
+    public:
+        virtual bool HasNext()=0;
+        virtual CDirectoryEntry Next()=0;
+    private:
+        CDirectoryEntry de;
+};
+using CDirectoryIteratorPtr = std::unique_ptr<CDirectoryIterator>;
+
 class CDirectory
 {
     public:
-        virtual void ForEachEntry(std::function<void(CDirectoryEntry &de)> f)=0;
-        virtual void ForEachEntryNonBlocking(std::function<void(CDirectoryEntry &de)> f)=0;
+        virtual CDirectoryIteratorPtr GetIterator()=0;
         virtual int MakeDirectory(const std::string& name)=0;
         virtual int MakeFile(const std::string& name)=0;
         virtual int32_t GetId()=0;

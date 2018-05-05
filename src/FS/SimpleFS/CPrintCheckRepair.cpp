@@ -14,15 +14,17 @@ void CPrintCheckRepair::GetRecursiveDirectories(std::map<int32_t, std::string> &
         //printf("recursive opened: %i\n", id);
         CSimpleFSDirectory dir = CSimpleFSDirectory(node, fs);
 
-        dir.ForEachEntryIntern([&](CDirectoryEntryOnDisk &de)
-        {
+        CSimpleFSInternalDirectoryIteratorPtr iterator = dir.GetInternalIterator();
+        while(iterator->HasNext()) {
+            CDirectoryEntryOnDisk de = iterator->Next();
+
             //printf("id=%9i: '%s/%s'\n", de.id, path.c_str(), de.name);
-            if (de.id == CFragmentDesc::INVALIDID) return FOREACHENTRYRET::OK;
+            if (de.id == CFragmentDesc::INVALIDID) continue;
             auto it = direntries.find(de.id);
             if (it != direntries.end())
             {
                 printf("Warning: Found two directory entries with the same id id=%i in directory '%s' and directory '%s'\n",
-                de.id, path.c_str(), it->second.c_str());
+                       de.id, path.c_str(), it->second.c_str());
             }
             direntries[de.id] = path + "/" + de.name;
             if (fs.fragmentlist.GetType(de.id) == INODETYPE::dir)
@@ -30,8 +32,7 @@ void CPrintCheckRepair::GetRecursiveDirectories(std::map<int32_t, std::string> &
                 newpath = path + "/" + de.name;
                 GetRecursiveDirectories(direntries, de.id, newpath);
             }
-            return FOREACHENTRYRET::OK;
-        });
+        }
     }
     catch(const int &err)
     {
