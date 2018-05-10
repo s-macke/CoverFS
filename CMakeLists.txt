@@ -54,6 +54,8 @@ set(CPP_FILES
     src/FS/SimpleFS/CSimpleFSInode.cpp
     src/FS/SimpleFS/CFragment.cpp
     src/FS/SimpleFS/CPrintCheckRepair.cpp
+    src/FS/ContainerFS/ContainerFS.cpp
+    src/FS/ContainerFS/ContainerFS.h
     src/interface/CFSHandler.cpp
     src/client/ParallelTest.cpp
     src/client/CStatusView.cpp

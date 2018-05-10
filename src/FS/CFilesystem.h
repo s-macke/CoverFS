@@ -34,14 +34,13 @@ using CInodePtr = std::shared_ptr<CInode>;
 class CDirectoryEntry
 {
     public:
+        CDirectoryEntry(const std::string _name, int32_t _id) : name(_name), id(_id) {}
+        CDirectoryEntry() {}
         std::string name;
         int32_t id;
+
 };
 
-/*
-class CDirectoryIterator : public std::iterator<std::forward_iterator_tag, CDirectoryEntry>
-{};
-*/
 
 class CDirectoryIterator
 {
@@ -82,7 +81,12 @@ class CFilesystem
 
         virtual void Rename(CInodePtr node, CDirectoryPtr newdir, const std::string &filename)=0;
         virtual void StatFS(CStatFS *buf)=0;
+
+        virtual void PrintInfo()=0;
+        virtual void PrintFragments()=0;
+        virtual void Check()=0;
 };
+using CFilesystemPtr = std::shared_ptr<CFilesystem>;
 
 std::vector<std::string> SplitPath(const std::string &path);
 

@@ -3,7 +3,7 @@
 
 
 CStatusView::CStatusView(
-    std::weak_ptr<CSimpleFilesystem> _fs,
+    std::weak_ptr<CFilesystem> _fs,
     std::weak_ptr<CCacheIO> _cbio,
     std::weak_ptr<CAbstractBlockIO> _bio
     ) : fs(_fs), cbio(_cbio), bio(_bio)
@@ -27,10 +27,12 @@ void CStatusView::Work()
 
     while(wait_for_terminate.wait_for(std::chrono::seconds(1)) == std::future_status::timeout)
     {
+        /*
         if (auto fs = this->fs.lock())
         {
             ninodes = std::to_string(fs->GetNInodes());
         } else
+         */
         {
             ninodes = "-";
         }

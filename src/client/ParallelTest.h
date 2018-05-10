@@ -3,6 +3,6 @@
 
 #include"../FS/SimpleFS/CSimpleFS.h"
 
-void ParallelTest(unsigned int nfiles, unsigned int nthreads, unsigned int niter, CSimpleFilesystem &_fs);
+void ParallelTest(unsigned int nfiles, unsigned int nthreads, unsigned int niter, CFilesystem &_fs);
 
 #endif

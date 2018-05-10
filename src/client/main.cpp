@@ -28,6 +28,7 @@ void PrintUsage(char *argv[])
     printf("  --help              Print this help message\n");
     printf("  --backend [backend] [backend] can be 'ram', 'file', or 'cvfsserer'\n");
     printf("                      default: 'cvfsserver'\n");
+    printf("  --fstype [fstype]   [fstype] can be 'simple', or 'container'\n");
     printf("  --host [hostname]   default: 'localhost'\n");
     printf("  --port [port]       default: '62000'\n");
     printf("  --cryptcache        crypt cache in RAM\n");
@@ -59,6 +60,7 @@ int main(int argc, char *argv[])
     char mountpoint[256];
     char port[256];
     char backend[256];
+    char fstype[256];
     bool check = false;
     bool info = false;
     bool showfragments = false;
@@ -68,6 +70,8 @@ int main(int argc, char *argv[])
 #ifdef HAVE_POCO
     bool webinterface = false;
 #endif
+
+    fstype[0] = 0;
 
     strncpy(hostname,   "localhost", 255);
     strncpy(port,       "62000",     255);
@@ -91,6 +95,7 @@ int main(int argc, char *argv[])
             {"rootdir",    no_argument,       nullptr,  0 },
             {"check",      no_argument,       nullptr,  0 },
             {"backend",    required_argument, nullptr,  0 },
+            {"fstype",     required_argument, nullptr,  0 },
             {"debug",      no_argument,       nullptr,  0 },
             {"debugdeep",  no_argument,       nullptr,  0 },
             {"cryptcache", no_argument,       nullptr,  0 },
@@ -139,22 +144,27 @@ int main(int argc, char *argv[])
                     break;
 
                 case 8:
-                    Logger().Set(LogLevel::DEBUG);
+                    strncpy(fstype, optarg, 255);
+                    for (char *p=fstype ; *p; ++p) *p = static_cast<char>(tolower(*p));
                     break;
 
                 case 9:
-                    Logger().Set(LogLevel::DEEP);
+                    Logger().Set(LogLevel::DEBUG);
                     break;
 
                 case 10:
-                    //cryptcache = true;
+                    Logger().Set(LogLevel::DEEP);
                     break;
 
                 case 11:
-                    testfs = true;
+                    //cryptcache = true;
                     break;
 
                 case 12:
+                    testfs = true;
+                    break;
+
+                case 13:
                     #ifdef HAVE_POCO
                     webinterface = true;
                     #endif
@@ -217,6 +227,20 @@ int main(int argc, char *argv[])
 
     if (!success) return EXIT_FAILURE;
 
+    handler.SetFilesystemType(SIMPLE);
+    if ((fstype[0] == 0) || (strcmp(fstype, "simple") == 0))
+    {
+        handler.SetFilesystemType(SIMPLE);
+    } else
+    if (strcmp(fstype, "container") == 0)
+    {
+        handler.SetFilesystemType(CONTAINER);
+    } else
+    {
+        LOG(LogLevel::ERR) << "Filesystem '" << fstype << "' not supported";
+        return EXIT_FAILURE;
+    }
+
     char *pass = getpass("Password: ");
     bool ret = handler.Decrypt(pass).get();
     memset(pass, 0, strlen(pass));
@@ -228,33 +252,45 @@ int main(int argc, char *argv[])
         printf("==============================\n");
         printf("============ INFO ============\n");
         printf("==============================\n");
-        CPrintCheckRepair(*handler.fs).PrintInfo();
+        handler.fs->PrintInfo();
     }
+
     if (showfragments)
     {
         printf("==============================\n");
         printf("========= FRAGMENTS ==========\n");
         printf("==============================\n");
-        CPrintCheckRepair(*handler.fs).PrintFragments();
+        handler.fs->PrintFragments();
     }
+
     if (check)
     {
         printf("==============================\n");
         printf("=========== CHECK ============\n");
         printf("==============================\n");
-        CPrintCheckRepair(*handler.fs).Check();
+        handler.fs->Check();
     }
+
     if (rootdir)
     {
         CDirectoryPtr dir = handler.fs->OpenDir("/");
+        if (dir.get() == nullptr)
+        {
+            LOG(LogLevel::ERR) << "Root Directory not present";
+            return EXIT_FAILURE;
+        }
         int n = 0;
         CDirectoryIteratorPtr iterator = dir->GetIterator();
+        printf("Root directory entries\n");
+        printf("======================\n");
         while(iterator->HasNext())
         {
             printf("  %3i: '%s'\n", n, iterator->Next().name.c_str());
             n++;
         }
+        printf("======================\n");
     }
+
     if (testfs)
     {
         printf("==============================\n");

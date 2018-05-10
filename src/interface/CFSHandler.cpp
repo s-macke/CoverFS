@@ -2,6 +2,9 @@
 
 #if !defined(_WIN32) && !defined(_WIN64) && !defined(__CYGWIN__)
 #include"../fuse/fuseoper.h"
+#include "../FS/ContainerFS/ContainerFS.h"
+#include "../FS/SimpleFS/CSimpleFS.h"
+
 #else
 #include"../fuse/dokanoper.h"
 #endif
@@ -83,12 +86,23 @@ std::future<bool> CFSHandler::ConnectRAM()
 
 std::future<bool> CFSHandler::Decrypt(char *pass)
 {
-    std::future<bool> result( std::async([this, pass]{
+    std::future<bool> result( std::async([this, pass] {
         try
         {
             enc.reset(new CEncrypt(*bio, pass));
             cbio.reset(new CCacheIO(bio, *enc, false));
-            fs.reset(new CSimpleFilesystem(cbio));
+
+            switch(filesystemType)
+            {
+                case SIMPLE:
+                    fs.reset(new CSimpleFilesystem(cbio));
+                    break;
+
+                case CONTAINER:
+                    fs.reset(new ContainerFS(cbio));
+                    break;
+            }
+
             status = UNMOUNTED;
             return true;
         } catch(...)
@@ -97,4 +111,8 @@ std::future<bool> CFSHandler::Decrypt(char *pass)
         }
     }));
     return result;
+}
+
+void CFSHandler::SetFilesystemType(FilesystemType _filesystemType) {
+    filesystemType = _filesystemType;
 }

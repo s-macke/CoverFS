@@ -4,6 +4,7 @@
 
 #include "CSimpleFSInode.h"
 #include "CSimpleFSDirectory.h"
+#include "CPrintCheckRepair.h"
 #include "CSimpleFS.h"
 #include "Logger.h"
 
@@ -509,6 +510,7 @@ void CSimpleFilesystem::StatFS(CStatFS *buf)
     buf->f_bavail = totalsize / bio->blocksize - size;
     buf->f_files  = s.size();
 }
+
 CInodePtr CSimpleFilesystem::OpenNode(int id)
 {
     return OpenNodeInternal(id);
@@ -524,4 +526,20 @@ CInodePtr CSimpleFilesystem::OpenNode(const std::string& path)
 CDirectoryPtr CSimpleFilesystem::OpenDir(int id)
 {
     return OpenDirInternal(id);
+}
+
+
+void CSimpleFilesystem::PrintInfo()
+{
+    CPrintCheckRepair(*this).PrintInfo();
+}
+
+void CSimpleFilesystem::PrintFragments()
+{
+    CPrintCheckRepair(*this).PrintFragments();
+}
+
+void CSimpleFilesystem::Check()
+{
+    CPrintCheckRepair(*this).Check();
 }

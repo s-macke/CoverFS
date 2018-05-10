@@ -6,9 +6,11 @@
 #include"../IO/CNetBlockIO.h"
 #include"../IO/CEncrypt.h"
 #include"../IO/CCacheIO.h"
-#include"../FS/SimpleFS/CSimpleFS.h"
+#include"../FS/CFilesystem.h"
 
 enum HandlerStatus { DISCONNECTED, CONNECTED, UNMOUNTED, MOUNTED };
+
+enum FilesystemType { SIMPLE, CONTAINER };
 
 class CFSHandler
 {
@@ -17,7 +19,7 @@ class CFSHandler
     std::shared_ptr<CAbstractBlockIO> bio;
     std::shared_ptr<CEncrypt> enc;
     std::shared_ptr<CCacheIO> cbio;
-    std::shared_ptr<CSimpleFilesystem> fs;
+    CFilesystemPtr fs;
 
     std::future<bool> ConnectNET(const std::string hostname, const std::string port);
     std::future<bool> ConnectRAM();
@@ -25,8 +27,11 @@ class CFSHandler
     std::future<int> Mount(int argc, char *argv[], const char *mountpoint);
     std::future<int> Unmount();
 
+    void SetFilesystemType(FilesystemType _filesystemType);
+
     private:
         HandlerStatus status = DISCONNECTED;
+        FilesystemType filesystemType = SIMPLE;
 
 };
 

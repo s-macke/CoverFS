@@ -40,8 +40,12 @@ public:
     CInodePtr OpenFile(const std::string &path) override;
     CInodePtr OpenFile(std::vector<std::string> splitpath) override;
 
-    void Rename(CInodePtr node, CDirectoryPtr newdir, const std::string &filename);
+    void Rename(CInodePtr node, CDirectoryPtr newdir, const std::string &filename) override;
     void StatFS(CStatFS *buf) override;
+
+    void PrintInfo() override;
+    void PrintFragments() override;
+    void Check() override;
 
     void CreateFS();
 

@@ -157,7 +157,7 @@ void Execute(int tid)
 }
 
 
-void ParallelTest(unsigned int _nfiles, unsigned int _nthreads, unsigned int _niter, CSimpleFilesystem &_fs)
+void ParallelTest(unsigned int _nfiles, unsigned int _nthreads, unsigned int _niter, CFilesystem &_fs)
 {
     printf("Number of files %i\n", nfiles);
     printf("Number of threads: %i\n", nthreads);
