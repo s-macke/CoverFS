@@ -46,7 +46,7 @@ inline int fastrand(unsigned int &g_seed)
 void Execute(int tid)
 {
     char *data = new char[MAXSIZE+2];
-    CDirectoryPtr dir = fs->OpenDir("/");
+    CDirectoryPtr dir = fs->OpenDir(CPath("/"));
 
     //printf("thread %i:\n", tid);
     for(unsigned int iter=0; iter<niter; iter++)
@@ -143,7 +143,7 @@ void Execute(int tid)
             char newfilename[256];
             sprintf(newfilename, "tests%02i_check.dat", id);
             dir->MakeFile(newfilename);
-            CInodePtr node = fs->OpenFile(newfilename);
+            CInodePtr node = fs->OpenFile(CPath(newfilename));
             node->Remove();
         }
         break;
@@ -170,7 +170,7 @@ void ParallelTest(unsigned int _nfiles, unsigned int _nthreads, unsigned int _ni
     nthreads = _nthreads;
     niter = _niter;
     fs = &_fs;
-    CDirectoryPtr dir = fs->OpenDir("/");
+    CDirectoryPtr dir = fs->OpenDir(CPath("/"));
 
     files = new FSTRUCT[nfiles];
     for(unsigned int i=0; i<nfiles; i++)
@@ -185,7 +185,7 @@ void ParallelTest(unsigned int _nfiles, unsigned int _nthreads, unsigned int _ni
         {
             // file already exists
         }
-        files[i].node = fs->OpenFile(files[i].filename);
+        files[i].node = fs->OpenFile(CPath(files[i].filename));
         files[i].node->Truncate(0, true);
 
         files[i].size = 0;

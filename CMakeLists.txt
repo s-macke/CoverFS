@@ -60,6 +60,8 @@ set(CPP_FILES
     src/client/ParallelTest.cpp
     src/client/CStatusView.cpp
     src/client/main.cpp
+    src/FS/CPath.cpp
+    src/FS/CPath.h
     )
 
 set(THREADS_PREFER_PTHREAD_FLAG ON)

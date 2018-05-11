@@ -149,8 +149,7 @@ Dokan_CreateFile(
         {
             //LOG(LogLevel::INFO) << "command: create directory";
 
-            std::vector<std::string> splitpath;
-            splitpath = SplitPath(path);
+            std::vector<std::string> splitpath = CPath(path).GetPath();
 
             if (splitpath.size() == 0)
             {
@@ -166,7 +165,7 @@ Dokan_CreateFile(
             splitpath.pop_back();
             try
             {
-                CDirectoryPtr dir = fs->OpenDir(splitpath);
+                CDirectoryPtr dir = fs->OpenDir(CPath(splitpath));
                 dir->MakeDirectory(filename);
                 DokanFileInfo->Context = handleid++;
                 DokanFileInfo->IsDirectory = TRUE;
@@ -184,7 +183,7 @@ Dokan_CreateFile(
             //LOG(LogLevel::INFO) << "command: open directory";
             try
             {
-                CDirectoryPtr node = fs->OpenDir(path); // just to check if everything works and preload
+                CDirectoryPtr node = fs->OpenDir(CPath(path)); // just to check if everything works and preload
                 DokanFileInfo->Context = handleid++;
                 handle2path[DokanFileInfo->Context] = path;
             } catch(const int &err)
@@ -199,14 +198,13 @@ Dokan_CreateFile(
     {
         //LOG(LogLevel::INFO) << "Dokan: command: create file";
 
-        std::vector<std::string> splitpath;
-        splitpath = SplitPath(path);
+        std::vector<std::string> splitpath = CPath(path).GetPath();
         assert(splitpath.size() >= 1);
         std::string filename = splitpath.back();
         splitpath.pop_back();
         try
         {
-            CDirectoryPtr dir = fs->OpenDir(splitpath);
+            CDirectoryPtr dir = fs->OpenDir(CPath(splitpath));
             dir->MakeFile(filename);
             DokanFileInfo->Context = handleid++;
             handle2path[DokanFileInfo->Context] = path;
@@ -224,7 +222,7 @@ Dokan_CreateFile(
         //LOG(LogLevel::INFO) << "Dokan: command: open file";
         try
         {
-            CInodePtr node = fs->OpenFile(path);
+            CInodePtr node = fs->OpenFile(CPath(path));
             DokanFileInfo->Context = handleid++;
             handle2path[DokanFileInfo->Context] = path;
         } catch(const int &err)
@@ -253,7 +251,7 @@ static NTSTATUS DOKAN_CALLBACK Dokan_GetFileInformation(LPCWSTR FileName, LPBY_H
     //memset(HandleFileInformation, 0, sizeof(struct BY_HANDLE_FILE_INFORMATION));
     try
     {
-        CInodePtr node = fs->OpenNode(path);
+        CInodePtr node = fs->OpenNode(CPath(path));
         //LOG(LogLevel::INFO) << "open succesful";
 
         int64_t size = node->GetSize();
@@ -343,7 +341,7 @@ static NTSTATUS DOKAN_CALLBACK Dokan_SetEndOfFile(
 
     try
     {
-        CInodePtr node = fs->OpenFile(path);
+        CInodePtr node = fs->OpenFile(CPath(path));
         node->Truncate(ByteOffset, false);  // the content is undefined according to spec
         //node->Truncate(ByteOffset);
     } catch(const int &err)
@@ -366,7 +364,7 @@ PDOKAN_FILE_INFO DokanFileInfo)
     LOG(LogLevel::INFO) << "Dokan: ReadFile '" << path << "' size=" << BufferLength;
     try
     {
-        CInodePtr node = fs->OpenFile(path);
+        CInodePtr node = fs->OpenFile(CPath(path));
         *ReadLength = node->Read((int8_t*)Buffer, Offset, BufferLength);
     } catch(const int &err)
     {
@@ -386,7 +384,7 @@ PDOKAN_FILE_INFO DokanFileInfo)
     LOG(LogLevel::INFO) << "Dokan: WriteFile '" << path << "' size=" << NumberOfBytesToWrite;
     try
     {
-        CInodePtr node = fs->OpenFile(path);
+        CInodePtr node = fs->OpenFile(CPath(path));
         node->Write((int8_t*)Buffer, Offset, NumberOfBytesToWrite);
         *NumberOfBytesWritten = NumberOfBytesToWrite;
     } catch(const int &err)
@@ -405,7 +403,7 @@ Dokan_FindFiles(LPCWSTR FileName, PFillFindData FillFindData, PDOKAN_FILE_INFO D
 
     try
     {
-        CDirectoryPtr dir = fs->OpenDir(path);
+        CDirectoryPtr dir = fs->OpenDir(CPath(path));
         CDirectoryIteratorPtr iterator = dir->GetIterator();
         while(iterator->HasNext())
         {
@@ -448,24 +446,23 @@ LPCWSTR NewFileName, BOOL ReplaceIfExisting, PDOKAN_FILE_INFO DokanFileInfo)
     std::string newpath = wstring_to_utf8(NewFileName);
     LOG(LogLevel::INFO) << "Dokan: MoveFile '" << oldpath << "' to '" << newpath << "'";
 
-    std::vector<std::string> splitpath;
-    splitpath = SplitPath(newpath);
+    std::vector<std::string> splitpath = CPath(newpath).GetPath();
     assert(!splitpath.empty());
 
     try
     {
-        CInodePtr newnode = fs->OpenNode(splitpath);
+        CInodePtr newnode = fs->OpenNode(CPath(splitpath));
         return errno_to_nstatus(-EEXIST);
     }
     catch(...){}
 
     try
     {
-        CInodePtr node = fs->OpenNode(oldpath);
+        CInodePtr node = fs->OpenNode(CPath(oldpath));
 
         std::string filename = splitpath.back();
         splitpath.pop_back();
-        CDirectoryPtr dir = fs->OpenDir(splitpath);
+        CDirectoryPtr dir = fs->OpenDir(CPath(splitpath));
         fs->Rename(node, dir, filename);
     } catch(const int &err)
     {
@@ -528,7 +525,7 @@ static void DOKAN_CALLBACK Dokan_Cleanup(LPCWSTR FileName, PDOKAN_FILE_INFO Doka
     LOG(LogLevel::INFO) << "Dokan: remove file";
     try
     {
-        CInodePtr node = fs->OpenNode(path);
+        CInodePtr node = fs->OpenNode(CPath(path));
         node->Remove();
     } catch(const int &err)
     {

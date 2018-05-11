@@ -28,17 +28,14 @@ public:
     explicit CSimpleFilesystem(const std::shared_ptr<CCacheIO> &_bio);
     ~CSimpleFilesystem();
 
+    CInodePtr OpenNode(const CPath &path) override;
     CInodePtr OpenNode(int id) override;
-    CInodePtr OpenNode(const std::vector<std::string> splitpath) override;
-    CInodePtr OpenNode(const std::string &path) override;
 
-    CDirectoryPtr OpenDir(const std::string &path) override;
-    CDirectoryPtr OpenDir(std::vector<std::string> splitpath) override;
+    CDirectoryPtr OpenDir(const CPath &path) override;
     CDirectoryPtr OpenDir(int id) override;
 
+    CInodePtr OpenFile(const CPath &path) override;
     CInodePtr OpenFile(int id) override;
-    CInodePtr OpenFile(const std::string &path) override;
-    CInodePtr OpenFile(std::vector<std::string> splitpath) override;
 
     void Rename(CInodePtr node, CDirectoryPtr newdir, const std::string &filename) override;
     void StatFS(CStatFS *buf) override;
@@ -54,8 +51,7 @@ public:
 private:
 
     CSimpleFSInodePtr OpenNodeInternal(int id);
-    CSimpleFSInodePtr OpenNodeInternal(const std::vector<std::string> splitpath);
-    CSimpleFSInodePtr OpenNodeInternal(const std::string &path);
+    CSimpleFSInodePtr OpenNodeInternal(const CPath &path);
 
     CSimpleFSDirectoryPtr OpenDirInternal(int id);
 

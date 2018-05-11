@@ -15,25 +15,19 @@ public:
     ~ContainerFS();
 
     CInodePtr OpenNode(int id) override;
-    CInodePtr OpenNode(std::vector<std::string> splitpath) override;
-    CInodePtr OpenNode(const std::string &path) override;
+    CInodePtr OpenNode(const CPath &path) override;
 
     CDirectoryPtr OpenDir(int id) override;
-    CDirectoryPtr OpenDir(const std::string &path) override;
-    CDirectoryPtr OpenDir(std::vector<std::string> splitpath) override;
+    CDirectoryPtr OpenDir(const CPath &path) override;
 
     CInodePtr OpenFile(int id) override;
-    CInodePtr OpenFile(const std::string &path) override;
-    CInodePtr OpenFile(std::vector<std::string> splitpath) override;
+    CInodePtr OpenFile(const CPath &path) override;
 
     void PrintInfo() override;
-
     void PrintFragments() override;
-
     void Check() override;
 
     void Rename(CInodePtr node, CDirectoryPtr newdir, const std::string &filename) override;
-
     void StatFS(CStatFS *buf) override;
 
 private:
@@ -47,13 +41,9 @@ public:
     CDirectoryIteratorPtr GetIterator() override;
 
     int MakeDirectory(const std::string &name) override;
-
     int MakeFile(const std::string &name) override;
-
     int32_t GetId() override;
-
     void Remove() override;
-
     bool IsEmpty() override;
 };
 
@@ -63,17 +53,11 @@ public:
     explicit ContainerFSInode(const std::shared_ptr<CCacheIO> &bio);
 
     int64_t Read(int8_t *d, int64_t ofs, int64_t size) override;
-
     void Write(const int8_t *d, int64_t ofs, int64_t size) override;
-
     void Truncate(int64_t size, bool dozero) override;
-
     void Remove() override;
-
     int64_t GetSize() override;
-
     int32_t GetId() override;
-
     INODETYPE GetType() override;
 
 private:

@@ -76,47 +76,30 @@ void ContainerFS::StatFS(CStatFS *buf)
 
 // ----------------------------------------------------
 
-CInodePtr ContainerFS::OpenNode(std::vector<std::string> splitpath)
+CInodePtr ContainerFS::OpenNode(const CPath &path)
 {
-    if (splitpath.size() == 0)
+    if (path.GetPath().size() == 0)
         return OpenNode(ROOTDIRINODE);
-    if ((splitpath.size() == 1) && (splitpath[0] == "container"))
+    if ((path.GetPath().size() == 1) && (path.GetPath()[0] == "container"))
         return OpenNode(CONTAINERNODE);
 
     throw ENOENT;
 }
 
-CDirectoryPtr ContainerFS::OpenDir(std::vector<std::string> splitpath)
+CDirectoryPtr ContainerFS::OpenDir(const CPath &path)
 {
-    if (splitpath.size() == 0)
+    if (path.GetPath().size() == 0)
         return OpenDir(ROOTDIRINODE);
     throw ENOENT;
 }
 
-CInodePtr ContainerFS::OpenFile(std::vector<std::string> splitpath)
+CInodePtr ContainerFS::OpenFile(const CPath &path)
 {
-    if (splitpath.size() == 0)
+    if (path.GetPath().size() == 0)
         return OpenFile(ROOTDIRINODE);
-    if ((splitpath.size() == 1) && (splitpath[0] == "container"))
+    if ((path.GetPath().size() == 1) && (path.GetPath()[0] == "container"))
         return OpenFile(CONTAINERNODE);
     throw ENOENT;
-}
-
-// ----------------------------------------------------
-
-CInodePtr ContainerFS::OpenFile(const std::string &path)
-{
-    return OpenFile(SplitPath(path));
-}
-
-CInodePtr ContainerFS::OpenNode(const std::string &path)
-{
-    return OpenNode(SplitPath(path));
-}
-
-CDirectoryPtr ContainerFS::OpenDir(const std::string &path)
-{
-    return OpenDir(SplitPath(path));
 }
 
 // ----------------------------------------------------

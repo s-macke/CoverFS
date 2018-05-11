@@ -37,7 +37,7 @@ static int fuse_getattr(const char *path, struct stat *stbuf)
 
     try
     {
-        CInodePtr node = fs->OpenNode(path);
+        CInodePtr node = fs->OpenNode(CPath(path));
         int64_t size = node->GetSize();
         stbuf->st_size = size;
         stbuf->st_blocks = size/512;
@@ -81,7 +81,7 @@ static int fuse_truncate(const char *path, off_t size)
     LOG(LogLevel::INFO) << "FUSE: truncate '" << path << "' size=" << size;
     try
     {
-        CInodePtr node = fs->OpenFile(path);
+        CInodePtr node = fs->OpenFile(CPath(path));
         node->Truncate(size, true);
     } catch(const int &err)
     {
@@ -95,7 +95,7 @@ static int fuse_opendir(const char *path, struct fuse_file_info *fi)
     LOG(LogLevel::INFO) << "FUSE: opendir '" << path << "'";
     try
     {
-        CDirectoryPtr dir = fs->OpenDir(path);
+        CDirectoryPtr dir = fs->OpenDir(CPath(path));
         fi->fh = dir->GetId();
     } catch(const int &err)
     {
@@ -131,7 +131,7 @@ static int fuse_open(const char *path, struct fuse_file_info *fi)
     LOG(LogLevel::INFO) << "FUSE: open '" << path << "'";
     try
     {
-        CInodePtr node = fs->OpenFile(path);
+        CInodePtr node = fs->OpenFile(CPath(path));
         fi->fh = node->GetId();
     } catch(const int &err)
     {
@@ -179,8 +179,7 @@ static int fuse_mkdir(const char *path, mode_t mode)
 {
     LOG(LogLevel::INFO) << "FUSE: mkdir '" << path << "'";
     // test if dir is empty? Looks like this is tested already
-    std::vector<std::string> splitpath;
-    splitpath = SplitPath(std::string(path));
+    std::vector<std::string> splitpath = CPath(path).GetPath();
     assert(splitpath.size() >= 1);
     std::string dirname = splitpath.back();
     splitpath.pop_back();
@@ -201,7 +200,7 @@ static int fuse_rmdir(const char *path)
 
     try
     {
-        CDirectoryPtr dir = fs->OpenDir(path);
+        CDirectoryPtr dir = fs->OpenDir(CPath(path));
         if (!dir->IsEmpty()) return -ENOTEMPTY;
         dir->Remove();
     } catch(const int &err)
@@ -217,7 +216,7 @@ static int fuse_unlink(const char *path)
 
     try
     {
-        CInodePtr node = fs->OpenNode(path);
+        CInodePtr node = fs->OpenNode(CPath(path));
         node->Remove();
     } catch(const int &err)
     {
@@ -230,8 +229,7 @@ static int fuse_unlink(const char *path)
 static int fuse_create(const char *path, mode_t mode, struct fuse_file_info *fi)
 {
     LOG(LogLevel::INFO) << "FUSE: create '" << path << "'";
-    std::vector<std::string> splitpath;
-    splitpath = SplitPath(std::string(path));
+    std::vector<std::string> splitpath = CPath(path).GetPath();
     assert(splitpath.size() >= 1);
     std::string filename = splitpath.back();
     splitpath.pop_back();
@@ -252,7 +250,7 @@ static int fuse_access(const char *path, int mask)
     LOG(LogLevel::INFO) << "FUSE: access '" << path << "'";
     try
     {
-        CInodePtr node = fs->OpenNode(path);
+        CInodePtr node = fs->OpenNode(CPath(path));
     } catch(const int &err)
     {
         return -err;
@@ -265,8 +263,7 @@ static int fuse_rename(const char *oldpath, const char *newpath)
 {
     LOG(LogLevel::INFO) << "FUSE: create '" << oldpath << "' to '" << newpath << "'";
 
-    std::vector<std::string> splitpath;
-    splitpath = SplitPath(std::string(newpath));
+    std::vector<std::string> splitpath = CPath(newpath).GetPath();
     assert(!splitpath.empty());
 
     try
@@ -278,7 +275,7 @@ static int fuse_rename(const char *oldpath, const char *newpath)
 
     try
     {
-        CInodePtr node = fs->OpenNode(oldpath);
+        CInodePtr node = fs->OpenNode(CPath(oldpath));
 
         std::string filename = splitpath.back();
         splitpath.pop_back();

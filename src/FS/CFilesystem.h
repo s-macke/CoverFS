@@ -3,6 +3,7 @@
 
 #include<memory>
 #include<functional>
+#include "CPath.h"
 
 class CStatFS
 {
@@ -67,17 +68,14 @@ using CDirectoryPtr = std::shared_ptr<CDirectory>;
 class CFilesystem
 {
     public:
+        virtual CInodePtr OpenNode(const CPath &path)=0;
         virtual CInodePtr OpenNode(int id)=0;
-        virtual CInodePtr OpenNode(std::vector<std::string> splitpath)=0;
-        virtual CInodePtr OpenNode(const std::string &path)=0;
 
+        virtual CDirectoryPtr OpenDir(const CPath &path)=0;
         virtual CDirectoryPtr OpenDir(int id)=0;
-        virtual CDirectoryPtr OpenDir(const std::string &path)=0;
-        virtual CDirectoryPtr OpenDir(std::vector<std::string> splitpath)=0;
 
+        virtual CInodePtr OpenFile(const CPath &path)=0;
         virtual CInodePtr OpenFile(int id)=0;
-        virtual CInodePtr OpenFile(const std::string &path)=0;
-        virtual CInodePtr OpenFile(std::vector<std::string> splitpath)=0;
 
         virtual void Rename(CInodePtr node, CDirectoryPtr newdir, const std::string &filename)=0;
         virtual void StatFS(CStatFS *buf)=0;
@@ -87,7 +85,5 @@ class CFilesystem
         virtual void Check()=0;
 };
 using CFilesystemPtr = std::shared_ptr<CFilesystem>;
-
-std::vector<std::string> SplitPath(const std::string &path);
 
 #endif

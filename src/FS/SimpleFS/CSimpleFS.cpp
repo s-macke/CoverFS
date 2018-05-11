@@ -1,5 +1,4 @@
 
-#include<cassert>
 #include<set>
 
 #include "CSimpleFSInode.h"
@@ -140,11 +139,11 @@ void CSimpleFilesystem::CreateFS()
     CSimpleFSInodePtr node = OpenNodeInternal(id);
     GrowNode(*node, 1);
 */
-    CDirectoryPtr dir = OpenDir("/");
+    CDirectoryPtr dir = OpenDir(CPath("/"));
     dir->MakeDirectory("mydir");
 
     dir->MakeFile("hello");
-    CSimpleFSInodePtr node = OpenNodeInternal("hello");
+    CSimpleFSInodePtr node = OpenNodeInternal(CPath("hello"));
     const char *s = "Hello world\n";
     node->Write((int8_t*)s, 0, strlen(s));
 
@@ -183,41 +182,33 @@ CSimpleFSInodePtr CSimpleFilesystem::OpenNodeInternal(int id)
     return node;
 }
 
-CSimpleFSInodePtr CSimpleFilesystem::OpenNodeInternal(const std::string &path)
-{
-    assert(!path.empty());
-    std::vector<std::string> splitpath;
-    splitpath = SplitPath(path);
-    return OpenNodeInternal(splitpath);
-}
-
-CSimpleFSInodePtr CSimpleFilesystem::OpenNodeInternal(const std::vector<std::string> splitpath)
+CSimpleFSInodePtr CSimpleFilesystem::OpenNodeInternal(const CPath &path)
 {
     CSimpleFSInodePtr node;
     CDirectoryEntryOnDisk e("");
 
     int dirid = 0;
     e.id = 0;
-    for(unsigned int i=0; i<splitpath.size(); i++)
+    for(unsigned int i=0; i<path.GetPath().size(); i++)
     {
         dirid = e.id;
         node = OpenNodeInternal(dirid);
-        CSimpleFSDirectory(node, *this).Find(splitpath[i], e);
+        CSimpleFSDirectory(node, *this).Find(path.GetPath()[i], e);
         if (e.id == CFragmentDesc::INVALIDID)
         {
-            LOG(LogLevel::DEEP) << "Cannot find node '" << splitpath[i] << "'";
+            LOG(LogLevel::DEEP) << "Cannot find node '" << path.GetPath()[i] << "'";
             throw ENOENT; // No such file or directory
         }
-        if (i<splitpath.size()-1) assert(node->type == INODETYPE::dir);
+        if (i<path.GetPath().size()-1) assert(node->type == INODETYPE::dir);
     }
 
     node = OpenNodeInternal(e.id);
     std::lock_guard<std::mutex> lock(node->GetMutex());
     node->parentid = dirid;
-    if (splitpath.empty())
+    if (path.GetPath().empty())
         node->name = "/";
     else
-        node->name = splitpath.back();
+        node->name = path.GetPath().back();
 
     return node;
 }
@@ -229,15 +220,9 @@ CSimpleFSDirectoryPtr CSimpleFilesystem::OpenDirInternal(int id)
     return std::make_shared<CSimpleFSDirectory>(CSimpleFSDirectory(node, *this));
 }
 
-CDirectoryPtr CSimpleFilesystem::OpenDir(const std::string &path)
+CDirectoryPtr CSimpleFilesystem::OpenDir(const CPath &path)
 {
     CSimpleFSInodePtr node = OpenNodeInternal(path);
-    return std::make_shared<CSimpleFSDirectory>(CSimpleFSDirectory(node, *this));
-}
-
-CDirectoryPtr CSimpleFilesystem::OpenDir(const std::vector<std::string> splitpath)
-{
-    CSimpleFSInodePtr node = OpenNodeInternal(splitpath);
     return std::make_shared<CSimpleFSDirectory>(CSimpleFSDirectory(node, *this));
 }
 
@@ -249,17 +234,9 @@ CInodePtr CSimpleFilesystem::OpenFile(int id)
     return node;
 }
 
-CInodePtr CSimpleFilesystem::OpenFile(const std::string &path)
+CInodePtr CSimpleFilesystem::OpenFile(const CPath &path)
 {
     CSimpleFSInodePtr node = OpenNodeInternal(path);
-    if (node->id == CFragmentDesc::INVALIDID) throw ENOENT;
-    if (node->type != INODETYPE::file) throw ENOENT;
-    return node;
-}
-
-CInodePtr CSimpleFilesystem::OpenFile(const std::vector<std::string> splitpath)
-{
-    CSimpleFSInodePtr node = OpenNodeInternal(splitpath);
     if (node->id == CFragmentDesc::INVALIDID) throw ENOENT;
     if (node->type != INODETYPE::file) throw ENOENT;
     return node;
@@ -515,11 +492,7 @@ CInodePtr CSimpleFilesystem::OpenNode(int id)
 {
     return OpenNodeInternal(id);
 }
-CInodePtr CSimpleFilesystem::OpenNode(const std::vector<std::string> splitpath)
-{
-    return OpenNodeInternal(splitpath);
-}
-CInodePtr CSimpleFilesystem::OpenNode(const std::string& path)
+CInodePtr CSimpleFilesystem::OpenNode(const CPath &path)
 {
     return OpenNodeInternal(path);
 }

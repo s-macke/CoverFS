@@ -273,7 +273,7 @@ int main(int argc, char *argv[])
 
     if (rootdir)
     {
-        CDirectoryPtr dir = handler.fs->OpenDir("/");
+        CDirectoryPtr dir = handler.fs->OpenDir(CPath("/"));
         if (dir.get() == nullptr)
         {
             LOG(LogLevel::ERR) << "Root Directory not present";
