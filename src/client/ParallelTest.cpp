@@ -143,8 +143,7 @@ void Execute(int tid)
             char newfilename[256];
             sprintf(newfilename, "tests%02i_check.dat", id);
             dir->MakeFile(newfilename);
-            CInodePtr node = fs->OpenFile(CPath(newfilename));
-            node->Remove();
+            fs->Unlink(CPath(newfilename));
         }
         break;
 

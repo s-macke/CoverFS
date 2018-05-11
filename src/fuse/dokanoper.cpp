@@ -523,8 +523,7 @@ static void DOKAN_CALLBACK Dokan_Cleanup(LPCWSTR FileName, PDOKAN_FILE_INFO Doka
     LOG(LogLevel::INFO) << "Dokan: remove file";
     try
     {
-        CInodePtr node = fs->OpenNode(CPath(path));
-        node->Remove();
+        fs->Unlink(CPath(path));
     } catch(const int &err)
     {
         LOG(LogLevel::INFO) << "Dokan: Cannot remove file";

@@ -152,11 +152,6 @@ int32_t CSimpleFSDirectory::GetId()
     return dirnode->GetId();
 }
 
-void CSimpleFSDirectory::Remove()
-{
-    dirnode->Remove();
-}
-
 // -----------------------------------------------------------------
 
 CSimpleFSDirectoryIterator::CSimpleFSDirectoryIterator(CSimpleFSInternalDirectoryIteratorPtr &&_iterator) : iterator(std::move(_iterator)), lock(iterator->GetDirectory().dirnode->GetMutex())

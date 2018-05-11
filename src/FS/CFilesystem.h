@@ -25,7 +25,6 @@ class CInode
     virtual int64_t Read(int8_t *d, int64_t ofs, int64_t size)=0;
     virtual void Write(const int8_t *d, int64_t ofs, int64_t size)=0;
     virtual void Truncate(int64_t size, bool dozero)=0;
-    virtual void Remove()=0;
     virtual int64_t GetSize()=0;
     virtual int32_t GetId()=0;
     virtual INODETYPE GetType()=0;
@@ -60,7 +59,6 @@ class CDirectory
         virtual int MakeDirectory(const std::string& name)=0;
         virtual int MakeFile(const std::string& name)=0;
         virtual int32_t GetId()=0;
-        virtual void Remove()=0;
         virtual bool IsEmpty()=0;
 };
 using CDirectoryPtr = std::shared_ptr<CDirectory>;
@@ -78,6 +76,7 @@ class CFilesystem
         virtual CInodePtr OpenFile(int id)=0;
 
         virtual void Rename(const CPath &path, CDirectoryPtr newdir, const std::string &filename)=0;
+        virtual void Unlink(const CPath &path)=0;
         virtual void StatFS(CStatFS *buf)=0;
 
         virtual void PrintInfo()=0;

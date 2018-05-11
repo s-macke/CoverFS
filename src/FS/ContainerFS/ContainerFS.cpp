@@ -60,6 +60,11 @@ void ContainerFS::Rename(const CPath &path, CDirectoryPtr newdir, const std::str
     throw EPERM;
 }
 
+void ContainerFS::Unlink(const CPath &path)
+{
+    throw EPERM;
+}
+
 void ContainerFS::StatFS(CStatFS *buf)
 {
     buf->f_bsize   = bio->blocksize;
@@ -138,11 +143,6 @@ int32_t ContainerFSDirectory::GetId()
     return ROOTDIRINODE;
 }
 
-void ContainerFSDirectory::Remove()
-{
-    throw ENOENT;
-}
-
 bool ContainerFSDirectory::IsEmpty()
 {
     return false;
@@ -164,11 +164,6 @@ void ContainerFSInode::Write(const int8_t *d, int64_t ofs, int64_t size)
 }
 
 void ContainerFSInode::Truncate(int64_t size, bool dozero)
-{
-    throw EPERM;
-}
-
-void ContainerFSInode::Remove()
 {
     throw EPERM;
 }

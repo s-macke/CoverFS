@@ -56,6 +56,7 @@ CSimpleFilesystem::CSimpleFilesystem(const std::shared_ptr<CCacheIO> &_bio) : bi
     nwritten = 0;
     nrenamed = 0;
     nremoved = 0;
+    nunlinked = 0;
     ntruncated = 0;
 
     LOG(LogLevel::INFO) << "container info:";
@@ -86,6 +87,7 @@ CSimpleFilesystem::~CSimpleFilesystem()
     LOG(LogLevel::INFO) << "Read commands:       " << nread;
     LOG(LogLevel::INFO) << "Write commands:      " << nwritten;
     LOG(LogLevel::INFO) << "Renamed nodes:       " << nrenamed;
+    LOG(LogLevel::INFO) << "Unlinked nodes:      " << nunlinked;
     LOG(LogLevel::INFO) << "Removed nodes:       " << nremoved;
     LOG(LogLevel::INFO) << "Truncated nodes:     " << ntruncated;
 
@@ -94,7 +96,7 @@ CSimpleFilesystem::~CSimpleFilesystem()
     {
         while(inode.second.use_count() > 1)
         {
-            LOG(LogLevel::WARN) << "Inode with id=" << inode.second->id << "still in use. Filename='" << inode.second->name << "'";
+            LOG(LogLevel::WARN) << "Inode with id=" << inode.second->id << " still in use. Filename='" << inode.second->name << "'";
             std::this_thread::sleep_for(std::chrono::seconds(1));
         }
     }
@@ -444,17 +446,38 @@ int CSimpleFilesystem::MakeDirectory(CSimpleFSDirectory &dir, const std::string 
     return id;
 }
 
-void CSimpleFilesystem::Remove(CSimpleFSInode &node)
-{
-    nremoved++;
+void CSimpleFilesystem::Unlink(const CPath &path) {
+    CSimpleFSInodePtr node = OpenNodeInternal(path);
+    // TODO check if directory is empty if directory
+
     // maybe, we have to check the shared_ptr here
     CDirectoryEntryOnDisk e("");
-    CSimpleFSDirectoryPtr dir = OpenDirInternal(node.parentid);
-    fragmentlist.FreeAllFragments(node.fragments);
-    node.fragments.clear();
-    dir->RemoveEntry(node.name, e);
-    std::lock_guard<std::mutex> lock(inodescachemtx);
-    inodes.erase(node.id); // remove from map
+    CSimpleFSDirectoryPtr dir = OpenDirInternal(node->parentid);
+    dir->RemoveEntry(node->name, e);
+    node->nlinks--;
+    nunlinked++;
+    MaybeRemove(*node);
+}
+
+void CSimpleFilesystem::MaybeRemove(CSimpleFSInode &node)
+{
+    if (node.nlinks > 0) return;
+
+    std::lock_guard<std::mutex> nodelock(node.mtx);
+    std::lock_guard<std::mutex> nodecachelock(inodescachemtx);
+
+    auto it = inodes.find(node.id);
+    if (it != inodes.end() && it->second.use_count() == 2) // in inodescache and in the iterator
+    {
+        LOG(LogLevel::DEEP) << "Remove Node with id=" << node.id << " size=" << node.size << " and ptrcount=" << it->second.use_count();
+        assert(node.id == it->second->id);
+
+        fragmentlist.FreeAllFragments(node.fragments);
+        node.fragments.clear();
+
+        inodes.erase(node.id); // remove from map
+        nremoved++;
+    }
 }
 
 INODETYPE CSimpleFilesystem::GetType(int32_t id)
@@ -500,7 +523,6 @@ CDirectoryPtr CSimpleFilesystem::OpenDir(int id)
 {
     return OpenDirInternal(id);
 }
-
 
 void CSimpleFilesystem::PrintInfo()
 {

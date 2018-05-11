@@ -202,11 +202,12 @@ static int fuse_rmdir(const char *path)
     {
         CDirectoryPtr dir = fs->OpenDir(CPath(path));
         if (!dir->IsEmpty()) return -ENOTEMPTY;
-        dir->Remove();
+        fs->Unlink(CPath(path));
     } catch(const int &err)
     {
         return -err;
     }
+
     return 0;
 }
 
@@ -216,8 +217,7 @@ static int fuse_unlink(const char *path)
 
     try
     {
-        CInodePtr node = fs->OpenNode(CPath(path));
-        node->Remove();
+        fs->Unlink(CPath(path));
     } catch(const int &err)
     {
         return -err;

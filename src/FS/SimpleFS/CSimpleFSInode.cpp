@@ -1,6 +1,10 @@
 #include "CSimpleFS.h"
 #include "CSimpleFSInode.h"
 
+CSimpleFSInode::~CSimpleFSInode() {
+    fs.MaybeRemove(*this);
+}
+
 void CSimpleFSInode::Lock()
 {
     mtx.lock();
@@ -27,12 +31,6 @@ void CSimpleFSInode::Truncate(int64_t size, bool dozero)
 {
     std::lock_guard<std::mutex> lock(mtx);
     fs.Truncate(*this, size, dozero);
-}
-
-void CSimpleFSInode::Remove()
-{
-    std::lock_guard<std::mutex> lock(mtx);
-    fs.Remove(*this);
 }
 
 // non-blocking read and write
@@ -63,4 +61,5 @@ int32_t CSimpleFSInode::GetId()
     std::lock_guard<std::mutex> lock(mtx);
     return id;
 }
+
 

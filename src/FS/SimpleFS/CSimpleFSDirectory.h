@@ -86,7 +86,6 @@ public:
     int MakeFile(const std::string& name) override;
 
     int32_t GetId() override;
-    void Remove() override;
     bool IsEmpty() override;
     void CreateEmptyBlock(int8_t* buf);
 

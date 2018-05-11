@@ -38,6 +38,7 @@ public:
     CInodePtr OpenFile(int id) override;
 
     void Rename(const CPath &path, CDirectoryPtr newdir, const std::string &filename) override;
+    void Unlink(const CPath &path) override;
     void StatFS(CStatFS *buf) override;
 
     void PrintInfo() override;
@@ -61,13 +62,14 @@ private:
     int64_t Read(CSimpleFSInode &node, int8_t *d, int64_t ofs, int64_t size);
     void Write(CSimpleFSInode &node, const int8_t *d, int64_t ofs, int64_t size);
     void Truncate(CSimpleFSInode &node, int64_t size, bool dozero);
-    void Remove(CSimpleFSInode &node);
 
     void GrowNode(CSimpleFSInode &node, int64_t size);
     void ShrinkNode(CSimpleFSInode &node, int64_t size);
 
     int CreateNode(CSimpleFSDirectory &dir, const std::string &name, INODETYPE );
     INODETYPE GetType(int id);
+
+    void MaybeRemove(CSimpleFSInode &node);
 
     std::shared_ptr<CCacheIO> bio;
 
@@ -86,6 +88,7 @@ private:
     std::atomic<int> nwritten;
     std::atomic<int> nrenamed;
     std::atomic<int> nremoved;
+    std::atomic<int> nunlinked;
     std::atomic<int> ntruncated;
 };
 

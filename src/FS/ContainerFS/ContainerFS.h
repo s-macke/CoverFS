@@ -28,6 +28,7 @@ public:
     void Check() override;
 
     void Rename(const CPath &path, CDirectoryPtr newdir, const std::string &filename) override;
+    void Unlink(const CPath &path) override;
     void StatFS(CStatFS *buf) override;
 
 private:
@@ -43,7 +44,6 @@ public:
     int MakeDirectory(const std::string &name) override;
     int MakeFile(const std::string &name) override;
     int32_t GetId() override;
-    void Remove() override;
     bool IsEmpty() override;
 };
 
@@ -55,7 +55,6 @@ public:
     int64_t Read(int8_t *d, int64_t ofs, int64_t size) override;
     void Write(const int8_t *d, int64_t ofs, int64_t size) override;
     void Truncate(int64_t size, bool dozero) override;
-    void Remove() override;
     int64_t GetSize() override;
     int32_t GetId() override;
     INODETYPE GetType() override;
