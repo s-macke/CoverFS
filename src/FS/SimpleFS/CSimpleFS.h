@@ -37,7 +37,7 @@ public:
     CInodePtr OpenFile(const CPath &path) override;
     CInodePtr OpenFile(int id) override;
 
-    void Rename(CInodePtr node, CDirectoryPtr newdir, const std::string &filename) override;
+    void Rename(const CPath &path, CDirectoryPtr newdir, const std::string &filename) override;
     void StatFS(CStatFS *buf) override;
 
     void PrintInfo() override;

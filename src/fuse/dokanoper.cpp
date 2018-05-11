@@ -458,12 +458,10 @@ LPCWSTR NewFileName, BOOL ReplaceIfExisting, PDOKAN_FILE_INFO DokanFileInfo)
 
     try
     {
-        CInodePtr node = fs->OpenNode(CPath(oldpath));
-
         std::string filename = splitpath.back();
         splitpath.pop_back();
         CDirectoryPtr dir = fs->OpenDir(CPath(splitpath));
-        fs->Rename(node, dir, filename);
+        fs->Rename(CPath(oldpath), dir, filename);
     } catch(const int &err)
     {
         return errno_to_nstatus(err);

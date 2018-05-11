@@ -55,7 +55,7 @@ CInodePtr ContainerFS::OpenFile(int id)
 
 // ----------------------------------------------------
 
-void ContainerFS::Rename(CInodePtr node, CDirectoryPtr newdir, const std::string &filename)
+void ContainerFS::Rename(const CPath &path, CDirectoryPtr newdir, const std::string &filename)
 {
     throw EPERM;
 }

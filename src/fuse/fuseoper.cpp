@@ -275,12 +275,10 @@ static int fuse_rename(const char *oldpath, const char *newpath)
 
     try
     {
-        CInodePtr node = fs->OpenNode(CPath(oldpath));
-
         std::string filename = splitpath.back();
         splitpath.pop_back();
         CDirectoryPtr dir = fs->OpenDir(splitpath);
-        fs->Rename(node, dir, filename); // TODO: check if rename overwrites an already existing file.
+        fs->Rename(CPath(oldpath), dir, filename);
     } catch(const int &err)
     {
         return -err;

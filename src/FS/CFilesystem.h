@@ -77,7 +77,7 @@ class CFilesystem
         virtual CInodePtr OpenFile(const CPath &path)=0;
         virtual CInodePtr OpenFile(int id)=0;
 
-        virtual void Rename(CInodePtr node, CDirectoryPtr newdir, const std::string &filename)=0;
+        virtual void Rename(const CPath &path, CDirectoryPtr newdir, const std::string &filename)=0;
         virtual void StatFS(CStatFS *buf)=0;
 
         virtual void PrintInfo()=0;

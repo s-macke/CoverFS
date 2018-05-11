@@ -131,7 +131,7 @@ void Execute(int tid)
             printf("tid %1i %5i: rename %i\n", tid, iter, id);
             char newfilename[256];
             sprintf(newfilename, "tests%02i_%03i.dat", id, rand()%999);
-            fs->Rename(files[id].node, dir, newfilename);
+            fs->Rename(CPath(files[id].filename), dir, newfilename);
             strncpy(files[id].filename, newfilename, 256);
         }
         break;

@@ -27,7 +27,7 @@ public:
     void PrintFragments() override;
     void Check() override;
 
-    void Rename(CInodePtr node, CDirectoryPtr newdir, const std::string &filename) override;
+    void Rename(const CPath &path, CDirectoryPtr newdir, const std::string &filename) override;
     void StatFS(CStatFS *buf) override;
 
 private:

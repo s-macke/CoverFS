@@ -399,10 +399,10 @@ void CSimpleFilesystem::Write(CSimpleFSInode &node, const int8_t *d, int64_t ofs
 
 // -----------
 
-void CSimpleFilesystem::Rename(CInodePtr _node, CDirectoryPtr _newdir, const std::string &filename)
+void CSimpleFilesystem::Rename(const CPath &oldpath, CDirectoryPtr _newdir, const std::string &filename)
 {
     CSimpleFSDirectoryPtr newdir = std::dynamic_pointer_cast<CSimpleFSDirectory>(_newdir);
-    CSimpleFSInodePtr node = std::dynamic_pointer_cast<CSimpleFSInode>(_node);
+    CSimpleFSInodePtr node = OpenNodeInternal(CPath(oldpath));
 
     nrenamed++;
     CDirectoryEntryOnDisk e(filename);
