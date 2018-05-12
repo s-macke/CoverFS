@@ -5,16 +5,6 @@ CSimpleFSInode::~CSimpleFSInode() {
     fs.MaybeRemove(*this);
 }
 
-void CSimpleFSInode::Lock()
-{
-    mtx.lock();
-}
-
-void CSimpleFSInode::Unlock()
-{
-    mtx.unlock();
-}
-
 int64_t CSimpleFSInode::Read(int8_t *d, int64_t ofs, int64_t size)
 {
     std::lock_guard<std::mutex> lock(mtx);

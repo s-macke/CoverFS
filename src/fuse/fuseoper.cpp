@@ -268,13 +268,6 @@ static int fuse_rename(const char *oldpath, const char *newpath)
 
     try
     {
-        CInodePtr newnode = fs->OpenNode(splitpath);
-        return -EEXIST;
-    }
-    catch(...){}
-
-    try
-    {
         std::string filename = splitpath.back();
         splitpath.pop_back();
         CDirectoryPtr dir = fs->OpenDir(splitpath);

@@ -174,7 +174,8 @@ CSimpleFSInodePtr CSimpleFilesystem::OpenNodeInternal(int id)
     node->parentid = CFragmentDesc::INVALIDID;
     fragmentlist.GetFragmentIdxList(id, node->fragments, node->size);
 
-    assert(!node->fragments.empty());
+    if (node->fragments.empty()) throw EEXIST;
+
     node->type = fragmentlist.fragments[node->fragments[0]].type;
     inodes[id] = node;
     LOG(LogLevel::DEEP) << "Open File with id=" << id << " size=" << node->size;
@@ -463,7 +464,7 @@ void CSimpleFilesystem::MaybeRemove(CSimpleFSInode &node)
 {
     if (node.nlinks > 0) return;
 
-    std::lock_guard<std::mutex> nodelock(node.mtx);
+    std::lock_guard<std::mutex> nodelock(node.GetMutex());
     std::lock_guard<std::mutex> nodecachelock(inodescachemtx);
 
     auto it = inodes.find(node.id);

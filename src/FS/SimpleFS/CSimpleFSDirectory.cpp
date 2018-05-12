@@ -154,7 +154,8 @@ int32_t CSimpleFSDirectory::GetId()
 
 // -----------------------------------------------------------------
 
-CSimpleFSDirectoryIterator::CSimpleFSDirectoryIterator(CSimpleFSInternalDirectoryIteratorPtr &&_iterator) : iterator(std::move(_iterator)), lock(iterator->GetDirectory().dirnode->GetMutex())
+CSimpleFSDirectoryIterator::CSimpleFSDirectoryIterator(CSimpleFSInternalDirectoryIteratorPtr &&_iterator)
+        : iterator(std::move(_iterator)), lock(iterator->GetDirectory().dirnode->GetMutex())
 {};
 
 bool CSimpleFSDirectoryIterator::HasNext()

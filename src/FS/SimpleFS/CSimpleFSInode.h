@@ -33,8 +33,6 @@ public:
 private:
 
     std::mutex& GetMutex() { return mtx; } // for lock_guard
-    void Lock();
-    void Unlock();
 
     // non-blocking read and write
     int64_t ReadInternal(int8_t *d, int64_t ofs, int64_t size);

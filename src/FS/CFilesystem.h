@@ -22,6 +22,8 @@ enum class INODETYPE : int32_t {undefined=0, dir=1, file=2, special=3};
 class CInode
 {
     public:
+    virtual ~CInode();
+
     virtual int64_t Read(int8_t *d, int64_t ofs, int64_t size)=0;
     virtual void Write(const int8_t *d, int64_t ofs, int64_t size)=0;
     virtual void Truncate(int64_t size, bool dozero)=0;
@@ -45,9 +47,12 @@ class CDirectoryEntry
 class CDirectoryIterator
 {
     public:
-        virtual bool HasNext()=0;
-        virtual CDirectoryEntry Next()=0;
-    private:
+    virtual ~CDirectoryIterator();
+
+    virtual bool HasNext()=0;
+    virtual CDirectoryEntry Next()=0;
+
+private:
         CDirectoryEntry de;
 };
 using CDirectoryIteratorPtr = std::unique_ptr<CDirectoryIterator>;
@@ -55,7 +60,9 @@ using CDirectoryIteratorPtr = std::unique_ptr<CDirectoryIterator>;
 class CDirectory
 {
     public:
-        virtual CDirectoryIteratorPtr GetIterator()=0;
+    virtual ~CDirectory();
+
+    virtual CDirectoryIteratorPtr GetIterator()=0;
         virtual int MakeDirectory(const std::string& name)=0;
         virtual int MakeFile(const std::string& name)=0;
         virtual int32_t GetId()=0;

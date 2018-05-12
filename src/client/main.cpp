@@ -280,11 +280,12 @@ int main(int argc, char *argv[])
             return EXIT_FAILURE;
         }
         int n = 0;
-        CDirectoryIteratorPtr iterator = dir->GetIterator();
+        printf("======================\n");
         printf("Root directory entries\n");
         printf("======================\n");
-        while(iterator->HasNext())
-        {
+
+        CDirectoryIteratorPtr iterator = dir->GetIterator();
+        while (iterator->HasNext()) {
             printf("  %3i: '%s'\n", n, iterator->Next().name.c_str());
             n++;
         }
